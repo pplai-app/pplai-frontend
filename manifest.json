@@ -1,0 +1,28 @@
+{
+  "name": "pplai.app - Networking App",
+  "short_name": "pplai.app",
+  "description": "Network at events with QR codes and smart contact management",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#667eea",
+  "theme_color": "#667eea",
+  "orientation": "portrait",
+  "icons": [],
+  "categories": ["business", "productivity", "social"],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "Scan QR",
+      "short_name": "Scan",
+      "description": "Quickly scan a QR code",
+      "url": "/?action=scan"
+    },
+    {
+      "name": "My Profile",
+      "short_name": "Profile",
+      "description": "View your profile",
+      "url": "/?action=profile"
+    }
+  ]
+}
+

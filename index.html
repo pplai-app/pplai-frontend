@@ -1,0 +1,945 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#667eea">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>pplai.app - Networking App</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cdefs%3E%3ClinearGradient id='grad' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' style='stop-color:%23667eea;stop-opacity:1' /%3E%3Cstop offset='100%25' style='stop-color:%23764ba2;stop-opacity:1' /%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='100' height='100' fill='url(%23grad)' rx='20'/%3E%3Ctext x='50' y='70' font-size='60' font-weight='bold' fill='white' text-anchor='middle' font-family='Arial'%3EM%3C/text%3E%3C/svg%3E">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cdefs%3E%3ClinearGradient id='grad' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' style='stop-color:%23667eea;stop-opacity:1' /%3E%3Cstop offset='100%25' style='stop-color:%23764ba2;stop-opacity:1' /%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='100' height='100' fill='url(%23grad)' rx='20'/%3E%3Ctext x='50' y='70' font-size='60' font-weight='bold' fill='white' text-anchor='middle' font-family='Arial'%3EM%3C/text%3E%3C/svg%3E">
+    <link rel="manifest" href="manifest.json">
+    <link rel="stylesheet" href="styles.css">
+    <!-- jsQR for QR scanning -->
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+    <!-- Tesseract.js for OCR -->
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.0.4/dist/tesseract.min.js"></script>
+    <!-- Google OAuth -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <!-- jsPDF for PDF export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div id="loadingScreen" class="screen">
+        <div class="loading-spinner"></div>
+        <p>Loading pplai.app...</p>
+    </div>
+
+    <!-- Auth Screen -->
+    <div id="authScreen" class="screen hidden">
+        <div class="auth-container">
+            <div class="logo">
+                <h1>Meet AI</h1>
+                <p>Network smarter at events</p>
+            </div>
+            <div class="auth-buttons">
+                <div id="googleSignIn" class="auth-btn google-btn">
+                    <svg width="20" height="20" viewBox="0 0 24 24">
+                        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                    </svg>
+                    Sign in with Google
+                </div>
+                <div id="linkedinSignIn" class="auth-btn linkedin-btn">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="#0077B5">
+                        <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+                    </svg>
+                    Sign in with LinkedIn
+                </div>
+                <div class="auth-divider">
+                    <span>or</span>
+                </div>
+                <div class="email-auth-form">
+                    <input type="email" id="emailInput" class="input-field" placeholder="Email" required>
+                    <input type="password" id="passwordInput" class="input-field" placeholder="Password" required style="margin-top: 12px;">
+                    <input type="text" id="nameInput" class="input-field" placeholder="Name (for signup)" style="margin-top: 12px; display: none;">
+                    <div style="margin-top: 16px; display: flex; gap: 12px; align-items: center;">
+                        <button id="emailSignIn" class="auth-btn email-btn" style="flex: 1;">Sign In</button>
+                        <button id="emailSignUp" class="auth-btn email-btn" style="flex: 1; background: rgba(102, 126, 234, 0.1); color: var(--primary);">Sign Up</button>
+                    </div>
+                    <p id="emailAuthToggle" style="margin-top: 12px; text-align: center; font-size: 14px; color: var(--text-secondary); cursor: pointer;">
+                        Don't have an account? <span style="color: var(--primary);">Sign up</span>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main App Container -->
+    <div id="appContainer" class="screen hidden">
+        <!-- Current Event Banner (shown at top of all views) -->
+        <div class="current-event-banner" id="currentEventBanner" style="display: none;">
+            <div class="banner-content">
+                <div>
+                    <strong>Current Event:</strong>
+                    <span id="currentEventName">No event selected</span>
+                </div>
+                <button id="unselectEventBtn" class="btn-small btn-secondary" style="display: none;">Unselect</button>
+            </div>
+        </div>
+        
+        <!-- Bottom Navigation -->
+        <nav class="bottom-nav">
+            <button class="nav-btn active" data-view="home">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                    <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                </svg>
+                <span>Home</span>
+            </button>
+            <button class="nav-btn" data-view="events">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                    <line x1="16" y1="2" x2="16" y2="6"></line>
+                    <line x1="8" y1="2" x2="8" y2="6"></line>
+                    <line x1="3" y1="10" x2="21" y2="10"></line>
+                </svg>
+                <span>Events</span>
+            </button>
+            <button class="nav-btn" data-view="contacts">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="9" cy="7" r="4"></circle>
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                </svg>
+                <span>Contacts</span>
+            </button>
+            <button class="nav-btn" data-view="profile">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="12" cy="7" r="4"></circle>
+                </svg>
+                <span>Profile</span>
+            </button>
+            <button class="nav-btn" data-view="admin" id="adminNavBtn" style="display: none;">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
+                    <path d="M2 17l10 5 10-5"></path>
+                    <path d="M2 12l10 5 10-5"></path>
+                </svg>
+                <span>Admin</span>
+            </button>
+        </nav>
+
+        <!-- Home View -->
+        <div id="homeView" class="view active">
+            <div class="view-header">
+                <h2>Meet AI</h2>
+                <button id="quickAuthBtn" class="icon-btn" title="Logout">
+                    <svg id="authBtnIcon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                        <polyline points="16 17 21 12 16 7"></polyline>
+                        <line x1="21" y1="12" x2="9" y2="12"></line>
+                    </svg>
+                </button>
+            </div>
+            <div class="action-cards">
+                <div class="action-card" id="scanQRCard">
+                    <div class="action-icon qr-icon">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="3" width="5" height="5"></rect>
+                            <rect x="16" y="3" width="5" height="5"></rect>
+                            <rect x="3" y="16" width="5" height="5"></rect>
+                            <line x1="9" y1="9" x2="15" y2="9"></line>
+                            <line x1="9" y1="15" x2="15" y2="15"></line>
+                            <line x1="16" y1="9" x2="21" y2="9"></line>
+                            <line x1="16" y1="15" x2="21" y2="15"></line>
+                        </svg>
+                    </div>
+                    <h3>Scan QR Code</h3>
+                    <p>Scan a Meet AI QR code</p>
+                </div>
+                <div class="action-card" id="scanCardCard">
+                    <div class="action-icon card-icon">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="2" y="4" width="20" height="16" rx="2" ry="2"></rect>
+                            <line x1="2" y1="10" x2="22" y2="10"></line>
+                        </svg>
+                    </div>
+                    <h3>Scan Business Card</h3>
+                    <p>Take a photo of a business card</p>
+                </div>
+                <div class="action-card" id="scanEventPassCard">
+                    <div class="action-icon pass-icon">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="5" width="18" height="14" rx="2" ry="2"></rect>
+                            <line x1="3" y1="10" x2="21" y2="10"></line>
+                            <line x1="7" y1="5" x2="7" y2="19"></line>
+                            <circle cx="14" cy="12" r="2"></circle>
+                        </svg>
+                    </div>
+                    <h3>Scan Event Pass / ID</h3>
+                    <p>Take a photo of an event pass or ID card</p>
+                </div>
+                <div class="action-card" id="manualEntryCard">
+                    <div class="action-icon manual-icon">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                        </svg>
+                    </div>
+                    <h3>Manual Entry</h3>
+                    <p>Add contact manually</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Events View -->
+        <div id="eventsView" class="view hidden">
+            <div class="view-header">
+                <h2>My Events</h2>
+                <button id="addEventBtn" class="icon-btn">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                </button>
+            </div>
+            <div class="events-search-container">
+                <div class="search-box">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--text-secondary);">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <path d="m21 21-4.35-4.35"></path>
+                    </svg>
+                    <input type="text" id="eventsSearchInput" class="search-input" placeholder="Search events by name, location, or description...">
+                    <button id="clearEventsSearch" class="search-clear hidden" title="Clear search">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            <div id="eventsList" class="events-list"></div>
+        </div>
+
+        <!-- Contacts View -->
+        <div id="contactsView" class="view hidden">
+            <div class="view-header">
+                <h2>Contacts</h2>
+                <div class="header-actions">
+                    <button id="selectContactsBtn" class="icon-btn" title="Select Contacts">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M9 11l3 3L22 4"></path>
+                            <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
+                        </svg>
+                    </button>
+                    <button id="filterContactsBtn" class="icon-btn" title="Filter Contacts">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+                        </svg>
+                    </button>
+                    <button id="addContactBtn" class="icon-btn" title="Add Contact">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="12" y1="5" x2="12" y2="19"></line>
+                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            <!-- Top Selection Bar -->
+            <div id="bulkSelectionBar" class="bulk-selection-bar hidden">
+                <span id="selectedCount">0 selected</span>
+                <div class="selection-actions">
+                    <button id="selectAllContactsBtn" class="btn-small btn-secondary">Select All</button>
+                    <button id="deselectAllContactsBtn" class="btn-small btn-secondary">Deselect All</button>
+                </div>
+            </div>
+            
+            <!-- Floating Bottom Actions Bar -->
+            <div id="bulkActionsBar" class="bulk-actions-bar hidden">
+                <button id="bulkSaveBtn" class="bulk-action-btn" title="Save All">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                        <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                        <polyline points="7 3 7 8 15 8"></polyline>
+                    </svg>
+                    <span>Save</span>
+                </button>
+                <button id="bulkExportBtn" class="bulk-action-btn" title="Export All">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="7 10 12 15 17 10"></polyline>
+                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                    </svg>
+                    <span>Export</span>
+                </button>
+                <button id="bulkAddTagBtn" class="bulk-action-btn" title="Add/Remove Tag">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path>
+                        <line x1="7" y1="7" x2="7.01" y2="7"></line>
+                    </svg>
+                    <span>Tag</span>
+                </button>
+                <button id="bulkDeleteBtn" class="bulk-action-btn bulk-action-danger" title="Delete All">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="3 6 5 6 21 6"></polyline>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                    </svg>
+                    <span>Delete</span>
+                </button>
+            </div>
+            <div class="search-container">
+                <div class="search-wrapper">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #999; z-index: 1;">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <path d="m21 21-4.35-4.35"></path>
+                    </svg>
+                    <input type="text" id="contactsSearchInput" class="search-input" placeholder="Search contacts by name, email, company, or phone...">
+                    <button id="clearContactsSearch" class="search-clear hidden" title="Clear search">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            <div id="contactsFilters" class="contacts-filters hidden">
+                <select id="eventFilter" class="filter-select">
+                    <option value="all">All Events</option>
+                </select>
+                <select id="tagFilter" class="filter-select">
+                    <option value="all">All Tags</option>
+                </select>
+                <select id="dateFilter" class="filter-select">
+                    <option value="all">All Dates</option>
+                    <option value="today">Today</option>
+                    <option value="week">This Week</option>
+                    <option value="month">This Month</option>
+                    <option value="custom">Custom Range</option>
+                </select>
+                <div id="customDateRange" class="custom-date-range hidden">
+                    <input type="date" id="dateFrom" class="filter-input">
+                    <span>to</span>
+                    <input type="date" id="dateTo" class="filter-input">
+                </div>
+            </div>
+            <div id="contactsList" class="contacts-list"></div>
+        </div>
+
+        <!-- Chat View -->
+        <div id="chatView" class="view hidden">
+            <div class="view-header">
+                <button id="chatBackBtn" class="icon-btn" style="margin-right: 12px;" title="Back">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M19 12H5M12 19l-7-7 7-7"/>
+                    </svg>
+                </button>
+                <h2 id="chatContactName">Chat</h2>
+            </div>
+            <div class="chat-view-container">
+                <div id="chatViewMessages" class="chat-messages-full" style="flex: 1; overflow-y: auto; padding: 16px; background: var(--card-bg);">
+                    <!-- Messages will be loaded here -->
+                </div>
+                <div class="chat-input-container-full" style="padding: 16px; background: white; border-top: 1px solid var(--border-color);">
+                    <div class="chat-input-wrapper">
+                        <input type="file" id="chatViewPhotoInput" accept="image/*" style="display: none;" multiple>
+                        <button id="chatViewPhotoBtn" class="chat-action-btn" title="Upload Photo">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                                <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                                <polyline points="21 15 16 10 5 21"></polyline>
+                            </svg>
+                        </button>
+                        <button id="chatViewVoiceBtn" class="chat-action-btn" title="Record Voice Note">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+                                <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                                <line x1="12" y1="19" x2="12" y2="23"></line>
+                                <line x1="8" y1="23" x2="16" y2="23"></line>
+                            </svg>
+                        </button>
+                        <input type="text" id="chatViewMessageInput" class="chat-input" placeholder="Type a message..." maxlength="500">
+                        <button id="chatViewSendBtn" class="chat-send-btn" title="Send">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="22" y1="2" x2="11" y2="13"></line>
+                                <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                            </svg>
+                        </button>
+                    </div>
+                    <div id="chatViewPhotoPreview" class="chat-photo-preview" style="display: none; margin-top: 8px;"></div>
+                    <div id="chatViewVoiceRecording" class="chat-voice-recording" style="display: none; margin-top: 8px; padding: 12px; background: var(--danger, #ef4444); color: white; border-radius: 8px; text-align: center;">
+                        <div style="display: flex; align-items: center; justify-content: center; gap: 12px;">
+                            <div class="recording-indicator" style="width: 12px; height: 12px; background: white; border-radius: 50%; animation: pulse 1s infinite;"></div>
+                            <span id="chatViewRecordingTime">00:00</span>
+                            <button id="chatViewStopRecording" class="btn-small" style="background: white; color: var(--danger);">Stop</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tags Management View -->
+        <div id="tagsView" class="view hidden">
+            <div class="view-header">
+                <h2>Manage Tags</h2>
+            </div>
+            <div class="tags-management">
+                <div class="info-box" style="margin-bottom: 20px; padding: 16px; background: rgba(102, 126, 234, 0.1); border-radius: 12px;">
+                    <p style="margin: 0; font-size: 14px; color: #666;">
+                        <strong>System tags</strong> cannot be deleted. <strong>Custom tags</strong> can be hidden or deleted if not in use.
+                    </p>
+                </div>
+                <div class="create-tag-section" style="margin-bottom: 24px; padding: 20px; background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                    <h3 style="margin: 0 0 16px 0; font-size: 16px; color: var(--text-primary);">Create New Tag</h3>
+                    <div style="display: flex; gap: 12px; align-items: flex-end;">
+                        <div style="flex: 1;">
+                            <label for="newTagName" style="display: block; margin-bottom: 8px; font-size: 14px; color: var(--text-secondary);">Tag Name</label>
+                            <input 
+                                type="text" 
+                                id="newTagName" 
+                                class="input-field" 
+                                placeholder="Enter tag name..."
+                                style="width: 100%;"
+                            >
+                        </div>
+                        <button id="createTagBtn" class="btn-primary" style="white-space: nowrap;">Create Tag</button>
+                    </div>
+                </div>
+                <div id="tagsList" class="tags-list"></div>
+            </div>
+        </div>
+
+        <!-- Profile View -->
+        <div id="profileView" class="view hidden">
+            <div class="view-header">
+                <h2>My Profile</h2>
+                <div class="header-actions">
+                    <button id="manageTagsBtn" class="btn-small btn-secondary" style="margin-right: 8px;">Manage Tags</button>
+                    <button id="editProfileBtn" class="icon-btn">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            <div class="profile-display">
+                <!-- Profile Completeness Indicator -->
+                <div class="profile-completeness-card" id="profileCompletenessCard">
+                    <div class="completeness-header">
+                        <h4>Profile Completeness</h4>
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <span id="completenessPercentage" class="completeness-percentage">0%</span>
+                            <button id="closeCompletenessBtn" class="icon-btn-small" style="padding: 4px; opacity: 0.6;" title="Hide completeness">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="completeness-progress-bar">
+                        <div id="completenessProgress" class="completeness-progress" style="width: 0%"></div>
+                    </div>
+                    <div id="completenessDetails" class="completeness-details"></div>
+                </div>
+                
+                <div class="profile-photo-large">
+                    <img id="profilePhotoDisplay" src="" alt="Profile Photo">
+                </div>
+                <h3 id="profileNameDisplay"></h3>
+                <p id="profileRoleDisplay" class="profile-role"></p>
+                <div class="profile-qr-section">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                        <h4 style="margin: 0;">My QR Code</h4>
+                        <div class="qr-mode-toggle" style="display: flex; gap: 8px; align-items: center;">
+                            <span style="font-size: 12px; color: var(--text-secondary);">URL</span>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="qrModeToggle">
+                                <span class="toggle-slider"></span>
+                            </label>
+                            <span style="font-size: 12px; color: var(--text-secondary);">Offline</span>
+                        </div>
+                    </div>
+                    <div id="qrModeInfo" style="font-size: 12px; color: var(--text-secondary); margin-bottom: 12px; text-align: center;">
+                        <span id="qrModeDescription">Contains profile link (requires network)</span>
+                    </div>
+                    <canvas id="profileQRCode"></canvas>
+                    <button id="shareProfileBtn" class="btn-primary" style="margin-top: 16px;">Share Profile</button>
+                </div>
+                <div id="offlineIndicator" class="offline-indicator hidden" style="margin-top: 16px; padding: 12px; background: rgba(255, 193, 7, 0.1); border-radius: 8px; text-align: center; font-size: 14px; color: #856404;">
+                    <span>📡 Offline Mode - Using cached data</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Admin View -->
+        <div id="adminView" class="view hidden">
+            <div class="view-header">
+                <h2>Admin Panel</h2>
+                <div class="header-actions">
+                    <button id="createUserBtn" class="btn-small btn-primary">Create User</button>
+                </div>
+            </div>
+            <div class="view-content" style="padding: 20px;">
+                <div style="margin-bottom: 20px;">
+                    <div class="search-container">
+                        <div class="search-wrapper">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #999;">
+                                <circle cx="11" cy="11" r="8"></circle>
+                                <path d="m21 21-4.35-4.35"></path>
+                            </svg>
+                            <input type="text" id="adminSearchInput" class="search-input" placeholder="Search users by name or email...">
+                            <button id="clearAdminSearch" class="search-clear hidden" title="Clear search">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div id="usersList" class="users-list"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <!-- Profile Edit Modal -->
+    <div id="profileModal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Edit Profile</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Profile Photo</label>
+                    <div class="photo-upload-area" id="profilePhotoUpload">
+                        <img id="profilePhotoPreview" src="" alt="Preview" class="hidden">
+                            <div class="photo-placeholder">
+                            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                                    <circle cx="12" cy="7" r="4"></circle>
+                                </svg>
+                            <span>Tap to upload</span>
+                        </div>
+                        <input type="file" id="profilePhotoInput" accept="image/*" class="hidden">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="profileName">Name *</label>
+                    <input type="text" id="profileName" class="input-field" required>
+                </div>
+                <div class="form-group">
+                    <label for="profileEmail">Email *</label>
+                    <input type="email" id="profileEmail" class="input-field" required>
+                </div>
+                <div class="form-group">
+                    <label for="profileRole">Role & Company</label>
+                    <input type="text" id="profileRole" class="input-field" placeholder="e.g., CEO at Tech Corp">
+                </div>
+                <div class="form-group">
+                    <label for="profileMobile">Mobile</label>
+                    <input type="tel" id="profileMobile" class="input-field">
+                </div>
+                <div class="form-group">
+                    <label for="profileWhatsApp">WhatsApp</label>
+                    <input type="tel" id="profileWhatsApp" class="input-field">
+                </div>
+                <div class="form-group">
+                    <label for="profileLinkedIn">LinkedIn URL</label>
+                    <input type="url" id="profileLinkedIn" class="input-field" placeholder="https://linkedin.com/in/...">
+                </div>
+                <div class="form-group">
+                    <label for="profileAbout">About Me</label>
+                    <textarea id="profileAbout" class="textarea-field" rows="4" maxlength="500"></textarea>
+                </div>
+                <button id="saveProfileBtn" class="btn-primary">Save Profile</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Event Modal -->
+    <div id="eventModal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="eventModalTitle">Create Event</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="eventName">Event Name *</label>
+                    <input type="text" id="eventName" class="input-field" placeholder="e.g., Gitex 2025" required>
+                </div>
+                <div class="form-group">
+                    <label for="eventLocation">Location *</label>
+                    <div class="location-autocomplete-container">
+                        <input type="text" id="eventLocation" class="input-field location-input" placeholder="Search for a location..." autocomplete="off" required>
+                        <div id="locationSuggestions" class="location-suggestions hidden"></div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="eventDateRange">Event Dates *</label>
+                    <div class="date-range-container">
+                        <input type="date" id="eventStartDate" class="input-field date-range-input" placeholder="Start Date" required>
+                        <span class="date-range-separator">to</span>
+                        <input type="date" id="eventEndDate" class="input-field date-range-input" placeholder="End Date" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="eventDescription">Description</label>
+                    <textarea id="eventDescription" class="textarea-field" rows="3"></textarea>
+                </div>
+                <button id="saveEventBtn" class="btn-primary">Save Event</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Contact/Profile View Modal -->
+    <div id="contactViewModal" class="modal hidden">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <h3 id="contactViewTitle">Contact Details</h3>
+                <div class="header-actions">
+                    <button id="chatContactBtn" class="icon-btn-action" style="display: none;" title="Chat">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                        </svg>
+                    </button>
+                    <button id="saveContactFromViewBtn" class="icon-btn-action" style="display: none;" title="Save Contact">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                            <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                            <polyline points="7 3 7 8 15 8"></polyline>
+                        </svg>
+                    </button>
+                    <button id="editContactBtn" class="icon-btn-action" style="display: none;" title="Edit">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                        </svg>
+                    </button>
+                    <button id="deleteContactBtn" class="icon-btn-action icon-btn-danger" style="display: none;" title="Delete">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="3 6 5 6 21 6"></polyline>
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                        </svg>
+                    </button>
+                    <button class="modal-close">&times;</button>
+                </div>
+            </div>
+            <div class="modal-body">
+                <div class="contact-view-content">
+                    <div class="profile-photo-large" style="margin: 0 auto 24px;">
+                        <img id="contactViewPhoto" src="" alt="Photo" style="display: none;">
+                        <div class="photo-placeholder" id="contactViewPhotoPlaceholder">
+                            <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                                <circle cx="12" cy="7" r="4"></circle>
+                            </svg>
+                        </div>
+                    </div>
+                    <h3 id="contactViewName" style="text-align: center; margin-bottom: 8px;"></h3>
+                    <p id="contactViewRole" class="profile-role" style="text-align: center; margin-bottom: 24px;"></p>
+                    
+                    <div class="contact-details-grid">
+                        <div class="detail-item" id="contactViewEmailItem" style="display: none;">
+                            <span class="detail-label">📧 Email</span>
+                            <span class="detail-value" id="contactViewEmail"></span>
+                        </div>
+                        <div class="detail-item" id="contactViewMobileItem" style="display: none;">
+                            <span class="detail-label">📱 Mobile</span>
+                            <span class="detail-value" id="contactViewMobile"></span>
+                        </div>
+                        <div class="detail-item" id="contactViewLinkedInItem" style="display: none;">
+                            <span class="detail-label">💼 LinkedIn</span>
+                            <a class="detail-value" id="contactViewLinkedIn" href="" target="_blank" style="color: var(--primary);"></a>
+                        </div>
+                        <div class="detail-item" id="contactViewEventItem" style="display: none;">
+                            <span class="detail-label">📅 Event</span>
+                            <span class="detail-value" id="contactViewEvent"></span>
+                            </div>
+                        <div class="detail-item" id="contactViewDateItem" style="display: none;">
+                            <span class="detail-label">📆 Met On</span>
+                            <span class="detail-value" id="contactViewDate"></span>
+                        </div>
+                    </div>
+                    
+                    <div class="detail-section" id="contactViewContextItem" style="display: none; margin-top: 24px;">
+                        <h4 style="font-size: 14px; font-weight: 600; margin-bottom: 8px; color: var(--text-primary);">Meeting Context</h4>
+                        <p id="contactViewContext" style="color: var(--text-secondary); line-height: 1.6;"></p>
+                    </div>
+                    
+                    <div class="detail-section" id="contactViewTagsItem" style="display: none; margin-top: 24px;">
+                        <h4 style="font-size: 14px; font-weight: 600; margin-bottom: 12px; color: var(--text-primary);">Tags</h4>
+                        <div id="contactViewTags" class="tags-display" style="justify-content: flex-start;"></div>
+                    </div>
+                    
+                    <div class="detail-section" id="contactViewMediaItem" style="display: none; margin-top: 24px;">
+                        <h4 style="font-size: 14px; font-weight: 600; margin-bottom: 12px; color: var(--text-primary);">Media</h4>
+                        <div id="contactViewMedia" class="media-preview"></div>
+                    </div>
+                    
+                    <!-- Contact Actions -->
+                    <div class="contact-actions" style="margin-top: 32px; padding-top: 24px; border-top: 2px solid var(--border-color);">
+                        <div class="contact-actions-grid">
+                            <button id="saveToContactsBtn" class="contact-action-btn" title="Save to Contacts">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                                    <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                                    <polyline points="7 3 7 8 15 8"></polyline>
+                                </svg>
+                                <span>Save</span>
+                            </button>
+                            <button id="emailContactBtn" class="contact-action-btn" title="Email" style="display: none;">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                                    <polyline points="22,6 12,13 2,6"></polyline>
+                                </svg>
+                                <span>Email</span>
+                            </button>
+                            <button id="callContactBtn" class="contact-action-btn" title="Call" style="display: none;">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+                                </svg>
+                                <span>Call</span>
+                            </button>
+                            <button id="messageContactBtn" class="contact-action-btn" title="Message" style="display: none;">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                                </svg>
+                                <span>Message</span>
+                            </button>
+                            <button id="whatsappContactBtn" class="contact-action-btn" title="WhatsApp" style="display: none;">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
+                                </svg>
+                                <span>WhatsApp</span>
+                            </button>
+                        </div>
+                    </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+    <!-- Contact Entry Modal -->
+    <div id="contactModal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Add Contact</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Contact Photo</label>
+                    <div class="photo-upload-area" id="contactPhotoUpload">
+                        <img id="contactPhotoPreview" src="" alt="Preview" class="hidden">
+                        <div class="photo-placeholder">
+                            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                                <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                                <polyline points="21 15 16 10 5 21"></polyline>
+                            </svg>
+                            <span>Tap to upload</span>
+                        </div>
+                        <input type="file" id="contactPhotoInput" accept="image/*" class="hidden">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="contactName">Name *</label>
+                    <input type="text" id="contactName" class="input-field" required>
+                </div>
+                <div class="form-group">
+                    <label for="contactEmail">Email</label>
+                    <input type="email" id="contactEmail" class="input-field">
+                </div>
+                <div class="form-group">
+                    <label for="contactRole">Role & Company</label>
+                    <input type="text" id="contactRole" class="input-field">
+                </div>
+                <div class="form-group">
+                    <label for="contactMobile">Mobile</label>
+                    <div style="display: flex; gap: 8px;">
+                        <select id="contactCountryCode" class="input-field" style="width: 120px; flex-shrink: 0;">
+                            <option value="+1">🇺🇸 +1</option>
+                            <option value="+44">🇬🇧 +44</option>
+                            <option value="+91" selected>🇮🇳 +91</option>
+                            <option value="+86">🇨🇳 +86</option>
+                            <option value="+81">🇯🇵 +81</option>
+                            <option value="+49">🇩🇪 +49</option>
+                            <option value="+33">🇫🇷 +33</option>
+                            <option value="+39">🇮🇹 +39</option>
+                            <option value="+34">🇪🇸 +34</option>
+                            <option value="+61">🇦🇺 +61</option>
+                            <option value="+55">🇧🇷 +55</option>
+                            <option value="+52">🇲🇽 +52</option>
+                            <option value="+971">🇦🇪 +971</option>
+                            <option value="+966">🇸🇦 +966</option>
+                            <option value="+65">🇸🇬 +65</option>
+                            <option value="+60">🇲🇾 +60</option>
+                            <option value="+62">🇮🇩 +62</option>
+                            <option value="+66">🇹🇭 +66</option>
+                            <option value="+84">🇻🇳 +84</option>
+                            <option value="+82">🇰🇷 +82</option>
+                            <option value="+27">🇿🇦 +27</option>
+                            <option value="+20">🇪🇬 +20</option>
+                            <option value="+234">🇳🇬 +234</option>
+                            <option value="+254">🇰🇪 +254</option>
+                            <option value="+212">🇲🇦 +212</option>
+                            <option value="+7">🇷🇺 +7</option>
+                            <option value="+90">🇹🇷 +90</option>
+                            <option value="+92">🇵🇰 +92</option>
+                            <option value="+880">🇧🇩 +880</option>
+                            <option value="+94">🇱🇰 +94</option>
+                            <option value="+977">🇳🇵 +977</option>
+                            <option value="+880">🇧🇩 +880</option>
+                            <option value="+95">🇲🇲 +95</option>
+                            <option value="+855">🇰🇭 +855</option>
+                            <option value="+856">🇱🇦 +856</option>
+                            <option value="+673">🇧🇳 +673</option>
+                            <option value="+670">🇹🇱 +670</option>
+                            <option value="+64">🇳🇿 +64</option>
+                            <option value="+679">🇫🇯 +679</option>
+                            <option value="+678">🇻🇺 +678</option>
+                            <option value="+685">🇼🇸 +685</option>
+                            <option value="+676">🇹🇴 +676</option>
+                            <option value="+687">🇳🇨 +687</option>
+                            <option value="+689">🇵🇫 +689</option>
+                            <option value="+691">🇫🇲 +691</option>
+                            <option value="+692">🇲🇭 +692</option>
+                            <option value="+850">🇰🇵 +850</option>
+                            <option value="+886">🇹🇼 +886</option>
+                            <option value="+852">🇭🇰 +852</option>
+                            <option value="+853">🇲🇴 +853</option>
+                        </select>
+                        <input type="tel" id="contactMobile" class="input-field" style="flex: 1;" placeholder="Phone number">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="contactLinkedIn">LinkedIn</label>
+                    <input type="url" id="contactLinkedIn" class="input-field">
+                </div>
+                <div class="form-group">
+                    <label for="contactEvent">Event</label>
+                    <select id="contactEvent" class="input-field">
+                        <option value="">Select an event (optional)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="contactMeetingDate">Date & Time Met *</label>
+                    <input type="datetime-local" id="contactMeetingDate" class="input-field" required>
+                </div>
+                <div class="form-group">
+                    <label for="contactContext">Meeting Context (max 500 chars)</label>
+                    <textarea id="contactContext" class="textarea-field" rows="4" maxlength="500" placeholder="Where did you meet? What did you discuss?"></textarea>
+                    <div class="char-count"><span id="contextCharCount">0</span>/500</div>
+                </div>
+                <div class="form-group">
+                    <label>Tags</label>
+                    <div class="tags-input-container">
+                        <div id="contactTags" class="tags-display"></div>
+                        <input type="text" id="tagInput" class="tag-input" placeholder="Add tag and press Enter">
+                    </div>
+                    <div class="suggested-tags">
+                        <!-- Tags will be loaded dynamically -->
+                    </div>
+                    <p style="font-size: 12px; color: #666; margin-top: 8px;">
+                        Click a tag to add it, or type a new tag and press Enter
+                    </p>
+                </div>
+                <div class="form-group">
+                    <label>Media Attachments</label>
+                    <div class="media-upload-area">
+                        <input type="file" id="mediaInput" accept="image/*,audio/*" multiple class="hidden">
+                        <button type="button" id="addMediaBtn" class="btn-secondary">Add Photo/Voice Note</button>
+                        <div id="mediaPreview" class="media-preview"></div>
+                    </div>
+                </div>
+                <button id="saveContactBtn" class="btn-primary">Save Contact</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Admin User Modal -->
+    <div id="adminUserModal" class="modal hidden">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <h3 id="adminUserModalTitle">Create User</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="adminUserName">Name *</label>
+                    <input type="text" id="adminUserName" class="input-field" required>
+                </div>
+                <div class="form-group">
+                    <label for="adminUserEmail">Email *</label>
+                    <input type="email" id="adminUserEmail" class="input-field" required>
+                </div>
+                <div class="form-group">
+                    <label for="adminUserRole">Role & Company</label>
+                    <input type="text" id="adminUserRole" class="input-field" placeholder="e.g., CEO at Tech Corp">
+                </div>
+                <div class="form-group">
+                    <label for="adminUserMobile">Mobile</label>
+                    <input type="tel" id="adminUserMobile" class="input-field">
+                </div>
+                <div class="form-group">
+                    <label for="adminUserWhatsApp">WhatsApp</label>
+                    <input type="tel" id="adminUserWhatsApp" class="input-field">
+                </div>
+                <div class="form-group">
+                    <label for="adminUserLinkedIn">LinkedIn URL</label>
+                    <input type="url" id="adminUserLinkedIn" class="input-field" placeholder="https://linkedin.com/in/...">
+                </div>
+                <div class="form-group">
+                    <label for="adminUserAbout">About Me</label>
+                    <textarea id="adminUserAbout" class="textarea-field" rows="4" maxlength="500"></textarea>
+                </div>
+                <div class="form-group">
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                        <input type="checkbox" id="adminUserIsAdmin" style="width: auto;">
+                        <span>Admin User</span>
+                    </label>
+                </div>
+                <button id="saveAdminUserBtn" class="btn-primary">Save User</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- QR Scanner Modal -->
+    <div id="qrScannerModal" class="modal hidden">
+        <div class="modal-content fullscreen-modal">
+            <div class="modal-header">
+                <h3>Scan QR Code</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <video id="qrVideo" autoplay playsinline></video>
+                <canvas id="qrCanvas" class="hidden"></canvas>
+                <div class="scanner-overlay">
+                    <div class="scanner-frame"></div>
+                </div>
+                <p class="scanner-hint">Point camera at QR code</p>
+            </div>
+        </div>
+                </div>
+
+    <!-- Contact Detail Modal -->
+    <div id="contactDetailModal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Contact Details</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body" id="contactDetailContent">
+                <!-- Dynamically populated -->
+            </div>
+        </div>
+    </div>
+
+    <script src="api.js"></script>
+    <script src="offline-queue.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>

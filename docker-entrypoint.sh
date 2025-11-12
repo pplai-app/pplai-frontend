@@ -17,6 +17,10 @@ echo "=========================================="
 
 # Substitute PORT in nginx config
 echo "Substituting PORT in nginx config..."
+echo "PORT value: $PORT"
+echo "Template file exists: $(test -f /etc/nginx/templates/default.conf.template && echo 'yes' || echo 'no')"
+
+# Use envsubst to replace ${PORT} with actual value
 envsubst '${PORT}' < /etc/nginx/templates/default.conf.template > /etc/nginx/conf.d/default.conf
 
 # Verify nginx config was created
@@ -26,8 +30,24 @@ if [ ! -f /etc/nginx/conf.d/default.conf ]; then
 fi
 
 # Show first few lines of generated config
-echo "Generated nginx config (first 5 lines):"
-head -5 /etc/nginx/conf.d/default.conf
+echo "Generated nginx config (first 10 lines):"
+head -10 /etc/nginx/conf.d/default.conf
+
+# Check if PORT was actually substituted
+if grep -q '\${PORT}' /etc/nginx/conf.d/default.conf; then
+    echo "❌ ERROR: PORT variable was not substituted!"
+    echo "Config still contains \${PORT}:"
+    grep '\${PORT}' /etc/nginx/conf.d/default.conf
+    exit 1
+fi
+
+# Verify PORT is a valid number in the config
+if ! grep -q "listen $PORT" /etc/nginx/conf.d/default.conf; then
+    echo "❌ ERROR: PORT $PORT not found in nginx config!"
+    echo "Looking for 'listen $PORT' but found:"
+    grep "listen" /etc/nginx/conf.d/default.conf
+    exit 1
+fi
 
 # Inject API_BASE_URL into index.html
 echo "Injecting API_BASE_URL into index.html..."

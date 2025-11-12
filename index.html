@@ -938,6 +938,10 @@
         </div>
     </div>
 
+    <!-- Inject API_BASE_URL from environment variable -->
+    <script>
+        window.API_BASE_URL = '${API_BASE_URL}';
+    </script>
     <script src="api.js"></script>
     <script src="offline-queue.js"></script>
     <script src="script.js"></script>

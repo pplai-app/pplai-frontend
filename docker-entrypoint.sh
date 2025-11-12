@@ -1,21 +1,24 @@
 #!/bin/sh
 # Entrypoint script for Cloud Run
-# Substitutes PORT environment variable in nginx config
+# Substitutes PORT and API_BASE_URL environment variables
 
 set -e
 
 # Default to 8080 if PORT is not set
 export PORT=${PORT:-8080}
 
-# Debug: Print PORT value
+# Default API_BASE_URL (should be set via Cloud Run env var)
+export API_BASE_URL=${API_BASE_URL:-http://localhost:8000/api}
+
 echo "Starting nginx on port: $PORT"
+echo "API_BASE_URL: $API_BASE_URL"
 
 # Substitute PORT in nginx config
 envsubst '${PORT}' < /etc/nginx/templates/default.conf.template > /etc/nginx/conf.d/default.conf
 
-# Debug: Show generated config
-echo "Generated nginx config:"
-cat /etc/nginx/conf.d/default.conf | head -5
+# Inject API_BASE_URL into index.html
+# Replace the script tag that sets window.API_BASE_URL
+envsubst '${API_BASE_URL}' < /usr/share/nginx/html/index.html.template > /usr/share/nginx/html/index.html
 
 # Test nginx config
 nginx -t

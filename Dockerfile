@@ -12,16 +12,11 @@ COPY manifest.json /usr/share/nginx/html/
 COPY sw.js /usr/share/nginx/html/
 COPY offline-queue.js /usr/share/nginx/html/
 
-# Copy nginx configuration template
+# Copy nginx configuration template (nginx:alpine auto-processes .template files)
 COPY nginx.conf /etc/nginx/templates/default.conf.template
-
-# Copy entrypoint script
-COPY docker-entrypoint.sh /docker-entrypoint.sh
-RUN chmod +x /docker-entrypoint.sh
 
 # Expose port (Cloud Run will set PORT env var)
 EXPOSE 8080
 
-# Use entrypoint script to substitute PORT
-ENTRYPOINT ["/docker-entrypoint.sh"]
-
+# Use default nginx entrypoint which handles template substitution
+# No custom entrypoint needed - nginx:alpine does this automatically

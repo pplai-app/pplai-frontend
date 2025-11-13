@@ -10,6 +10,17 @@ export PORT=${PORT:-8080}
 # Default API_BASE_URL (should be set via Cloud Run env var)
 export API_BASE_URL=${API_BASE_URL:-http://localhost:8000/api}
 
+# Force HTTPS for API_BASE_URL if we're in production (Cloud Run always uses HTTPS)
+# This prevents mixed content errors and 307 redirects
+if [ -n "$API_BASE_URL" ] && echo "$API_BASE_URL" | grep -q "^http://"; then
+    # Check if we're in a production environment (Cloud Run sets PORT)
+    if [ -n "$PORT" ] && [ "$PORT" != "8000" ]; then
+        # We're in Cloud Run, convert HTTP to HTTPS
+        API_BASE_URL=$(echo "$API_BASE_URL" | sed 's|^http://|https://|')
+        echo "🔒 Converted API_BASE_URL from HTTP to HTTPS: $API_BASE_URL"
+    fi
+fi
+
 # Default GOOGLE_CLIENT_ID (should be set via Cloud Run env var)
 export GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
 

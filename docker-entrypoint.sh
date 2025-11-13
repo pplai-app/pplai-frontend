@@ -54,13 +54,31 @@ fi
 
 # Inject API_BASE_URL and GOOGLE_CLIENT_ID into index.html
 echo "Injecting API_BASE_URL and GOOGLE_CLIENT_ID into index.html..."
-envsubst '${API_BASE_URL} ${GOOGLE_CLIENT_ID}' < /usr/share/nginx/html/index.html.template > /usr/share/nginx/html/index.html
+echo "Checking if index.html.template exists..."
+if [ ! -f /usr/share/nginx/html/index.html.template ]; then
+    echo "⚠️  WARNING: index.html.template not found, checking for index.html..."
+    if [ -f /usr/share/nginx/html/index.html ]; then
+        echo "✅ index.html exists, using it directly (no template substitution)"
+        # Still try to inject if possible, but don't fail if template doesn't exist
+        if command -v envsubst >/dev/null 2>&1; then
+            # Try to inject variables into existing index.html
+            envsubst '${API_BASE_URL} ${GOOGLE_CLIENT_ID}' < /usr/share/nginx/html/index.html > /usr/share/nginx/html/index.html.tmp && \
+            mv /usr/share/nginx/html/index.html.tmp /usr/share/nginx/html/index.html
+        fi
+    else
+        echo "❌ ERROR: Neither index.html.template nor index.html found!"
+        exit 1
+    fi
+else
+    envsubst '${API_BASE_URL} ${GOOGLE_CLIENT_ID}' < /usr/share/nginx/html/index.html.template > /usr/share/nginx/html/index.html
+fi
 
 # Verify index.html was created
 if [ ! -f /usr/share/nginx/html/index.html ]; then
     echo "❌ ERROR: index.html was not created!"
     exit 1
 fi
+echo "✅ index.html created successfully"
 
 # Test nginx config
 echo "Testing nginx configuration..."

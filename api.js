@@ -4,14 +4,25 @@
 let API_BASE_URL = window.API_BASE_URL || 'http://localhost:8000/api';
 
 // Force HTTPS if we're on HTTPS (fix at initialization time)
-if (typeof window !== 'undefined' && window.location.protocol === 'https:' && API_BASE_URL.startsWith('http://')) {
-    API_BASE_URL = API_BASE_URL.replace('http://', 'https://');
-    console.warn('Mixed content prevention: Converted API_BASE_URL from HTTP to HTTPS:', API_BASE_URL);
-    // Also update window.API_BASE_URL for consistency
-    if (window.API_BASE_URL) {
-        window.API_BASE_URL = API_BASE_URL;
+// This MUST happen before any API calls are made
+(function() {
+    if (typeof window !== 'undefined' && window.location.protocol === 'https:') {
+        if (API_BASE_URL.startsWith('http://')) {
+            API_BASE_URL = API_BASE_URL.replace('http://', 'https://');
+            console.warn('🔒 Mixed content prevention: Converted API_BASE_URL from HTTP to HTTPS:', API_BASE_URL);
+            // Also update window.API_BASE_URL for consistency
+            if (window.API_BASE_URL) {
+                window.API_BASE_URL = API_BASE_URL;
+            }
+        }
+        // Double-check: if still HTTP after conversion, force it
+        if (API_BASE_URL.startsWith('http://')) {
+            console.error('❌ ERROR: API_BASE_URL is still HTTP after conversion!', API_BASE_URL);
+            API_BASE_URL = API_BASE_URL.replace('http://', 'https://');
+            console.warn('🔒 Force-converted to HTTPS:', API_BASE_URL);
+        }
     }
-}
+})();
 
 // Helper to normalize API URLs and ensure HTTPS
 function normalizeApiUrl(endpoint) {

@@ -3,6 +3,20 @@
 // For production, set this via environment variable or build-time replacement
 const API_BASE_URL = window.API_BASE_URL || 'http://localhost:8000/api';
 
+// Helper to normalize API URLs and ensure HTTPS
+function normalizeApiUrl(endpoint) {
+    const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+    let cleanBaseUrl = API_BASE_URL.endsWith('/') ? API_BASE_URL.slice(0, -1) : API_BASE_URL;
+    
+    // Force HTTPS if we're on HTTPS (mixed content prevention)
+    if (window.location.protocol === 'https:' && cleanBaseUrl.startsWith('http://')) {
+        cleanBaseUrl = cleanBaseUrl.replace('http://', 'https://');
+        console.warn('Mixed content detected: Converting HTTP API URL to HTTPS:', cleanBaseUrl);
+    }
+    
+    return `${cleanBaseUrl}${cleanEndpoint}`;
+}
+
 // Get auth token from localStorage
 function getAuthToken() {
     return localStorage.getItem('authToken');
@@ -235,7 +249,7 @@ async function apiRequest(endpoint, options = {}) {
                 // Create a separate controller for background fetch (don't use timeout controller)
                 const bgController = new AbortController();
                 // Fetch fresh data in background (don't await)
-                fetch(`${API_BASE_URL}${endpoint}`, {
+                fetch(normalizeApiUrl(endpoint), {
                     ...options,
                     headers,
                     signal: bgController.signal,
@@ -260,11 +274,7 @@ async function apiRequest(endpoint, options = {}) {
     let response;
     
     try {
-        // Ensure endpoint starts with / and API_BASE_URL doesn't end with /
-        const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
-        const cleanBaseUrl = API_BASE_URL.endsWith('/') ? API_BASE_URL.slice(0, -1) : API_BASE_URL;
-        const fullUrl = `${cleanBaseUrl}${cleanEndpoint}`;
-        
+        const fullUrl = normalizeApiUrl(endpoint);
         console.log(`Making ${method} request to: ${fullUrl}`);
         response = await fetch(fullUrl, {
             ...options,
@@ -408,7 +418,7 @@ const api = {
         if (profileData.about_me !== undefined) formData.append('about_me', profileData.about_me);
 
         const token = getAuthToken();
-        const response = await fetch(`${API_BASE_URL}/profile`, {
+        const response = await fetch(normalizeApiUrl('/profile'), {
             method: 'PUT',
             headers: {
                 'Authorization': `Bearer ${token}`,
@@ -510,7 +520,7 @@ const api = {
         }
 
         const token = getAuthToken();
-        const response = await fetch(`${API_BASE_URL}/contacts`, {
+        const response = await fetch(normalizeApiUrl('/contacts'), {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${token}`,
@@ -558,7 +568,7 @@ const api = {
         }
 
         const token = getAuthToken();
-        const response = await fetch(`${API_BASE_URL}/contacts/${contactId}`, {
+        const response = await fetch(normalizeApiUrl(`/contacts/${contactId}`), {
             method: 'PUT',
             headers: {
                 'Authorization': `Bearer ${token}`,
@@ -603,7 +613,7 @@ const api = {
         const formData = new FormData();
         formData.append('message', message);
         const token = getAuthToken();
-        const response = await fetch(`${API_BASE_URL}/contacts/${contactId}/message`, {
+        const response = await fetch(normalizeApiUrl(`/contacts/${contactId}/message`), {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${token}`,
@@ -625,7 +635,7 @@ const api = {
         const formData = new FormData();
         formData.append('file', file);
         const token = getAuthToken();
-        const response = await fetch(`${API_BASE_URL}/contacts/${contactId}/media`, {
+        const response = await fetch(normalizeApiUrl(`/contacts/${contactId}/media`), {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${token}`,
@@ -671,7 +681,7 @@ const api = {
     // Export
     async exportEventPDF(eventId) {
         const token = getAuthToken();
-        const response = await fetch(`${API_BASE_URL}/export/event/${eventId}/pdf`, {
+        const response = await fetch(normalizeApiUrl(`/export/event/${eventId}/pdf`), {
             headers: {
                 'Authorization': `Bearer ${token}`,
             },
@@ -694,7 +704,7 @@ const api = {
 
     async exportEventCSV(eventId) {
         const token = getAuthToken();
-        const response = await fetch(`${API_BASE_URL}/export/event/${eventId}/csv`, {
+        const response = await fetch(normalizeApiUrl(`/export/event/${eventId}/csv`), {
             headers: {
                 'Authorization': `Bearer ${token}`,
             },
@@ -717,7 +727,7 @@ const api = {
 
     async exportContactsPDF(contactIds) {
         const token = getAuthToken();
-        const response = await fetch(`${API_BASE_URL}/export/contacts/pdf`, {
+        const response = await fetch(normalizeApiUrl('/export/contacts/pdf'), {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${token}`,
@@ -743,7 +753,7 @@ const api = {
 
     async exportContactsCSV(contactIds) {
         const token = getAuthToken();
-        const response = await fetch(`${API_BASE_URL}/export/contacts/csv`, {
+        const response = await fetch(normalizeApiUrl('/export/contacts/csv'), {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${token}`,

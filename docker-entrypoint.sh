@@ -10,6 +10,9 @@ export PORT=${PORT:-8080}
 # Default API_BASE_URL (should be set via Cloud Run env var)
 export API_BASE_URL=${API_BASE_URL:-http://localhost:8000/api}
 
+# Default GOOGLE_CLIENT_ID (should be set via Cloud Run env var)
+export GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
+
 echo "=========================================="
 echo "Starting nginx on port: $PORT"
 echo "API_BASE_URL: $API_BASE_URL"
@@ -49,9 +52,9 @@ if ! grep -q "listen $PORT" /etc/nginx/conf.d/default.conf; then
     exit 1
 fi
 
-# Inject API_BASE_URL into index.html
-echo "Injecting API_BASE_URL into index.html..."
-envsubst '${API_BASE_URL}' < /usr/share/nginx/html/index.html.template > /usr/share/nginx/html/index.html
+# Inject API_BASE_URL and GOOGLE_CLIENT_ID into index.html
+echo "Injecting API_BASE_URL and GOOGLE_CLIENT_ID into index.html..."
+envsubst '${API_BASE_URL} ${GOOGLE_CLIENT_ID}' < /usr/share/nginx/html/index.html.template > /usr/share/nginx/html/index.html
 
 # Verify index.html was created
 if [ ! -f /usr/share/nginx/html/index.html ]; then

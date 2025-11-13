@@ -390,9 +390,10 @@ function switchView(viewName) {
 function initializeGoogleSignIn() {
     // Check if Google OAuth is loaded
     if (typeof google !== 'undefined' && google.accounts) {
-        const clientId = 'YOUR_GOOGLE_CLIENT_ID'; // Replace with your actual client ID
+        // Get Client ID from window (injected from environment) or use default
+        const clientId = window.GOOGLE_CLIENT_ID || 'YOUR_GOOGLE_CLIENT_ID';
         
-        if (clientId === 'YOUR_GOOGLE_CLIENT_ID') {
+        if (clientId === 'YOUR_GOOGLE_CLIENT_ID' || !clientId) {
             // Client ID not configured, use fallback
             console.warn('Google OAuth Client ID not configured, using fallback');
             return;

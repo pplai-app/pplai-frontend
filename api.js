@@ -1,15 +1,25 @@
 // API Configuration
 // Update this to your backend URL in production
 // For production, set this via environment variable or build-time replacement
-const API_BASE_URL = window.API_BASE_URL || 'http://localhost:8000/api';
+let API_BASE_URL = window.API_BASE_URL || 'http://localhost:8000/api';
+
+// Force HTTPS if we're on HTTPS (fix at initialization time)
+if (typeof window !== 'undefined' && window.location.protocol === 'https:' && API_BASE_URL.startsWith('http://')) {
+    API_BASE_URL = API_BASE_URL.replace('http://', 'https://');
+    console.warn('Mixed content prevention: Converted API_BASE_URL from HTTP to HTTPS:', API_BASE_URL);
+    // Also update window.API_BASE_URL for consistency
+    if (window.API_BASE_URL) {
+        window.API_BASE_URL = API_BASE_URL;
+    }
+}
 
 // Helper to normalize API URLs and ensure HTTPS
 function normalizeApiUrl(endpoint) {
     const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
     let cleanBaseUrl = API_BASE_URL.endsWith('/') ? API_BASE_URL.slice(0, -1) : API_BASE_URL;
     
-    // Force HTTPS if we're on HTTPS (mixed content prevention)
-    if (window.location.protocol === 'https:' && cleanBaseUrl.startsWith('http://')) {
+    // Force HTTPS if we're on HTTPS (mixed content prevention) - double check
+    if (typeof window !== 'undefined' && window.location.protocol === 'https:' && cleanBaseUrl.startsWith('http://')) {
         cleanBaseUrl = cleanBaseUrl.replace('http://', 'https://');
         console.warn('Mixed content detected: Converting HTTP API URL to HTTPS:', cleanBaseUrl);
     }

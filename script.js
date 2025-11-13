@@ -1709,15 +1709,15 @@ async function saveEvent() {
         return;
     }
 
+    const eventData = {
+        name,
+        location,
+        start_date: startDate,
+        end_date: endDate,
+        description: description || null,
+    };
+
     try {
-        const eventData = {
-            name,
-            location,
-            start_date: startDate,
-            end_date: endDate,
-            description: description || null,
-        };
-        
         if (editingEventId) {
             // Update existing event
             if (!navigator.onLine) {

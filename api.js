@@ -260,14 +260,33 @@ async function apiRequest(endpoint, options = {}) {
     let response;
     
     try {
-        console.log(`Making ${method} request to: ${API_BASE_URL}${endpoint}`);
-        response = await fetch(`${API_BASE_URL}${endpoint}`, {
+        // Ensure endpoint starts with / and API_BASE_URL doesn't end with /
+        const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+        const cleanBaseUrl = API_BASE_URL.endsWith('/') ? API_BASE_URL.slice(0, -1) : API_BASE_URL;
+        const fullUrl = `${cleanBaseUrl}${cleanEndpoint}`;
+        
+        console.log(`Making ${method} request to: ${fullUrl}`);
+        response = await fetch(fullUrl, {
             ...options,
             headers,
             signal: controller.signal,
         });
         clearTimeout(timeoutId);
         console.log(`Response status: ${response.status} ${response.statusText}`);
+        
+        // Handle redirects (307, 308)
+        if (response.status === 307 || response.status === 308) {
+            const redirectUrl = response.headers.get('Location');
+            console.log(`Redirect detected (${response.status}), following to: ${redirectUrl}`);
+            // Follow redirect
+            response = await fetch(redirectUrl, {
+                ...options,
+                headers,
+                signal: controller.signal,
+            });
+            clearTimeout(timeoutId);
+            console.log(`After redirect - Response status: ${response.status} ${response.statusText}`);
+        }
     } catch (fetchError) {
         clearTimeout(timeoutId);
         

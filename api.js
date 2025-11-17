@@ -500,17 +500,21 @@ const api = {
     },
 
     async importLumaEventFromUrl(url) {
-        return await apiRequest('/luma/import-event', {
+        const result = await apiRequest('/luma/import-event', {
             method: 'POST',
             body: JSON.stringify({ url }),
         });
+        cacheInvalidation.invalidateEvents();
+        return result;
     },
 
     async importLumaEventsFromApi(apiKey, calendarId = null) {
-        return await apiRequest('/luma/import-events', {
+        const result = await apiRequest('/luma/import-events', {
             method: 'POST',
             body: JSON.stringify({ api_key: apiKey, calendar_id: calendarId }),
         });
+        cacheInvalidation.invalidateEvents();
+        return result;
     },
 
     async deleteEvent(eventId) {

@@ -2421,8 +2421,8 @@ async function importLumaEventFromUrl() {
     const urlInput = document.getElementById('lumaUrlInput');
     const url = urlInput?.value?.trim();
     
-    if (!url || !url.includes('lu.ma')) {
-        showToast('Please enter a valid Luma event URL', 'error');
+    if (!url || (!url.includes('lu.ma') && !url.includes('luma.com'))) {
+        showToast('Please enter a valid Luma event URL (lu.ma or luma.com)', 'error');
         return;
     }
     

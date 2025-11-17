@@ -499,6 +499,20 @@ const api = {
         return result;
     },
 
+    async importLumaEventFromUrl(url) {
+        return await apiRequest('/luma/import-event', {
+            method: 'POST',
+            body: JSON.stringify({ url }),
+        });
+    },
+
+    async importLumaEventsFromApi(apiKey, calendarId = null) {
+        return await apiRequest('/luma/import-events', {
+            method: 'POST',
+            body: JSON.stringify({ api_key: apiKey, calendar_id: calendarId }),
+        });
+    },
+
     async deleteEvent(eventId) {
         const result = await apiRequest(`/events/${eventId}`, {
             method: 'DELETE',

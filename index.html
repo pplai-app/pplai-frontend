@@ -288,12 +288,21 @@
         <div id="eventsView" class="view hidden">
             <div class="view-header">
                 <h2>My Events</h2>
-                <button id="addEventBtn" class="icon-btn">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <line x1="12" y1="5" x2="12" y2="19"></line>
-                        <line x1="5" y1="12" x2="19" y2="12"></line>
-                    </svg>
-                </button>
+                <div style="display: flex; gap: 8px;">
+                    <button id="importLumaBtn" class="icon-btn" title="Import from Luma">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="7 10 12 15 17 10"></polyline>
+                            <line x1="12" y1="15" x2="12" y2="3"></line>
+                        </svg>
+                    </button>
+                    <button id="addEventBtn" class="icon-btn">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="12" y1="5" x2="12" y2="19"></line>
+                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                        </svg>
+                    </button>
+                </div>
             </div>
             <div class="events-search-container">
                 <div class="search-box">
@@ -734,6 +743,31 @@
                     <textarea id="profileAbout" class="textarea-field" rows="4" maxlength="500"></textarea>
                 </div>
                 <button id="saveProfileBtn" class="btn-primary">Save Profile</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Luma Import Modal -->
+    <div id="lumaImportModal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Import Events from Luma</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div style="margin-bottom: 24px;">
+                    <h4 style="margin-bottom: 12px; font-size: 16px; font-weight: 600;">Option 1: Import from URL</h4>
+                    <p style="margin-bottom: 12px; color: var(--text-secondary); font-size: 14px;">Paste a Luma event URL to import a single event</p>
+                    <input type="url" id="lumaUrlInput" class="input-field" placeholder="https://lu.ma/event/...">
+                    <button id="importLumaUrlBtn" class="btn-primary" style="margin-top: 12px; width: 100%;">Import Event</button>
+                </div>
+                <div style="border-top: 1px solid var(--border-color); padding-top: 24px;">
+                    <h4 style="margin-bottom: 12px; font-size: 16px; font-weight: 600;">Option 2: Import Multiple Events (API)</h4>
+                    <p style="margin-bottom: 12px; color: var(--text-secondary); font-size: 14px;">Requires Luma Plus subscription and API key</p>
+                    <input type="text" id="lumaApiKeyInput" class="input-field" placeholder="Luma API Key" style="margin-bottom: 12px;">
+                    <input type="text" id="lumaCalendarIdInput" class="input-field" placeholder="Calendar ID (optional)">
+                    <button id="importLumaApiBtn" class="btn-primary" style="margin-top: 12px; width: 100%;">Import All Events</button>
+                </div>
             </div>
         </div>
     </div>

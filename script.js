@@ -242,6 +242,16 @@ function setupEventListeners() {
 
     // Events
     document.getElementById('addEventBtn')?.addEventListener('click', openEventModal);
+    document.getElementById('importLumaBtn')?.addEventListener('click', () => {
+        document.getElementById('lumaImportModal')?.classList.remove('hidden');
+    });
+    document.getElementById('importLumaUrlBtn')?.addEventListener('click', importLumaEventFromUrl);
+    document.getElementById('importLumaApiBtn')?.addEventListener('click', importLumaEventsFromApi);
+    
+    // Close Luma import modal
+    document.getElementById('lumaImportModal')?.querySelector('.modal-close')?.addEventListener('click', () => {
+        document.getElementById('lumaImportModal')?.classList.add('hidden');
+    });
     document.getElementById('saveEventBtn')?.addEventListener('click', saveEvent);
     document.getElementById('eventsSearchInput')?.addEventListener('input', filterEvents);
     document.getElementById('clearEventsSearch')?.addEventListener('click', clearEventsSearch);
@@ -2406,6 +2416,75 @@ async function shareProfile() {
 
 // Event functions
 let allEvents = []; // Store all events for search filtering
+
+async function importLumaEventFromUrl() {
+    const urlInput = document.getElementById('lumaUrlInput');
+    const url = urlInput?.value?.trim();
+    
+    if (!url || !url.includes('lu.ma')) {
+        showToast('Please enter a valid Luma event URL', 'error');
+        return;
+    }
+    
+    const btn = document.getElementById('importLumaUrlBtn');
+    const originalText = btn?.textContent;
+    if (btn) {
+        btn.disabled = true;
+        btn.textContent = 'Importing...';
+    }
+    
+    try {
+        const event = await api.importLumaEventFromUrl(url);
+        showToast(`✅ Successfully imported "${event.name}"`, 'success');
+        document.getElementById('lumaImportModal')?.classList.add('hidden');
+        if (urlInput) urlInput.value = '';
+        await loadEvents(); // Refresh events list
+    } catch (error) {
+        console.error('Error importing Luma event:', error);
+        showToast(error.message || 'Failed to import event from Luma', 'error');
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.textContent = originalText;
+        }
+    }
+}
+
+async function importLumaEventsFromApi() {
+    const apiKeyInput = document.getElementById('lumaApiKeyInput');
+    const calendarIdInput = document.getElementById('lumaCalendarIdInput');
+    const apiKey = apiKeyInput?.value?.trim();
+    const calendarId = calendarIdInput?.value?.trim() || null;
+    
+    if (!apiKey) {
+        showToast('Please enter your Luma API key', 'error');
+        return;
+    }
+    
+    const btn = document.getElementById('importLumaApiBtn');
+    const originalText = btn?.textContent;
+    if (btn) {
+        btn.disabled = true;
+        btn.textContent = 'Importing...';
+    }
+    
+    try {
+        const events = await api.importLumaEventsFromApi(apiKey, calendarId);
+        showToast(`✅ Successfully imported ${events.length} event(s)`, 'success');
+        document.getElementById('lumaImportModal')?.classList.add('hidden');
+        if (apiKeyInput) apiKeyInput.value = '';
+        if (calendarIdInput) calendarIdInput.value = '';
+        await loadEvents(); // Refresh events list
+    } catch (error) {
+        console.error('Error importing Luma events:', error);
+        showToast(error.message || 'Failed to import events from Luma', 'error');
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.textContent = originalText;
+        }
+    }
+}
 
 async function loadEvents() {
     // Check authentication

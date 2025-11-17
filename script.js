@@ -35,15 +35,10 @@ setTimeout(() => {
 document.addEventListener('DOMContentLoaded', async () => {
     debugLog('🚀 Initializing pplai.app...');
     
-    // Check if URL is a shared profile link FIRST (before API checks)
+    // Check if URL is a shared profile link
     const urlPath = window.location.pathname;
     const profileMatch = urlPath.match(/\/profile\/([a-f0-9-]+)/i);
-    
-    if (profileMatch && profileMatch[1]) {
-        debugLog('📋 Public profile URL detected, rendering standalone view...');
-        await renderStandalonePublicProfile(profileMatch[1]);
-        return;
-    }
+    const profileUserId = profileMatch ? profileMatch[1] : null;
     
     // Check if required functions exist (only for authenticated app)
     if (typeof getCurrentUser === 'undefined' || typeof getAuthToken === 'undefined') {
@@ -84,11 +79,19 @@ document.addEventListener('DOMContentLoaded', async () => {
                 // Check admin status and show/hide admin nav button
                 await checkAdminStatus();
                 
-                // Check if there's a pending profile view from a shared link
-                const pendingProfileId = sessionStorage.getItem('pendingProfileView');
-                if (pendingProfileId) {
-                    sessionStorage.removeItem('pendingProfileView');
-                    await loadPublicProfile(pendingProfileId);
+                // Check if there's a profile ID from URL (logged-in user viewing shared profile)
+                if (profileUserId) {
+                    debugLog('📋 Logged-in user viewing public profile, opening in-app modal...');
+                    await loadPublicProfile(profileUserId);
+                    // Clear the URL to show home path
+                    window.history.replaceState({}, '', '/');
+                } else {
+                    // Check if there's a pending profile view from a shared link
+                    const pendingProfileId = sessionStorage.getItem('pendingProfileView');
+                    if (pendingProfileId) {
+                        sessionStorage.removeItem('pendingProfileView');
+                        await loadPublicProfile(pendingProfileId);
+                    }
                 }
             } catch (error) {
                 debugError('Auth error:', error);
@@ -96,6 +99,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                 showAuthScreen();
             }
         } else {
+            // User not logged in - check if this is a public profile URL
+            if (profileUserId) {
+                debugLog('📋 Public profile URL detected (no auth), rendering standalone view...');
+                await renderStandalonePublicProfile(profileUserId);
+                return;
+            }
+            
             debugLog('No user/token, showing auth screen');
             showAuthScreen();
         }

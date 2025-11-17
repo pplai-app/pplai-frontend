@@ -2438,7 +2438,13 @@ async function importLumaEventFromUrl() {
         showToast(`✅ Successfully imported "${event.name}"`, 'success');
         document.getElementById('lumaImportModal')?.classList.add('hidden');
         if (urlInput) urlInput.value = '';
-        await loadEvents(); // Refresh events list
+        // Refresh events list - ensure we're on events view and reload
+        await loadEvents();
+        // Force display update if events view is visible
+        const eventsView = document.getElementById('eventsView');
+        if (eventsView && !eventsView.classList.contains('hidden')) {
+            displayEvents(allEvents);
+        }
     } catch (error) {
         console.error('Error importing Luma event:', error);
         showToast(error.message || 'Failed to import event from Luma', 'error');
@@ -2474,7 +2480,13 @@ async function importLumaEventsFromApi() {
         document.getElementById('lumaImportModal')?.classList.add('hidden');
         if (apiKeyInput) apiKeyInput.value = '';
         if (calendarIdInput) calendarIdInput.value = '';
-        await loadEvents(); // Refresh events list
+        // Refresh events list - ensure we're on events view and reload
+        await loadEvents();
+        // Force display update if events view is visible
+        const eventsView = document.getElementById('eventsView');
+        if (eventsView && !eventsView.classList.contains('hidden')) {
+            displayEvents(allEvents);
+        }
     } catch (error) {
         console.error('Error importing Luma events:', error);
         showToast(error.message || 'Failed to import events from Luma', 'error');

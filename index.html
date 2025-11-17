@@ -1084,7 +1084,7 @@
         // Force HTTPS conversion immediately, before any other code runs
         (function() {
             var apiBaseUrl = '${API_BASE_URL}';
-            if (!apiBaseUrl || apiBaseUrl.includes('${API_BASE_URL}')) {
+            if (!apiBaseUrl || apiBaseUrl.startsWith('${')) {
                 apiBaseUrl = 'http://localhost:8000/api';
             }
             // If we're on HTTPS and API_BASE_URL is HTTP, convert it

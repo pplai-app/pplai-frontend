@@ -1462,6 +1462,9 @@ async function handleEmailSignIn() {
             await loadInitialData();
             await checkAdminStatus();
             
+            // Initialize push notifications
+            await initializePushNotifications();
+            
             // Check if there's a pending contact save action
             const pendingContactSave = sessionStorage.getItem('pendingContactSave');
             if (pendingContactSave) {

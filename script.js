@@ -196,6 +196,10 @@ function setupEventListeners() {
     document.getElementById('applyBulkTagsBtn')?.addEventListener('click', applyBulkTags);
     document.getElementById('bulkAddEventBtn')?.addEventListener('click', bulkAddEventToContacts);
     document.getElementById('bulkDeleteBtn')?.addEventListener('click', bulkDeleteContacts);
+    
+    // Export modal
+    document.getElementById('exportPDFBtn')?.addEventListener('click', () => handleExportFormat('pdf'));
+    document.getElementById('exportCSVBtn')?.addEventListener('click', () => handleExportFormat('csv'));
     document.getElementById('saveContactBtn')?.addEventListener('click', saveContact);
     document.getElementById('saveContactFromViewBtn')?.addEventListener('click', async () => {
         if (currentViewingContactId && currentViewingContact) {
@@ -1922,25 +1926,26 @@ function displayEvents(events) {
         });
     });
 
-    container.querySelectorAll('.export-pdf').forEach(btn => {
-        btn.addEventListener('click', async (e) => {
+    // Combined export handler - show modal instead of direct export
+    const showEventExportModal = (eventId, eventName) => {
+        // Get event contacts count
+        const eventCard = container.querySelector(`[data-event-id="${eventId}"]`)?.closest('.event-card');
+        const contactCount = eventCard?.querySelector('.event-contact-count')?.textContent?.match(/\d+/)?.[0] || '0';
+        
+        exportModalData.eventId = eventId;
+        exportModalData.type = 'event';
+        exportModalData.ids = [];
+        showExportModal(contactCount, `Event: ${eventName}`);
+    };
+    
+    container.querySelectorAll('.export-pdf, .export-csv').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
             const eventId = e.target.dataset.eventId;
-            try {
-                await api.exportEventPDF(eventId);
-            } catch (error) {
-                showToast('Failed to export PDF: ' + error.message, 'error');
-            }
-        });
-    });
-
-    container.querySelectorAll('.export-csv').forEach(btn => {
-        btn.addEventListener('click', async (e) => {
-            const eventId = e.target.dataset.eventId;
-            try {
-                await api.exportEventCSV(eventId);
-            } catch (error) {
-                showToast('Failed to export CSV: ' + error.message, 'error');
-            }
+            // Find event name from the card
+            const eventCard = e.target.closest('.event-card');
+            const eventName = eventCard?.querySelector('h3')?.textContent || 'Event';
+            showEventExportModal(eventId, eventName);
         });
     });
 

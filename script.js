@@ -185,6 +185,48 @@ function setupEventListeners() {
     document.getElementById('scanCardCard')?.addEventListener('click', openBusinessCardScanner);
     document.getElementById('scanEventPassCard')?.addEventListener('click', openEventPassScanner);
     document.getElementById('manualEntryCard')?.addEventListener('click', openContactModal);
+    
+    // Business Card Scanner
+    document.getElementById('businessCardCaptureBtn')?.addEventListener('click', captureBusinessCard);
+    document.getElementById('businessCardUploadBtn')?.addEventListener('click', () => {
+        document.getElementById('businessCardFileInput')?.click();
+    });
+    document.getElementById('businessCardFileInput')?.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            closeBusinessCardScanner();
+            processBusinessCardFile(file);
+        }
+    });
+    
+    // Event Pass Scanner
+    document.getElementById('eventPassCaptureBtn')?.addEventListener('click', captureEventPass);
+    document.getElementById('eventPassUploadBtn')?.addEventListener('click', () => {
+        document.getElementById('eventPassFileInput')?.click();
+    });
+    document.getElementById('eventPassFileInput')?.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            closeEventPassScanner();
+            processEventPassFile(file);
+        }
+    });
+    
+    // Close modals on close button
+    document.querySelectorAll('.modal-close').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const modal = e.target.closest('.modal');
+            if (modal) {
+                if (modal.id === 'qrScannerModal') {
+                    closeQRScanner();
+                } else if (modal.id === 'businessCardScannerModal') {
+                    closeBusinessCardScanner();
+                } else if (modal.id === 'eventPassScannerModal') {
+                    closeEventPassScanner();
+                }
+            }
+        });
+    });
     document.getElementById('addContactBtn')?.addEventListener('click', () => switchView('home'));
     document.getElementById('filterContactsBtn')?.addEventListener('click', toggleContactsFilters);
     document.getElementById('selectContactsBtn')?.addEventListener('click', toggleSelectionMode);
@@ -329,12 +371,16 @@ function setupEventListeners() {
     setupPhotoUpload('contactPhotoUpload', 'contactPhotoInput', 'contactPhotoPreview');
 
     // Modal close buttons
+    // Modal close handlers are set up earlier in setupEventListeners
+    // This section handles other modals that use closeModal()
     document.querySelectorAll('.modal-close').forEach(btn => {
+        // Skip if already handled by scanner modals
+        if (btn.closest('#qrScannerModal') || btn.closest('#businessCardScannerModal') || btn.closest('#eventPassScannerModal')) {
+            return;
+        }
         btn.addEventListener('click', (e) => {
             const modal = e.target.closest('.modal');
-            if (modal && modal.id === 'qrScannerModal') {
-                closeQRScanner();
-            } else {
+            if (modal) {
                 closeModal();
             }
         });
@@ -346,6 +392,10 @@ function setupEventListeners() {
             if (e.target === modal) {
                 if (modal.id === 'qrScannerModal') {
                     closeQRScanner();
+                } else if (modal.id === 'businessCardScannerModal') {
+                    closeBusinessCardScanner();
+                } else if (modal.id === 'eventPassScannerModal') {
+                    closeEventPassScanner();
                 } else {
                     closeModal();
                 }
@@ -2433,6 +2483,11 @@ function displayContacts(contacts) {
                 <p class="contact-date">Met: ${formatDateTime(contact.meeting_date)}</p>
             </div>
             <div class="contact-actions-list" style="display: flex; gap: 8px; align-items: center;">
+                <button class="icon-btn-action favorite-contact-btn ${contact.is_favorite ? 'favorite-active' : ''}" data-contact-id="${contact.id}" onclick="event.stopPropagation();" title="${contact.is_favorite ? 'Remove from favorites' : 'Add to favorites'}">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="${contact.is_favorite ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2">
+                        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+                    </svg>
+                </button>
                 <button class="icon-btn-action chat-contact-btn" data-contact-id="${contact.id}" data-contact-name="${contact.name}" onclick="event.stopPropagation();" title="Chat">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
@@ -2486,6 +2541,33 @@ function displayContacts(contacts) {
             const contactId = button.dataset.contactId;
             const contactName = button.dataset.contactName;
             await openChatView(contactId, contactName);
+        });
+    });
+    
+    container.querySelectorAll('.favorite-contact-btn').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            const button = e.currentTarget;
+            const contactId = button.dataset.contactId;
+            
+            try {
+                const updatedContact = await api.toggleContactFavorite(contactId);
+                // Update the button state
+                if (updatedContact.is_favorite) {
+                    button.classList.add('favorite-active');
+                    button.querySelector('svg').setAttribute('fill', 'currentColor');
+                    button.title = 'Remove from favorites';
+                } else {
+                    button.classList.remove('favorite-active');
+                    button.querySelector('svg').setAttribute('fill', 'none');
+                    button.title = 'Add to favorites';
+                }
+                // Reload contacts to reflect the change
+                await loadContacts();
+            } catch (error) {
+                console.error('Error toggling favorite:', error);
+                showToast('Failed to update favorite status', 'error');
+            }
         });
     });
     
@@ -4514,6 +4596,8 @@ function stopVoiceRecording() {
 // QR Scanner
 let qrScannerStream = null;
 let qrScannerInterval = null;
+let businessCardScannerStream = null;
+let eventPassScannerStream = null;
 
 function openQRScanner() {
     const modal = document.getElementById('qrScannerModal');
@@ -5024,202 +5108,320 @@ async function createContactFromVCard(vcardContact) {
 }
 
 function openBusinessCardScanner() {
-    // Create file input for business card photo
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'image/*';
-    input.capture = 'environment'; // Use back camera on mobile
+    const modal = document.getElementById('businessCardScannerModal');
+    const video = document.getElementById('businessCardVideo');
     
-    input.onchange = async (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-        
-        // Show loading modal
-        const loadingModal = document.createElement('div');
-        loadingModal.className = 'modal';
-        loadingModal.innerHTML = `
-            <div class="modal-content" style="max-width: 300px;">
-                <div class="modal-body" style="text-align: center; padding: 40px 20px;">
-                    <div class="loading-spinner" style="margin: 0 auto 20px;"></div>
-                    <p>Scanning business card...</p>
-                    <p style="font-size: 12px; color: #666; margin-top: 10px;">This may take a few seconds</p>
-                </div>
-            </div>
-        `;
-        document.body.appendChild(loadingModal);
-        
-        const updateProgress = (message) => {
-            const statusEl = loadingModal.querySelector('p');
-            if (statusEl) statusEl.textContent = message;
-        };
-            
-        const removeLoadingModal = () => {
-            if (loadingModal.parentNode) {
-            document.body.removeChild(loadingModal);
-            }
-        };
-
-        let contactInfo = null;
-        let portraitFile = null;
-        let cardFileForMedia = null;
-
-        try {
-            updateProgress('Preparing image...');
-            
-            // Always preprocess - converts HEIC to JPEG which is universally supported
-            const preprocessResult = await preprocessCardImage(file);
-            const processedFile = preprocessResult?.file || file;
-            cardFileForMedia = preprocessResult?.file || file;
-
-            let cloudErrorDetail = null;
-
-            if (navigator.onLine) {
-                // Only try files that are valid (not null/undefined and have size)
-                const backendFileCandidates = [];
-                if (processedFile && processedFile.size > 0) {
-                    backendFileCandidates.push(processedFile);
-                }
-                if (file && file.size > 0 && processedFile !== file) {
-                    backendFileCandidates.push(file);
-                }
-                if (backendFileCandidates.length === 0) {
-                    backendFileCandidates.push(file); // Last resort
-                }
-
-                for (const candidate of backendFileCandidates) {
-                    try {
-                        updateProgress('Scanning card (cloud)...');
-                        const result = await api.analyzeBusinessCard(candidate);
-                        if (result) {
-                            contactInfo = result.fields || null;
-                            if (result.portrait_image) {
-                                portraitFile = base64ToFile(result.portrait_image, `portrait-${Date.now()}.png`, 'image/png');
-                            }
-                            // Always use the original file for media, not the processed/cropped version
-                            cardFileForMedia = file;
-                        }
-                        break;
-                    } catch (cloudError) {
-                        console.warn('Cloud OCR attempt failed:', cloudError);
-                        cloudErrorDetail = cloudError?.message || cloudError;
-                    }
-                }
-            }
-
-            if (!contactInfo) {
-                updateProgress('Scanning card (offline mode)...');
-                const localSource = processedFile || file;
-                const { data: { text } } = await Tesseract.recognize(localSource, 'eng', {
-                    logger: m => {
-                        if (m.status === 'recognizing text') {
-                            const progress = Math.round(m.progress * 100);
-                            updateProgress(`Scanning locally... ${progress}%`);
-                        }
-                    }
-                });
-                contactInfo = parseBusinessCardText(text);
-                cardFileForMedia = localSource;
-            }
-
-            removeLoadingModal();
-
-            if (!contactInfo) {
-                const extraMessage = cloudErrorDetail
-                    ? `\n\nCloud OCR error: ${cloudErrorDetail}`
-                    : '';
-                alert(`We could not extract information from this card. Please enter details manually.${extraMessage}`);
-                return;
-            }
-
-            cardFileForMedia = cardFileForMedia || processedFile || file;
-            await populateContactForm(contactInfo, { portraitFile, cardFile: cardFileForMedia });
-        } catch (error) {
-            console.error('OCR Error:', error);
-            removeLoadingModal();
-            alert('Failed to scan business card. Please try again or enter manually.\n\n' + (error.message || error));
-        }
-    };
+    if (!modal || !video) {
+        alert('Business Card Scanner elements not found');
+        return;
+    }
     
-    input.click();
+    modal.classList.remove('hidden');
+    
+    // Request camera access
+    navigator.mediaDevices.getUserMedia({ 
+        video: { 
+            facingMode: 'environment', // Use back camera on mobile
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+        } 
+    })
+    .then(stream => {
+        businessCardScannerStream = stream;
+        video.srcObject = stream;
+        video.play();
+    })
+    .catch(error => {
+        console.error('Error accessing camera:', error);
+        alert('Unable to access camera. Please allow camera permissions or use the upload option.');
+    });
 }
 
-function openEventPassScanner() {
-    // Create file input for event pass/ID card photo
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'image/*';
-    input.capture = 'environment'; // Use back camera on mobile
+function closeBusinessCardScanner() {
+    const modal = document.getElementById('businessCardScannerModal');
+    const video = document.getElementById('businessCardVideo');
     
-    input.onchange = async (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-        
-        // Show loading modal
-        const loadingModal = document.createElement('div');
-        loadingModal.className = 'modal';
-        loadingModal.innerHTML = `
-            <div class="modal-content" style="max-width: 300px;">
-                <div class="modal-body" style="text-align: center; padding: 40px 20px;">
-                    <div class="loading-spinner" style="margin: 0 auto 20px;"></div>
-                    <p>Scanning event pass/ID card...</p>
-                    <p style="font-size: 12px; color: #666; margin-top: 10px;">This may take a few seconds</p>
-                </div>
-            </div>
-        `;
-        document.body.appendChild(loadingModal);
-        
-        try {
-            // Check if it's HEIC - Tesseract can't handle HEIC
-            const isHeic = file.type && file.type.toLowerCase().includes('heic') || 
-                          file.name && file.name.toLowerCase().match(/\.(heic|heif)$/);
-            
-            if (isHeic) {
-                document.body.removeChild(loadingModal);
-                alert('HEIC images are not supported for event pass scanning.\n\nPlease:\n1. Take a new photo in JPG/PNG format, or\n2. Convert the HEIC to JPG first, or\n3. Use the Business Card scanner instead (it supports HEIC)');
-                return;
-            }
-            
-            loadingModal.querySelector('p').textContent = 'Preparing image...';
-            const preprocessResult = await preprocessCardImage(file);
-            const processedFile = preprocessResult?.file || file;
+    // Stop camera stream
+    if (businessCardScannerStream) {
+        businessCardScannerStream.getTracks().forEach(track => track.stop());
+        businessCardScannerStream = null;
+    }
+    
+    if (video) {
+        video.srcObject = null;
+    }
+    
+    if (modal) {
+        modal.classList.add('hidden');
+    }
+}
 
-            const { data: { text } } = await Tesseract.recognize(processedFile, 'eng', {
+function captureBusinessCard() {
+    const video = document.getElementById('businessCardVideo');
+    const canvas = document.getElementById('businessCardCanvas');
+    
+    if (!video || !canvas || video.readyState !== video.HAVE_ENOUGH_DATA) {
+        alert('Camera not ready. Please wait a moment.');
+        return;
+    }
+    
+    const ctx = canvas.getContext('2d');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    
+    canvas.toBlob((blob) => {
+        if (blob) {
+            const file = new File([blob], `business-card-${Date.now()}.jpg`, { type: 'image/jpeg' });
+            closeBusinessCardScanner();
+            processBusinessCardFile(file);
+        }
+    }, 'image/jpeg', 0.9);
+}
+
+async function processBusinessCardFile(file) {
+    // Show loading modal
+    const loadingModal = document.createElement('div');
+    loadingModal.className = 'modal';
+    loadingModal.innerHTML = `
+        <div class="modal-content" style="max-width: 300px;">
+            <div class="modal-body" style="text-align: center; padding: 40px 20px;">
+                <div class="loading-spinner" style="margin: 0 auto 20px;"></div>
+                <p>Scanning business card...</p>
+                <p style="font-size: 12px; color: #666; margin-top: 10px;">This may take a few seconds</p>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(loadingModal);
+    
+    const updateProgress = (message) => {
+        const statusEl = loadingModal.querySelector('p');
+        if (statusEl) statusEl.textContent = message;
+    };
+        
+    const removeLoadingModal = () => {
+        if (loadingModal.parentNode) {
+            document.body.removeChild(loadingModal);
+        }
+    };
+
+    let contactInfo = null;
+    let portraitFile = null;
+    let cardFileForMedia = null;
+
+    try {
+        updateProgress('Preparing image...');
+        
+        // Always preprocess - converts HEIC to JPEG which is universally supported
+        const preprocessResult = await preprocessCardImage(file);
+        const processedFile = preprocessResult?.file || file;
+        cardFileForMedia = preprocessResult?.file || file;
+
+        let cloudErrorDetail = null;
+
+        if (navigator.onLine) {
+            // Only try files that are valid (not null/undefined and have size)
+            const backendFileCandidates = [];
+            if (processedFile && processedFile.size > 0) {
+                backendFileCandidates.push(processedFile);
+            }
+            if (file && file.size > 0 && processedFile !== file) {
+                backendFileCandidates.push(file);
+            }
+            if (backendFileCandidates.length === 0) {
+                backendFileCandidates.push(file); // Last resort
+            }
+
+            for (const candidate of backendFileCandidates) {
+                try {
+                    updateProgress('Scanning card (cloud)...');
+                    const result = await api.analyzeBusinessCard(candidate);
+                    if (result) {
+                        contactInfo = result.fields || null;
+                        if (result.portrait_image) {
+                            portraitFile = base64ToFile(result.portrait_image, `portrait-${Date.now()}.png`, 'image/png');
+                        }
+                        // Always use the original file for media, not the processed/cropped version
+                        cardFileForMedia = file;
+                    }
+                    break;
+                } catch (cloudError) {
+                    console.warn('Cloud OCR attempt failed:', cloudError);
+                    cloudErrorDetail = cloudError?.message || cloudError;
+                }
+            }
+        }
+
+        if (!contactInfo) {
+            updateProgress('Scanning card (offline mode)...');
+            const localSource = processedFile || file;
+            const { data: { text } } = await Tesseract.recognize(localSource, 'eng', {
                 logger: m => {
                     if (m.status === 'recognizing text') {
                         const progress = Math.round(m.progress * 100);
-                        loadingModal.querySelector('p').textContent = `Scanning... ${progress}%`;
+                        updateProgress(`Scanning locally... ${progress}%`);
                     }
                 }
             });
-            
-            const contactInfo = parseEventPassText(text);
-            
+            contactInfo = parseBusinessCardText(text);
+            cardFileForMedia = localSource;
+        }
+
+        removeLoadingModal();
+
+        if (!contactInfo) {
+            const extraMessage = cloudErrorDetail
+                ? `\n\nCloud OCR error: ${cloudErrorDetail}`
+                : '';
+            alert(`We could not extract information from this card. Please enter details manually.${extraMessage}`);
+            return;
+        }
+
+        cardFileForMedia = cardFileForMedia || processedFile || file;
+        await populateContactForm(contactInfo, { portraitFile, cardFile: cardFileForMedia });
+    } catch (error) {
+        console.error('OCR Error:', error);
+        removeLoadingModal();
+        alert('Failed to scan business card. Please try again or enter manually.\n\n' + (error.message || error));
+    }
+}
+
+function openEventPassScanner() {
+    const modal = document.getElementById('eventPassScannerModal');
+    const video = document.getElementById('eventPassVideo');
+    
+    if (!modal || !video) {
+        alert('Event Pass Scanner elements not found');
+        return;
+    }
+    
+    modal.classList.remove('hidden');
+    
+    // Request camera access
+    navigator.mediaDevices.getUserMedia({ 
+        video: { 
+            facingMode: 'environment', // Use back camera on mobile
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+        } 
+    })
+    .then(stream => {
+        eventPassScannerStream = stream;
+        video.srcObject = stream;
+        video.play();
+    })
+    .catch(error => {
+        console.error('Error accessing camera:', error);
+        alert('Unable to access camera. Please allow camera permissions or use the upload option.');
+    });
+}
+
+function closeEventPassScanner() {
+    const modal = document.getElementById('eventPassScannerModal');
+    const video = document.getElementById('eventPassVideo');
+    
+    // Stop camera stream
+    if (eventPassScannerStream) {
+        eventPassScannerStream.getTracks().forEach(track => track.stop());
+        eventPassScannerStream = null;
+    }
+    
+    if (video) {
+        video.srcObject = null;
+    }
+    
+    if (modal) {
+        modal.classList.add('hidden');
+    }
+}
+
+function captureEventPass() {
+    const video = document.getElementById('eventPassVideo');
+    const canvas = document.getElementById('eventPassCanvas');
+    
+    if (!video || !canvas || video.readyState !== video.HAVE_ENOUGH_DATA) {
+        alert('Camera not ready. Please wait a moment.');
+        return;
+    }
+    
+    const ctx = canvas.getContext('2d');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    
+    canvas.toBlob((blob) => {
+        if (blob) {
+            const file = new File([blob], `event-pass-${Date.now()}.jpg`, { type: 'image/jpeg' });
+            closeEventPassScanner();
+            processEventPassFile(file);
+        }
+    }, 'image/jpeg', 0.9);
+}
+
+async function processEventPassFile(file) {
+    // Show loading modal
+    const loadingModal = document.createElement('div');
+    loadingModal.className = 'modal';
+    loadingModal.innerHTML = `
+        <div class="modal-content" style="max-width: 300px;">
+            <div class="modal-body" style="text-align: center; padding: 40px 20px;">
+                <div class="loading-spinner" style="margin: 0 auto 20px;"></div>
+                <p>Scanning event pass/ID card...</p>
+                <p style="font-size: 12px; color: #666; margin-top: 10px;">This may take a few seconds</p>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(loadingModal);
+    
+    try {
+        // Check if it's HEIC - Tesseract can't handle HEIC
+        const isHeic = file.type && file.type.toLowerCase().includes('heic') || 
+                      file.name && file.name.toLowerCase().match(/\.(heic|heif)$/);
+        
+        if (isHeic) {
             document.body.removeChild(loadingModal);
-            
-            if (!contactInfo) {
-                alert('We could not extract information from this pass. Please enter details manually.');
-                return;
-            }
+            alert('HEIC images are not supported for event pass scanning.\n\nPlease:\n1. Take a new photo in JPG/PNG format, or\n2. Convert the HEIC to JPG first, or\n3. Use the Business Card scanner instead (it supports HEIC)');
+            return;
+        }
+        
+        loadingModal.querySelector('p').textContent = 'Preparing image...';
+        const preprocessResult = await preprocessCardImage(file);
+        const processedFile = preprocessResult?.file || file;
 
-            await populateContactForm(contactInfo, { cardFile: processedFile });
-
-            if (contactInfo.eventName) {
-                const context = document.getElementById('contactContext');
-                if (context) {
-                    context.value = context.value
-                        ? `${context.value}\nMet at: ${contactInfo.eventName}`
-                        : `Met at: ${contactInfo.eventName}`;
+        const { data: { text } } = await Tesseract.recognize(processedFile, 'eng', {
+            logger: m => {
+                if (m.status === 'recognizing text') {
+                    const progress = Math.round(m.progress * 100);
+                    loadingModal.querySelector('p').textContent = `Scanning... ${progress}%`;
                 }
             }
-            
-        } catch (error) {
-            console.error('OCR Error:', error);
-            document.body.removeChild(loadingModal);
-            alert('Failed to scan event pass/ID card. Please try again or enter manually.');
+        });
+        
+        const contactInfo = parseEventPassText(text);
+        
+        document.body.removeChild(loadingModal);
+        
+        if (!contactInfo) {
+            alert('We could not extract information from this pass. Please enter details manually.');
+            return;
         }
-    };
-    
-    input.click();
+
+        await populateContactForm(contactInfo, { cardFile: processedFile });
+
+        if (contactInfo.eventName) {
+            const context = document.getElementById('contactContext');
+            if (context) {
+                context.value = context.value
+                    ? `${context.value}\nMet at: ${contactInfo.eventName}`
+                    : `Met at: ${contactInfo.eventName}`;
+            }
+        }
+        
+    } catch (error) {
+        console.error('OCR Error:', error);
+        document.body.removeChild(loadingModal);
+        alert('Failed to scan event pass/ID card. Please try again or enter manually.');
+    }
 }
 
 const JOB_TITLE_KEYWORDS = [
@@ -6589,5 +6791,170 @@ async function checkAdminStatus() {
         if (adminNavBtn) {
             adminNavBtn.style.display = 'none';
         }
+    }
+}
+
+// Unified Business Card and Visiting Card Camera Functions
+function startUnifiedBusinessCardCamera() {
+    console.log('Starting unified business card camera...');
+    const video = document.getElementById('unifiedBusinessCardVideo');
+    const canvas = document.getElementById('unifiedBusinessCardCanvas');
+    
+    if (!video || !canvas) {
+        console.error('Business card camera elements not found');
+        return;
+    }
+    
+    // Stop any existing stream first
+    if (unifiedScannerStream) {
+        unifiedScannerStream.getTracks().forEach(track => track.stop());
+        unifiedScannerStream = null;
+    }
+    
+    // Reset video element
+    video.srcObject = null;
+    video.load();
+    
+    navigator.mediaDevices.getUserMedia({ 
+        video: { 
+            facingMode: 'environment',
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+        } 
+    })
+    .then(stream => {
+        console.log('Business card camera access granted');
+        unifiedScannerStream = stream;
+        video.srcObject = stream;
+        video.play().catch(err => {
+            console.error('Error playing business card video:', err);
+        });
+    })
+    .catch(error => {
+        console.error('Error accessing business card camera:', error);
+        showToast('Unable to access camera. Please allow camera permissions.', 'error');
+    });
+}
+
+function startUnifiedVisitingCardCamera() {
+    console.log('Starting unified visiting card camera...');
+    const video = document.getElementById('unifiedVisitingCardVideo');
+    const canvas = document.getElementById('unifiedVisitingCardCanvas');
+    
+    if (!video || !canvas) {
+        console.error('Visiting card camera elements not found');
+        return;
+    }
+    
+    // Stop any existing stream first
+    if (unifiedScannerStream) {
+        unifiedScannerStream.getTracks().forEach(track => track.stop());
+        unifiedScannerStream = null;
+    }
+    
+    // Reset video element
+    video.srcObject = null;
+    video.load();
+    
+    navigator.mediaDevices.getUserMedia({ 
+        video: { 
+            facingMode: 'environment',
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+        } 
+    })
+    .then(stream => {
+        console.log('Visiting card camera access granted');
+        unifiedScannerStream = stream;
+        video.srcObject = stream;
+        video.play().catch(err => {
+            console.error('Error playing visiting card video:', err);
+        });
+    })
+    .catch(error => {
+        console.error('Error accessing visiting card camera:', error);
+        showToast('Unable to access camera. Please allow camera permissions.', 'error');
+    });
+}
+
+// Update reset functions to start camera automatically
+if (typeof resetUnifiedBusinessCardView !== 'undefined') {
+    const originalResetBusiness = resetUnifiedBusinessCardView;
+    resetUnifiedBusinessCardView = function() {
+        originalResetBusiness();
+        document.getElementById('unifiedBusinessCardCameraView')?.classList.remove('hidden');
+        setTimeout(() => startUnifiedBusinessCardCamera(), 100);
+    };
+}
+
+if (typeof resetUnifiedVisitingCardView !== 'undefined') {
+    const originalResetVisiting = resetUnifiedVisitingCardView;
+    resetUnifiedVisitingCardView = function() {
+        originalResetVisiting();
+        document.getElementById('unifiedVisitingCardCameraView')?.classList.remove('hidden');
+        setTimeout(() => startUnifiedVisitingCardCamera(), 100);
+    };
+}
+
+// Add upload button handlers
+document.addEventListener('DOMContentLoaded', () => {
+    // Business card upload
+    document.getElementById('unifiedBusinessCardUploadBtn')?.addEventListener('click', () => {
+        document.getElementById('unifiedBusinessCardFileInput')?.click();
+    });
+    
+    document.getElementById('unifiedBusinessCardFileInput')?.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            handleUnifiedBusinessCardFile(file);
+        }
+    });
+    
+    // Visiting card upload
+    document.getElementById('unifiedVisitingCardUploadBtn')?.addEventListener('click', () => {
+        document.getElementById('unifiedVisitingCardFileInput')?.click();
+    });
+    
+    document.getElementById('unifiedVisitingCardFileInput')?.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            handleUnifiedVisitingCardFile(file);
+        }
+    });
+});
+
+function handleUnifiedBusinessCardFile(file) {
+    // Use existing business card processing logic
+    if (typeof processBusinessCard === 'function') {
+        // Set the file and show preview
+        const preview = document.getElementById('unifiedBusinessCardPreview');
+        const previewView = document.getElementById('unifiedBusinessCardPreviewView');
+        const cameraView = document.getElementById('unifiedBusinessCardCameraView');
+        
+        if (preview && previewView && cameraView) {
+            const url = URL.createObjectURL(file);
+            preview.src = url;
+            cameraView.classList.add('hidden');
+            previewView.classList.remove('hidden');
+            
+            // Store file for processing
+            window.unifiedBusinessCardFile = file;
+        }
+    }
+}
+
+function handleUnifiedVisitingCardFile(file) {
+    // Similar to business card
+    const preview = document.getElementById('unifiedVisitingCardPreview');
+    const previewView = document.getElementById('unifiedVisitingCardPreviewView');
+    const cameraView = document.getElementById('unifiedVisitingCardCameraView');
+    
+    if (preview && previewView && cameraView) {
+        const url = URL.createObjectURL(file);
+        preview.src = url;
+        cameraView.classList.add('hidden');
+        previewView.classList.remove('hidden');
+        
+        window.unifiedVisitingCardFile = file;
     }
 }

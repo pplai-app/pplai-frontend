@@ -507,6 +507,25 @@ const api = {
         return result;
     },
 
+    // Luma Integration
+    async fetchLumaEventFromUrl(lumaUrl) {
+        return apiRequest('/luma/fetch-from-url', {
+            method: 'POST',
+            body: JSON.stringify({ url: lumaUrl }),
+        });
+    },
+
+    async fetchLumaEvents(apiKey, calendarId = null) {
+        const body = { api_key: apiKey };
+        if (calendarId) {
+            body.calendar_id = calendarId;
+        }
+        return apiRequest('/luma/fetch-events', {
+            method: 'POST',
+            body: JSON.stringify(body),
+        });
+    },
+
     // Contacts
     async getContacts(filters = {}) {
         const params = new URLSearchParams();
@@ -515,6 +534,7 @@ const api = {
         if (filters.date_range) params.append('date_range', filters.date_range);
         if (filters.date_from) params.append('date_from', filters.date_from);
         if (filters.date_to) params.append('date_to', filters.date_to);
+        if (filters.is_favorite !== undefined) params.append('is_favorite', filters.is_favorite);
         
         const queryString = params.toString();
         const endpoint = queryString ? `/contacts?${queryString}` : '/contacts';
@@ -643,6 +663,14 @@ const api = {
     async deleteContact(contactId) {
         const result = await apiRequest(`/contacts/${contactId}`, {
             method: 'DELETE',
+        });
+        cacheInvalidation.invalidateContacts();
+        return result;
+    },
+
+    async toggleContactFavorite(contactId) {
+        const result = await apiRequest(`/contacts/${contactId}/favorite`, {
+            method: 'PATCH',
         });
         cacheInvalidation.invalidateContacts();
         return result;

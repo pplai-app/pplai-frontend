@@ -723,6 +723,24 @@ body {
     border-color: var(--primary);
 }
 
+.favorite-contact-btn {
+    color: var(--text-secondary);
+    transition: all 0.3s ease;
+}
+
+.favorite-contact-btn:hover {
+    color: #f59e0b;
+    transform: scale(1.1);
+}
+
+.favorite-contact-btn.favorite-active {
+    color: #f59e0b;
+}
+
+.favorite-contact-btn.favorite-active:hover {
+    color: #d97706;
+}
+
 .contact-photo {
     width: 60px;
     height: 60px;
@@ -762,13 +780,18 @@ body {
     margin: 8px 0;
 }
 
+.contact-tags .tag {
+    font-size: 11px;
+    padding: 3px 8px;
+}
+
 .tag {
     display: inline-block;
     padding: 4px 10px;
     background: rgba(102, 126, 234, 0.1);
     color: var(--primary);
     border-radius: 6px;
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 500;
 }
 
@@ -1393,7 +1416,7 @@ body {
     margin-bottom: 8px;
     font-weight: 600;
     color: var(--text-primary);
-    font-size: 14px;
+    font-size: 12px;
 }
 
 .input-field,

@@ -71,15 +71,38 @@ jobs:
     
     - name: Deploy to Cloud Run
       run: |
+        # Use production API URL
+        API_BASE_URL="${{ secrets.API_BASE_URL }}"
+        if [ -z "$API_BASE_URL" ]; then
+          API_BASE_URL="https://api.pplai.app/api"
+          echo "✅ Using default API_BASE_URL: $API_BASE_URL"
+        else
+          echo "✅ Using API_BASE_URL from secret: $API_BASE_URL"
+        fi
+        
+        GOOGLE_CLIENT_ID="${{ secrets.GOOGLE_CLIENT_ID }}"
+        if [ -z "$GOOGLE_CLIENT_ID" ]; then
+          echo "⚠️  Warning: GOOGLE_CLIENT_ID secret not set"
+        fi
+        
         gcloud run deploy $SERVICE_NAME \
           --image gcr.io/$PROJECT_ID/$SERVICE_NAME:$GITHUB_SHA \
           --platform managed \
           --region $REGION \
           --allow-unauthenticated \
-          --set-env-vars API_BASE_URL=${{ secrets.API_BASE_URL }},GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }} \
+          --set-env-vars API_BASE_URL=$API_BASE_URL,GOOGLE_CLIENT_ID=$GOOGLE_CLIENT_ID \
           --memory 256Mi \
           --cpu 1 \
           --min-instances 0 \
           --max-instances 10 \
           --timeout 60
+    
+    - name: Map Custom Domain (pplai.app)
+      run: |
+        # Map pplai.app to the Cloud Run service
+        gcloud run domain-mappings create \
+          --service $SERVICE_NAME \
+          --domain pplai.app \
+          --region $REGION \
+          --platform managed || echo "Domain mapping may already exist or requires manual setup"
 

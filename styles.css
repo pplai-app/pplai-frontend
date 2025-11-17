@@ -372,17 +372,18 @@ body {
 /* Current Event Banner */
 .current-event-banner {
     background: white;
-    border-radius: 16px;
-    padding: 16px 20px;
-    margin: 16px 20px 24px 20px;
+    border-radius: 12px;
+    padding: 10px 14px;
+    margin: 12px 16px 16px 16px;
     box-shadow: var(--shadow);
-    border-left: 4px solid var(--primary);
+    border-left: 3px solid var(--primary);
     cursor: pointer;
     transition: all 0.3s ease;
     position: sticky;
     top: 0;
     z-index: 100;
     flex-shrink: 0;
+    font-size: 13px;
 }
 
 .current-event-banner:hover {
@@ -395,7 +396,7 @@ body {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
+    gap: 8px;
 }
 
 .banner-content > div {
@@ -406,11 +407,13 @@ body {
 .banner-content strong {
     color: var(--text-primary);
     font-weight: 600;
+    font-size: 12px;
 }
 
 .banner-content span {
     color: var(--text-secondary);
     margin-left: 8px;
+    font-size: 13px;
 }
 
 /* Events Search */
@@ -608,8 +611,14 @@ body {
 
 .event-actions {
     display: flex;
-    gap: 8px;
+    gap: 6px;
     flex-wrap: wrap;
+    align-items: center;
+}
+
+.event-actions .btn-small {
+    min-width: auto;
+    padding: 6px 8px;
 }
 
 /* Contacts Filters */
@@ -1079,6 +1088,63 @@ body {
     gap: 12px;
 }
 
+.contact-action-btn-small {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 8px;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    color: var(--text-primary);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+    min-width: 36px;
+    min-height: 36px;
+}
+
+.contact-action-btn-small:hover {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.contact-action-btn-small:active {
+    transform: translateY(0);
+}
+
+.contact-action-btn-small svg {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+}
+
+.contact-action-btn-small span {
+    font-size: 13px;
+}
+
+@media (max-width: 640px) {
+    .contact-action-btn-small {
+        padding: 6px 10px;
+        font-size: 12px;
+    }
+    
+    .contact-action-btn-small svg {
+        width: 16px;
+        height: 16px;
+    }
+    
+    .contact-action-btn-small span {
+        font-size: 12px;
+    }
+}
+
 .contact-action-btn {
     display: flex;
     flex-direction: column;
@@ -1319,14 +1385,17 @@ body {
 }
 
 .btn-primary {
-    background: var(--bg-gradient);
-    color: white;
-    box-shadow: var(--shadow-md);
+    background: white;
+    color: var(--primary);
+    border: 2px solid var(--primary);
+    box-shadow: var(--shadow);
 }
 
 .btn-primary:hover {
+    background: var(--primary);
+    color: white;
     transform: translateY(-2px);
-    box-shadow: var(--shadow-lg);
+    box-shadow: var(--shadow-md);
 }
 
 .btn-primary:active {
@@ -1346,6 +1415,44 @@ body {
     box-shadow: var(--shadow-sm);
 }
 
+/* Improved Save Contact button */
+#saveContactBtn {
+    width: 100%;
+    padding: 14px 24px;
+    font-size: 16px;
+    font-weight: 600;
+    margin-top: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background: var(--primary);
+    color: white;
+    border: 2px solid var(--primary);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+    transition: all 0.2s ease;
+}
+
+#saveContactBtn:hover {
+    background: var(--primary-dark);
+    border-color: var(--primary-dark);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
+}
+
+#saveContactBtn:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+}
+
+#saveContactBtn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+    background: var(--primary);
+    box-shadow: 0 2px 4px rgba(102, 126, 234, 0.2);
+}
+
 .btn-secondary {
     background: white;
     color: var(--text-primary);
@@ -1357,6 +1464,12 @@ body {
     border-color: var(--primary);
     box-shadow: var(--shadow-md);
     transform: translateY(-1px);
+}
+
+.btn-secondary.delete-event:hover {
+    background: var(--danger);
+    color: white;
+    border-color: var(--danger);
 }
 
 .btn-secondary:active {
@@ -1627,21 +1740,29 @@ body {
 .tags-display {
     display: flex;
     flex-wrap: wrap;
-    gap: 8px;
+    gap: 6px;
 }
 
 .tag {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    padding: 6px 12px;
+    gap: 4px;
+    padding: 4px 10px;
     background: rgba(102, 126, 234, 0.1);
     color: var(--primary);
-    border-radius: 8px;
-    font-size: 13px;
+    border-radius: 6px;
+    font-size: 12px;
     font-weight: 500;
     border: 1px solid transparent;
     transition: all 0.2s ease;
+}
+
+/* Smaller tags in edit contact modal */
+#contactTags .tag {
+    padding: 3px 8px;
+    font-size: 11px;
+    border-radius: 4px;
+    gap: 3px;
 }
 
 .tag-remove {
@@ -1665,16 +1786,16 @@ body {
 .suggested-tags {
     display: flex;
     flex-wrap: wrap;
-    gap: 8px;
+    gap: 6px;
     margin-top: 8px;
 }
 
 .tag-suggestion {
-    padding: 6px 12px;
+    padding: 3px 8px;
     background: white;
     border: 2px solid var(--border-color);
-    border-radius: 8px;
-    font-size: 13px;
+    border-radius: 4px;
+    font-size: 11px;
     cursor: pointer;
     transition: all 0.3s ease;
     display: inline-block;
@@ -1733,12 +1854,12 @@ body {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 16px;
+    padding: 12px;
     background: var(--card-bg);
     border: 2px solid var(--border-color);
     border-radius: 12px;
     transition: all 0.3s ease;
-    gap: 16px;
+    gap: 12px;
 }
 
 .tag-item.tag-hidden {
@@ -1749,7 +1870,7 @@ body {
 .tag-item-content {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 8px;
     flex: 1;
     min-width: 0; /* Allow flex item to shrink */
 }
@@ -1763,9 +1884,9 @@ body {
 }
 
 .tag-badge {
-    padding: 4px 8px;
-    border-radius: 6px;
-    font-size: 11px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 10px;
     font-weight: 600;
     text-transform: uppercase;
 }
@@ -1982,13 +2103,18 @@ body {
 
 #publicProfileScreen .btn-primary {
     width: 100%;
-    border: none;
+    border: 2px solid var(--primary);
     border-radius: 12px;
     padding: 14px;
     font-size: 16px;
-    background: linear-gradient(120deg, #667eea, #764ba2);
-    color: white;
+    background: white;
+    color: var(--primary);
     cursor: pointer;
+}
+
+#publicProfileScreen .btn-primary:hover {
+    background: var(--primary);
+    color: white;
 }
 
 #publicProfileScreen .btn-secondary {
@@ -2076,41 +2202,58 @@ body {
     color: white;
 }
 
-/* AI Follow-up buttons with special styling */
+/* AI Follow-up buttons - beautiful purple bordered styling */
 #aiEmailBtn,
 #aiWhatsAppBtn,
 #aiSmsBtn {
-    position: relative;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    overflow: hidden;
-}
-
-#aiEmailBtn::before,
-#aiWhatsAppBtn::before,
-#aiSmsBtn::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
-    transition: left 0.5s;
-}
-
-#aiEmailBtn:hover::before,
-#aiWhatsAppBtn:hover::before,
-#aiSmsBtn:hover::before {
-    left: 100%;
+    background: white;
+    border: 2px solid var(--primary);
+    color: var(--primary);
+    padding: 10px 18px;
+    border-radius: 8px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 4px rgba(102, 126, 234, 0.1);
 }
 
 #aiEmailBtn:hover,
 #aiWhatsAppBtn:hover,
 #aiSmsBtn:hover {
-    background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    background: var(--primary);
+    color: white;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(102, 126, 234, 0.2);
+}
+
+#aiEmailBtn:active,
+#aiWhatsAppBtn:active,
+#aiSmsBtn:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 4px rgba(102, 126, 234, 0.15);
+}
+
+#aiEmailBtn svg,
+#aiWhatsAppBtn svg,
+#aiSmsBtn svg {
+    transition: all 0.2s ease;
+}
+
+#aiEmailBtn:hover svg,
+#aiWhatsAppBtn:hover svg,
+#aiSmsBtn:hover svg {
+    stroke: white;
+}
+
+#aiEmailBtn:hover svg path,
+#aiWhatsAppBtn:hover svg path,
+#aiSmsBtn:hover svg path {
+    stroke: white;
+    fill: white;
+}
+
+#aiEmailBtn:hover svg polyline,
+#aiSmsBtn:hover svg polyline {
+    stroke: white;
 }
 
 .contact-actions-list {
@@ -2889,6 +3032,25 @@ body {
 }
 
 /* Bulk Tag Modal Improvements */
+.bulk-tags-flex {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+}
+
+.bulk-tag-badge-clickable {
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+}
+
+.bulk-tag-badge-clickable:focus {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+}
+
 .bulk-tags-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));

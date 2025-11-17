@@ -575,10 +575,12 @@ const api = {
         const formData = new FormData();
         formData.append('name', contactData.name);
         if (contactData.email) formData.append('email', contactData.email);
+        if (contactData.email_addresses) formData.append('email_addresses', contactData.email_addresses);
         if (contactData.role_company) formData.append('role_company', contactData.role_company);
         if (contactData.company) formData.append('company', contactData.company);
         if (contactData.website) formData.append('website', contactData.website);
         if (contactData.mobile) formData.append('mobile', contactData.mobile);
+        if (contactData.phone_numbers) formData.append('phone_numbers', contactData.phone_numbers);
         if (contactData.linkedin_url) formData.append('linkedin_url', contactData.linkedin_url);
         if (contactData.meeting_context) formData.append('meeting_context', contactData.meeting_context);
         if (contactData.meeting_date) formData.append('meeting_date', contactData.meeting_date);
@@ -614,10 +616,12 @@ const api = {
         const formData = new FormData();
         if (contactData.name) formData.append('name', contactData.name);
         if (contactData.email !== undefined) formData.append('email', contactData.email);
+        if (contactData.email_addresses !== undefined) formData.append('email_addresses', contactData.email_addresses);
         if (contactData.role_company !== undefined) formData.append('role_company', contactData.role_company);
         if (contactData.company !== undefined) formData.append('company', contactData.company);
         if (contactData.website !== undefined) formData.append('website', contactData.website);
         if (contactData.mobile !== undefined) formData.append('mobile', contactData.mobile);
+        if (contactData.phone_numbers !== undefined) formData.append('phone_numbers', contactData.phone_numbers);
         if (contactData.linkedin_url !== undefined) formData.append('linkedin_url', contactData.linkedin_url);
         if (contactData.meeting_context !== undefined) formData.append('meeting_context', contactData.meeting_context);
         if (contactData.meeting_date !== undefined && contactData.meeting_date !== null) {

@@ -35,6 +35,9 @@ setTimeout(() => {
 document.addEventListener('DOMContentLoaded', async () => {
     debugLog('🚀 Initializing pplai.app...');
     
+    // Initialize push notifications after user is authenticated
+    // (Will be called after successful login)
+    
     // Set up MutationObserver to prevent unauthorized view access
     // This helps prevent direct DOM manipulation from showing protected views
     const protectedViewIds = ['contactsView', 'eventsView', 'tagsView', 'profileView', 'adminView', 'chatView', 'homeView'];
@@ -131,6 +134,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 await loadInitialData();
                 // Check admin status and show/hide admin nav button
                 await checkAdminStatus();
+                // Initialize push notifications
+                await initializePushNotifications();
                 
                 // Check if there's a profile ID from URL (logged-in user viewing shared profile)
                 if (profileUserId) {
@@ -1134,6 +1139,9 @@ async function handleGoogleCredentialResponse(response) {
         await loadInitialData();
         await checkAdminStatus();
         
+        // Initialize push notifications
+        await initializePushNotifications();
+        
         // Check if there's a pending contact save action
         const pendingContactSave = sessionStorage.getItem('pendingContactSave');
         if (pendingContactSave) {
@@ -1152,6 +1160,171 @@ async function handleGoogleCredentialResponse(response) {
     } catch (error) {
         console.error('Google OAuth error:', error);
         showToast('Google sign-in failed: ' + error.message, 'error');
+    }
+}
+
+// Push Notification Functions
+let pushSubscriptionEndpoint = null;
+
+async function initializePushNotifications() {
+    // Check if browser supports push notifications
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+        debugLog('⚠️ Push notifications not supported in this browser');
+        return;
+    }
+    
+    // Check if user is authenticated
+    const currentUser = getCurrentUser();
+    if (!currentUser) {
+        return;
+    }
+    
+    try {
+        // Register service worker
+        const registration = await navigator.serviceWorker.register('/sw.js');
+        debugLog('✅ Service Worker registered');
+        
+        // Check if already subscribed
+        const existingSubscription = await registration.pushManager.getSubscription();
+        if (existingSubscription) {
+            pushSubscriptionEndpoint = existingSubscription.endpoint;
+            debugLog('✅ Already subscribed to push notifications');
+            // Update subscription in backend (in case user logged in from different device)
+            await updatePushSubscription(existingSubscription);
+            setupAppExitDetection();
+            return;
+        }
+        
+        // Request notification permission
+        const permission = await Notification.requestPermission();
+        if (permission !== 'granted') {
+            debugLog('⚠️ Notification permission denied');
+            return;
+        }
+        
+        // Get VAPID public key from backend
+        const vapidKeyResponse = await api.getVapidPublicKey();
+        const vapidPublicKey = vapidKeyResponse.publicKey;
+        
+        if (!vapidPublicKey) {
+            debugLog('⚠️ VAPID public key not available');
+            return;
+        }
+        
+        // Convert VAPID key to Uint8Array
+        const applicationServerKey = urlBase64ToUint8Array(vapidPublicKey);
+        
+        // Subscribe to push service
+        const subscription = await registration.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: applicationServerKey
+        });
+        
+        pushSubscriptionEndpoint = subscription.endpoint;
+        
+        // Send subscription to backend
+        await updatePushSubscription(subscription);
+        
+        debugLog('✅ Subscribed to push notifications');
+        
+        // Set up app exit detection
+        setupAppExitDetection();
+        
+    } catch (error) {
+        debugError('❌ Error initializing push notifications:', error);
+    }
+}
+
+async function updatePushSubscription(subscription) {
+    try {
+        const subscriptionData = {
+            endpoint: subscription.endpoint,
+            keys: {
+                p256dh: arrayBufferToBase64(subscription.getKey('p256dh')),
+                auth: arrayBufferToBase64(subscription.getKey('auth'))
+            },
+            user_agent: navigator.userAgent
+        };
+        
+        await api.subscribePush(subscriptionData);
+    } catch (error) {
+        debugError('❌ Error updating push subscription:', error);
+    }
+}
+
+function urlBase64ToUint8Array(base64String) {
+    const padding = '='.repeat((4 - base64String.length % 4) % 4);
+    const base64 = (base64String + padding)
+        .replace(/\-/g, '+')
+        .replace(/_/g, '/');
+    
+    const rawData = window.atob(base64);
+    const outputArray = new Uint8Array(rawData.length);
+    
+    for (let i = 0; i < rawData.length; ++i) {
+        outputArray[i] = rawData.charCodeAt(i);
+    }
+    return outputArray;
+}
+
+function arrayBufferToBase64(buffer) {
+    const bytes = new Uint8Array(buffer);
+    let binary = '';
+    for (let i = 0; i < bytes.byteLength; i++) {
+        binary += String.fromCharCode(bytes[i]);
+    }
+    return window.btoa(binary);
+}
+
+function setupAppExitDetection() {
+    // Send notification when app is closed/exited
+    let isExiting = false;
+    let exitTimeout = null;
+    
+    // Handle visibility change (tab switch, minimize, etc.)
+    document.addEventListener('visibilitychange', async () => {
+        if (document.hidden && !isExiting) {
+            isExiting = true;
+            // Clear any existing timeout
+            if (exitTimeout) {
+                clearTimeout(exitTimeout);
+            }
+            // Small delay to avoid sending on every tab switch
+            exitTimeout = setTimeout(async () => {
+                if (document.hidden) {
+                    await sendProfileNotification();
+                }
+                isExiting = false;
+            }, 2000); // Only send if still hidden after 2 seconds
+        } else if (!document.hidden) {
+            // Clear timeout if user comes back
+            if (exitTimeout) {
+                clearTimeout(exitTimeout);
+                exitTimeout = null;
+            }
+            isExiting = false;
+        }
+    });
+    
+    // Handle beforeunload (browser close, refresh)
+    window.addEventListener('beforeunload', async () => {
+        // Use sendBeacon for reliability during page unload
+        await sendProfileNotification();
+    });
+}
+
+async function sendProfileNotification() {
+    try {
+        const currentUser = getCurrentUser();
+        if (!currentUser || !pushSubscriptionEndpoint) {
+            return;
+        }
+        
+        // Send notification request to backend
+        await api.sendProfileNotification();
+        debugLog('✅ Profile notification sent');
+    } catch (error) {
+        debugError('❌ Error sending profile notification:', error);
     }
 }
 

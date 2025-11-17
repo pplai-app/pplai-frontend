@@ -966,5 +966,30 @@ const api = {
         cacheInvalidation.invalidateAll();
         return data;
     },
+
+    // Push Notifications
+    async getVapidPublicKey() {
+        return apiRequest('/push/vapid-public-key');
+    },
+
+    async subscribePush(subscription) {
+        return apiRequest('/push/subscribe', {
+            method: 'POST',
+            body: JSON.stringify(subscription),
+        });
+    },
+
+    async unsubscribePush(endpoint) {
+        return apiRequest('/push/unsubscribe', {
+            method: 'POST',
+            body: JSON.stringify({ endpoint }),
+        });
+    },
+
+    async sendProfileNotification() {
+        return apiRequest('/push/send-profile', {
+            method: 'POST',
+        });
+    },
 };
 

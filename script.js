@@ -1,6 +1,9 @@
 // Global state
 let currentEvent = null;
 let currentUser = null;
+let currentPublicProfile = null;
+let currentPublicProfileId = null;
+let publicProfileListenersBound = false;
 
 // Debug mode - set to false in production
 const DEBUG = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
@@ -32,7 +35,17 @@ setTimeout(() => {
 document.addEventListener('DOMContentLoaded', async () => {
     debugLog('🚀 Initializing pplai.app...');
     
-    // Check if required functions exist
+    // Check if URL is a shared profile link FIRST (before API checks)
+    const urlPath = window.location.pathname;
+    const profileMatch = urlPath.match(/\/profile\/([a-f0-9-]+)/i);
+    
+    if (profileMatch && profileMatch[1]) {
+        debugLog('📋 Public profile URL detected, rendering standalone view...');
+        await renderStandalonePublicProfile(profileMatch[1]);
+        return;
+    }
+    
+    // Check if required functions exist (only for authenticated app)
     if (typeof getCurrentUser === 'undefined' || typeof getAuthToken === 'undefined') {
         debugError('❌ API functions not loaded! Check if api.js is loaded before script.js');
         // Force show auth screen
@@ -70,6 +83,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                 await loadInitialData();
                 // Check admin status and show/hide admin nav button
                 await checkAdminStatus();
+                
+                // Check if there's a pending profile view from a shared link
+                const pendingProfileId = sessionStorage.getItem('pendingProfileView');
+                if (pendingProfileId) {
+                    sessionStorage.removeItem('pendingProfileView');
+                    await loadPublicProfile(pendingProfileId);
+                }
             } catch (error) {
                 debugError('Auth error:', error);
                 clearAuthToken();
@@ -163,6 +183,8 @@ function setupEventListeners() {
     document.getElementById('bulkSaveBtn')?.addEventListener('click', bulkSaveContacts);
     document.getElementById('bulkExportBtn')?.addEventListener('click', bulkExportContacts);
     document.getElementById('bulkAddTagBtn')?.addEventListener('click', bulkAddTagToContacts);
+    document.getElementById('applyBulkTagsBtn')?.addEventListener('click', applyBulkTags);
+    document.getElementById('bulkAddEventBtn')?.addEventListener('click', bulkAddEventToContacts);
     document.getElementById('bulkDeleteBtn')?.addEventListener('click', bulkDeleteContacts);
     document.getElementById('saveContactBtn')?.addEventListener('click', saveContact);
     document.getElementById('saveContactFromViewBtn')?.addEventListener('click', async () => {
@@ -223,11 +245,27 @@ function setupEventListeners() {
             createNewTag();
         }
     });
-    document.getElementById('eventFilter')?.addEventListener('change', filterContacts);
-    document.getElementById('tagFilter')?.addEventListener('change', filterContacts);
-    document.getElementById('dateFilter')?.addEventListener('change', handleDateFilterChange);
-    document.getElementById('dateFrom')?.addEventListener('change', filterContacts);
-    document.getElementById('dateTo')?.addEventListener('change', filterContacts);
+    document.getElementById('eventFilter')?.addEventListener('change', () => {
+        filterContacts();
+        updateClearFiltersButton();
+    });
+    document.getElementById('tagFilter')?.addEventListener('change', () => {
+        filterContacts();
+        updateClearFiltersButton();
+    });
+    document.getElementById('dateFilter')?.addEventListener('change', () => {
+        handleDateFilterChange();
+        updateClearFiltersButton();
+    });
+    document.getElementById('dateFrom')?.addEventListener('change', () => {
+        filterContacts();
+        updateClearFiltersButton();
+    });
+    document.getElementById('dateTo')?.addEventListener('change', () => {
+        filterContacts();
+        updateClearFiltersButton();
+    });
+    document.getElementById('clearAllFiltersBtn')?.addEventListener('click', clearAllFilters);
     document.getElementById('unselectEventBtn')?.addEventListener('click', unselectEvent);
     document.getElementById('currentEventBanner')?.addEventListener('click', (e) => {
         // Don't navigate if clicking the unselect button
@@ -305,10 +343,12 @@ function showApp() {
     const loadingScreen = document.getElementById('loadingScreen');
     const authScreen = document.getElementById('authScreen');
     const appContainer = document.getElementById('appContainer');
+    const publicProfileScreen = document.getElementById('publicProfileScreen');
     
     if (loadingScreen) loadingScreen.classList.add('hidden');
     if (authScreen) authScreen.classList.add('hidden');
     if (appContainer) appContainer.classList.remove('hidden');
+    if (publicProfileScreen) publicProfileScreen.classList.add('hidden');
     
     // Update auth button state
     updateAuthButton();
@@ -317,6 +357,186 @@ function showApp() {
     updateCurrentEventBanner();
     
     console.log('App shown');
+}
+
+function showPublicProfileScreen() {
+    const loadingScreen = document.getElementById('loadingScreen');
+    const authScreen = document.getElementById('authScreen');
+    const appContainer = document.getElementById('appContainer');
+    const publicProfileScreen = document.getElementById('publicProfileScreen');
+    
+    if (loadingScreen) loadingScreen.classList.add('hidden');
+    if (authScreen) authScreen.classList.add('hidden');
+    if (appContainer) appContainer.classList.add('hidden');
+    if (publicProfileScreen) publicProfileScreen.classList.remove('hidden');
+}
+
+function bindPublicProfileListeners() {
+    if (publicProfileListenersBound) return;
+    
+    document.getElementById('publicProfileBackBtn')?.addEventListener('click', () => {
+        window.location.href = '/';
+    });
+    
+    document.getElementById('publicProfileOpenAppBtn')?.addEventListener('click', () => {
+        window.location.href = '/';
+    });
+    
+    document.getElementById('publicProfileSaveBtn')?.addEventListener('click', handlePublicProfileSave);
+    publicProfileListenersBound = true;
+}
+
+function togglePublicProfileLoading(isLoading) {
+    const loadingEl = document.getElementById('publicProfileLoading');
+    const contentEl = document.getElementById('publicProfileContent');
+    
+    if (!loadingEl || !contentEl) return;
+    
+    if (isLoading) {
+        loadingEl.classList.remove('hidden');
+        contentEl.classList.add('hidden');
+    } else {
+        loadingEl.classList.add('hidden');
+        if (!document.getElementById('publicProfileError')?.classList.contains('hidden')) {
+            contentEl.classList.add('hidden');
+        } else {
+            contentEl.classList.remove('hidden');
+        }
+    }
+}
+
+function showPublicProfileError(message) {
+    const errorEl = document.getElementById('publicProfileError');
+    const contentEl = document.getElementById('publicProfileContent');
+    if (!errorEl) return;
+    
+    if (message) {
+        errorEl.textContent = message;
+        errorEl.classList.remove('hidden');
+        contentEl?.classList.add('hidden');
+    } else {
+        errorEl.classList.add('hidden');
+    }
+}
+
+function setPublicProfileAction(elementId, href, labelElementId, labelText) {
+    const actionEl = document.getElementById(elementId);
+    const labelEl = labelElementId ? document.getElementById(labelElementId) : null;
+    if (!actionEl) return false;
+    
+    if (href) {
+        actionEl.href = href;
+        actionEl.style.display = 'flex';
+        actionEl.setAttribute('target', '_blank');
+        actionEl.setAttribute('rel', 'noopener');
+        if (labelEl && labelText) {
+            labelEl.textContent = labelText;
+        }
+        return true;
+    } else {
+        actionEl.style.display = 'none';
+        return false;
+    }
+}
+
+function populatePublicProfileView(profile) {
+    const nameEl = document.getElementById('publicProfileName');
+    const roleEl = document.getElementById('publicProfileRole');
+    const aboutEl = document.getElementById('publicProfileAbout');
+    const emailValueEl = document.getElementById('publicProfileEmailValue');
+    const mobileValueEl = document.getElementById('publicProfileMobileValue');
+    const linkedInValueEl = document.getElementById('publicProfileLinkedInValue');
+    const photoEl = document.getElementById('publicProfilePhoto');
+    const photoPlaceholder = document.getElementById('publicProfilePhotoPlaceholder');
+    
+    document.title = profile.name ? `${profile.name} | pplai.app` : 'pplai.app Profile';
+    
+    if (nameEl) nameEl.textContent = profile.name || 'Shared profile';
+    
+    if (roleEl) {
+        if (profile.role_company) {
+            roleEl.textContent = profile.role_company;
+            roleEl.style.display = 'block';
+        } else {
+            roleEl.style.display = 'none';
+        }
+    }
+    
+    if (aboutEl) {
+        if (profile.about_me) {
+            aboutEl.textContent = profile.about_me;
+            aboutEl.style.display = 'block';
+        } else {
+            aboutEl.style.display = 'none';
+        }
+    }
+    
+    if (photoEl && photoPlaceholder) {
+        if (profile.profile_photo_url) {
+            photoEl.src = profile.profile_photo_url;
+            photoEl.style.display = 'block';
+            photoPlaceholder.style.display = 'none';
+        } else {
+            photoEl.style.display = 'none';
+            photoPlaceholder.style.display = 'flex';
+        }
+    }
+    
+    const emailLink = profile.email ? `mailto:${profile.email}` : null;
+    const phoneLink = profile.mobile ? `tel:${formatPhoneForLink(profile.mobile)}` : null;
+    const whatsappLink = profile.whatsapp || profile.mobile ? buildWhatsappLink(profile.whatsapp || profile.mobile) : null;
+    const linkedinLink = profile.linkedin_url ? formatExternalUrl(profile.linkedin_url) : null;
+    
+    const hasCall = setPublicProfileAction('publicProfileCall', phoneLink, 'publicProfileCallText', profile.mobile || 'Call');
+    const hasEmail = setPublicProfileAction('publicProfileEmail', emailLink, 'publicProfileEmailText', profile.email || 'Email');
+    const hasLinkedIn = setPublicProfileAction('publicProfileLinkedIn', linkedinLink);
+    const hasWhatsapp = setPublicProfileAction('publicProfileWhatsapp', whatsappLink);
+    
+    const actionsContainer = document.getElementById('publicProfileActions');
+    if (actionsContainer) {
+        const hasAction = hasCall || hasEmail || hasLinkedIn || hasWhatsapp;
+        actionsContainer.style.display = hasAction ? 'grid' : 'none';
+    }
+    
+    if (emailValueEl) {
+        emailValueEl.textContent = profile.email || 'Not shared';
+    }
+    if (mobileValueEl) {
+        mobileValueEl.textContent = profile.mobile || 'Not shared';
+    }
+    if (linkedInValueEl) {
+        linkedInValueEl.textContent = profile.linkedin_url || 'Not shared';
+    }
+    
+    const contentEl = document.getElementById('publicProfileContent');
+    contentEl?.classList.remove('hidden');
+}
+
+function handlePublicProfileSave() {
+    if (!currentPublicProfileId) return;
+    sessionStorage.setItem('pendingProfileView', currentPublicProfileId);
+    window.location.href = '/';
+}
+
+function formatPhoneForLink(number) {
+    if (!number) return '';
+    return number.replace(/[^+\d]/g, '');
+}
+
+function buildWhatsappLink(number) {
+    if (!number) return null;
+    const digits = number.replace(/[^+\d]/g, '');
+    if (!digits) return null;
+    const normalized = digits.startsWith('+') ? digits.substring(1) : digits;
+    return `https://wa.me/${normalized}`;
+}
+
+function formatExternalUrl(url) {
+    if (!url) return null;
+    if (!/^https?:\/\//i.test(url)) {
+        return `https://${url}`;
+    }
+    return url;
 }
 
 function updateAuthButton() {
@@ -340,6 +560,143 @@ function updateAuthButton() {
                 <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
                 <circle cx="12" cy="7" r="4"></circle>
             `;
+        }
+    }
+}
+
+async function loadImageFromFile(file) {
+    return new Promise((resolve, reject) => {
+        const url = URL.createObjectURL(file);
+        const img = new Image();
+        img.decoding = 'async';
+        img.onload = () => {
+            URL.revokeObjectURL(url);
+            resolve(img);
+        };
+        img.onerror = (error) => {
+            URL.revokeObjectURL(url);
+            reject(error);
+        };
+        img.src = url;
+    });
+}
+
+async function preprocessCardImage(file) {
+    try {
+        const img = await loadImageFromFile(file);
+        
+        // Check if image loaded with valid dimensions
+        if (!img.width || !img.height || img.width < 10 || img.height < 10) {
+            debugWarn('Image loaded but has invalid dimensions:', img.width, 'x', img.height);
+            return null;
+        }
+        
+        const maxDimension = 1600;
+        const scale = Math.min(1, maxDimension / Math.max(img.width, img.height));
+        const targetWidth = Math.max(1, Math.round(img.width * scale));
+        const targetHeight = Math.max(1, Math.round(img.height * scale));
+
+        // Simple resize without rotation - rotation can fail on some HEIC files
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        canvas.width = targetWidth;
+        canvas.height = targetHeight;
+        ctx.drawImage(img, 0, 0, targetWidth, targetHeight);
+
+        // Verify canvas has actual image data
+        try {
+            const testPixel = ctx.getImageData(0, 0, 1, 1);
+            if (!testPixel || testPixel.data.every(v => v === 0)) {
+                debugWarn('Canvas drawn but contains no pixel data');
+                return null;
+            }
+        } catch (e) {
+            debugWarn('Cannot read canvas pixel data:', e);
+            return null;
+        }
+
+        const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.92));
+        if (!blob || blob.size === 0) {
+            debugWarn('Canvas toBlob returned empty result');
+            return null;
+        }
+
+        const processedFile = new File([blob], file.name.replace(/\.[^.]+$/, '') + '-processed.jpg', { type: 'image/jpeg' });
+        return { file: processedFile };
+    } catch (error) {
+        debugWarn('Card preprocessing failed:', error);
+        return null;
+    }
+}
+
+function base64ToFile(base64, filename, mime = 'image/jpeg') {
+    const byteString = atob(base64);
+    const arrayBuffer = new ArrayBuffer(byteString.length);
+    const uint8Array = new Uint8Array(arrayBuffer);
+    for (let i = 0; i < byteString.length; i++) {
+        uint8Array[i] = byteString.charCodeAt(i);
+    }
+    const blob = new Blob([uint8Array], { type: mime });
+    return new File([blob], filename, { type: mime });
+}
+
+async function populateContactForm(contactInfo, options = {}) {
+    if (!contactInfo) return;
+    const { portraitFile = null, cardFile = null } = options;
+
+    await openContactModal();
+
+    const nameEl = document.getElementById('contactName');
+    if (nameEl && contactInfo.name) nameEl.value = contactInfo.name;
+
+    const emailEl = document.getElementById('contactEmail');
+    if (emailEl && contactInfo.email) emailEl.value = contactInfo.email;
+
+    applyPhoneToForm(contactInfo.phone);
+
+    const linkedinEl = document.getElementById('contactLinkedIn');
+    if (linkedinEl && contactInfo.linkedin) linkedinEl.value = contactInfo.linkedin;
+
+    const websiteEl = document.getElementById('contactWebsite');
+    if (websiteEl && contactInfo.website) websiteEl.value = contactInfo.website;
+
+    const companyEl = document.getElementById('contactCompany');
+    if (companyEl && contactInfo.company) companyEl.value = contactInfo.company;
+
+    const roleEl = document.getElementById('contactRole');
+    const jobTitle = contactInfo.title || contactInfo.role || '';
+    if (roleEl && jobTitle) {
+        roleEl.value = jobTitle;
+    }
+
+    if (cardFile) {
+        const mediaInput = document.getElementById('mediaInput');
+        if (mediaInput) {
+            const mediaDataTransfer = new DataTransfer();
+            if (mediaInput.files) {
+                Array.from(mediaInput.files).forEach(existingFile => mediaDataTransfer.items.add(existingFile));
+            }
+            mediaDataTransfer.items.add(cardFile);
+            mediaInput.files = mediaDataTransfer.files;
+        }
+    }
+
+    const photoInput = document.getElementById('contactPhotoInput');
+    if (photoInput && portraitFile) {
+        const preview = document.getElementById('contactPhotoPreview');
+        const placeholder = document.querySelector('#contactPhotoUpload .photo-placeholder');
+        const photoDataTransfer = new DataTransfer();
+        photoDataTransfer.items.add(portraitFile);
+        photoInput.files = photoDataTransfer.files;
+
+        if (preview) {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                preview.src = event.target.result;
+                preview.classList.remove('hidden');
+                placeholder?.classList.add('hidden');
+            };
+            reader.readAsDataURL(portraitFile);
         }
     }
 }
@@ -388,17 +745,23 @@ function switchView(viewName) {
 
 // Initialize Google OAuth
 function initializeGoogleSignIn() {
-    // Check if Google OAuth is loaded
-    if (typeof google !== 'undefined' && google.accounts) {
-        // Get Client ID from window (injected from environment) or use default
-        const clientId = window.GOOGLE_CLIENT_ID || 'YOUR_GOOGLE_CLIENT_ID';
-        
-        if (clientId === 'YOUR_GOOGLE_CLIENT_ID' || !clientId) {
-            // Client ID not configured, use fallback
-            console.warn('Google OAuth Client ID not configured, using fallback');
+    // Get Client ID from window (injected from environment)
+    const clientId = window.GOOGLE_CLIENT_ID || '';
+    
+    // Skip if client ID not configured (local development without OAuth)
+    if (!clientId || clientId === 'YOUR_GOOGLE_CLIENT_ID') {
+        debugLog('⚠️ Google OAuth Client ID not configured - OAuth sign-in disabled');
+        debugLog('💡 Use email/password login or configure GOOGLE_CLIENT_ID for OAuth');
             return;
         }
         
+    // Check if Google OAuth SDK is loaded
+    if (typeof google === 'undefined' || !google.accounts) {
+        debugWarn('Google OAuth SDK not loaded');
+        return;
+    }
+    
+    try {
         google.accounts.id.initialize({
             client_id: clientId,
             callback: handleGoogleCredentialResponse,
@@ -419,6 +782,11 @@ function initializeGoogleSignIn() {
                 locale: 'en'
             });
         }
+        
+        debugLog('✅ Google OAuth initialized successfully');
+    } catch (error) {
+        debugError('❌ Failed to initialize Google OAuth:', error);
+        debugLog('💡 Use email/password login instead');
     }
 }
 
@@ -440,7 +808,7 @@ async function handleGoogleCredentialResponse(response) {
         await loadInitialData();
     } catch (error) {
         console.error('Google OAuth error:', error);
-        alert('Google sign-in failed: ' + error.message);
+        showToast('Google sign-in failed: ' + error.message, 'error');
     }
 }
 
@@ -935,16 +1303,16 @@ async function loadProfileQR() {
 
 function showQRGenerationError(canvas, message) {
     if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    canvas.width = 300;
-    canvas.height = 300;
-    ctx.fillStyle = '#f0f0f0';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                const ctx = canvas.getContext('2d');
+        canvas.width = 300;
+        canvas.height = 300;
+        ctx.fillStyle = '#f0f0f0';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.fillStyle = '#ef4444';
-    ctx.font = '14px Arial';
-    ctx.textAlign = 'center';
+        ctx.font = '14px Arial';
+        ctx.textAlign = 'center';
     ctx.fillText(message, canvas.width / 2, canvas.height / 2 - 10);
-    ctx.fillText('Please refresh the page', canvas.width / 2, canvas.height / 2 + 10);
+        ctx.fillText('Please refresh the page', canvas.width / 2, canvas.height / 2 + 10);
 }
 
 // Client-side QR generation removed - using backend QR generation only
@@ -1330,9 +1698,9 @@ async function saveProfile() {
         displayProfile(updated);
         await loadProfileQR(); // Reload QR with new data
         closeModal();
-        alert('Profile updated successfully');
+        showToast('Profile updated successfully', 'success');
     } catch (error) {
-        alert('Failed to update profile: ' + error.message);
+        showToast('Failed to update profile: ' + error.message, 'error');
     }
 }
 
@@ -1478,7 +1846,7 @@ async function loadEventsForContactForm() {
         events.forEach(event => {
             const option = document.createElement('option');
             option.value = event.id;
-            option.textContent = `${event.name}${event.location ? ` - ${event.location}` : ''}${event.start_date ? ` (${new Date(event.start_date).toLocaleDateString()})` : ''}`;
+            option.textContent = `${event.name}${event.location ? ` - ${event.location}` : ''}${event.start_date ? ` (${formatDate(event.start_date)})` : ''}`;
             eventSelect.appendChild(option);
         });
         
@@ -1518,6 +1886,7 @@ function displayEvents(events) {
                     ? `<button class="btn-small btn-secondary unselect-event" data-event-id="${event.id}">Unselect</button>`
                     : `<button class="btn-small btn-primary select-event" data-event-id="${event.id}">Select</button>`
                 }
+                <button class="btn-small btn-secondary view-contacts" data-event-id="${event.id}" data-event-name="${event.name}">View Contacts</button>
                 <div class="export-buttons" style="display: flex; gap: 4px;">
                     <button class="btn-small btn-secondary export-pdf" data-event-id="${event.id}" title="Export PDF">📄 PDF</button>
                     <button class="btn-small btn-secondary export-csv" data-event-id="${event.id}" title="Export CSV">📊 CSV</button>
@@ -1549,7 +1918,7 @@ function displayEvents(events) {
             try {
                 await api.exportEventPDF(eventId);
             } catch (error) {
-                alert('Failed to export PDF: ' + error.message);
+                showToast('Failed to export PDF: ' + error.message, 'error');
             }
         });
     });
@@ -1560,8 +1929,23 @@ function displayEvents(events) {
             try {
                 await api.exportEventCSV(eventId);
             } catch (error) {
-                alert('Failed to export CSV: ' + error.message);
+                showToast('Failed to export CSV: ' + error.message, 'error');
             }
+        });
+    });
+
+    container.querySelectorAll('.view-contacts').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const eventId = e.target.dataset.eventId;
+            const eventName = e.target.dataset.eventName;
+            viewEventContacts(eventId, eventName);
+        });
+    });
+
+    container.querySelectorAll('.edit-event').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            const eventId = e.target.dataset.eventId;
+            await editEvent(eventId);
         });
     });
 
@@ -1578,7 +1962,7 @@ function displayEvents(events) {
                         updateCurrentEventBanner();
                     }
                 } catch (error) {
-                    alert('Failed to delete event: ' + error.message);
+                    showToast('Failed to delete event: ' + error.message, 'error');
                 }
             }
         });
@@ -1687,7 +2071,7 @@ async function editEvent(eventId) {
         const event = await api.getEvent(eventId);
         await openEventModal(event);
     } catch (error) {
-        alert('Failed to load event for editing: ' + error.message);
+        showToast('Failed to load event for editing: ' + error.message, 'error');
     }
 }
 
@@ -1699,24 +2083,24 @@ async function saveEvent() {
     const description = document.getElementById('eventDescription')?.value;
 
     if (!name || !location || !startDate || !endDate) {
-        alert('Please fill in all required fields');
+        showToast('Please fill in all required fields', 'warning');
         return;
     }
 
     // Validate date range
     if (new Date(endDate) < new Date(startDate)) {
-        alert('End date must be on or after the start date');
+        showToast('End date must be on or after the start date', 'warning');
         return;
     }
 
-    const eventData = {
-        name,
-        location,
-        start_date: startDate,
-        end_date: endDate,
-        description: description || null,
-    };
-
+        const eventData = {
+            name,
+            location,
+            start_date: startDate,
+            end_date: endDate,
+            description: description || null,
+        };
+        
     try {
         if (editingEventId) {
             // Update existing event
@@ -1730,7 +2114,7 @@ async function saveEvent() {
                 return;
             }
             await api.updateEvent(editingEventId, eventData);
-            alert('Event updated successfully');
+            showToast('Event updated successfully', 'success');
         } else {
             // Create new event
             if (!navigator.onLine) {
@@ -1743,7 +2127,7 @@ async function saveEvent() {
                 return;
             }
             await api.createEvent(eventData);
-            alert('Event created successfully');
+            showToast('Event created successfully', 'success');
         }
         
         closeModal();
@@ -1764,7 +2148,7 @@ async function saveEvent() {
             editingEventId = null;
             await loadEvents(); // Reload from cache
         } else {
-            alert('Failed to save event: ' + error.message);
+            showToast('Failed to save event: ' + error.message, 'error');
         }
     }
 }
@@ -1787,16 +2171,22 @@ function updateCurrentEventBanner() {
     const nameEl = document.getElementById('currentEventName');
     const unselectBtn = document.getElementById('unselectEventBtn');
     
-    if (currentEvent && banner && nameEl) {
-        nameEl.textContent = currentEvent.name;
+    if (banner && nameEl) {
+        // Always show the banner
         banner.style.display = 'block';
+        
+        if (currentEvent) {
+            // Event is selected
+            nameEl.textContent = currentEvent.name;
         if (unselectBtn) {
             unselectBtn.style.display = 'block';
         }
-    } else if (banner) {
-        banner.style.display = 'none';
+        } else {
+            // No event selected
+            nameEl.textContent = 'No event selected';
         if (unselectBtn) {
             unselectBtn.style.display = 'none';
+            }
         }
     }
 }
@@ -1809,6 +2199,24 @@ async function unselectEvent() {
     await loadEvents();
     // Reload contacts to show all events
     loadContacts();
+}
+
+function viewEventContacts(eventId, eventName) {
+    // Switch to contacts view
+    switchView('contacts');
+    
+    // Set the event filter
+    const eventFilter = document.getElementById('eventFilter');
+    if (eventFilter) {
+        eventFilter.value = eventId;
+        updateClearFiltersButton();
+    }
+    
+    // Load contacts with the filter applied
+    loadContacts();
+    
+    // Show a toast notification
+    showToast(`Showing contacts for "${eventName}"`, 'info', 3000);
 }
 
 // Contact functions
@@ -1988,7 +2396,7 @@ function displayContacts(contacts) {
                 ${contact.email ? `<p class="contact-email">📧 ${contact.email}</p>` : ''}
                 ${contact.mobile ? `<p class="contact-mobile">📱 ${contact.mobile}</p>` : ''}
                 ${tagsHtml}
-                <p class="contact-date">Met: ${new Date(contact.meeting_date).toLocaleString()}</p>
+                <p class="contact-date">Met: ${formatDateTime(contact.meeting_date)}</p>
             </div>
             <div class="contact-actions-list" style="display: flex; gap: 8px; align-items: center;">
                 <button class="icon-btn-action chat-contact-btn" data-contact-id="${contact.id}" data-contact-name="${contact.name}" onclick="event.stopPropagation();" title="Chat">
@@ -2039,8 +2447,10 @@ function displayContacts(contacts) {
     container.querySelectorAll('.chat-contact-btn').forEach(btn => {
         btn.addEventListener('click', async (e) => {
             e.stopPropagation();
-            const contactId = e.target.dataset.contactId;
-            const contactName = e.target.dataset.contactName;
+            // Use currentTarget to get the button, not the SVG child
+            const button = e.currentTarget;
+            const contactId = button.dataset.contactId;
+            const contactName = button.dataset.contactName;
             await openChatView(contactId, contactName);
         });
     });
@@ -2048,8 +2458,10 @@ function displayContacts(contacts) {
     container.querySelectorAll('.delete-contact-btn').forEach(btn => {
         btn.addEventListener('click', async (e) => {
             e.stopPropagation();
-            const contactId = e.target.dataset.contactId;
-            const contactName = e.target.dataset.contactName;
+            // Use currentTarget to get the button, not the SVG child
+            const button = e.currentTarget;
+            const contactId = button.dataset.contactId;
+            const contactName = button.dataset.contactName;
             await deleteContact(contactId, contactName);
         });
     });
@@ -2062,6 +2474,46 @@ function displayContacts(contacts) {
 
 function filterContacts() {
     loadContacts();
+}
+
+function clearAllFilters() {
+    // Reset all filter dropdowns to default
+    const eventFilter = document.getElementById('eventFilter');
+    const tagFilter = document.getElementById('tagFilter');
+    const dateFilter = document.getElementById('dateFilter');
+    const customDateRange = document.getElementById('customDateRange');
+    const dateFrom = document.getElementById('dateFrom');
+    const dateTo = document.getElementById('dateTo');
+    
+    if (eventFilter) eventFilter.value = 'all';
+    if (tagFilter) tagFilter.value = 'all';
+    if (dateFilter) dateFilter.value = 'all';
+    if (customDateRange) customDateRange.classList.add('hidden');
+    if (dateFrom) dateFrom.value = '';
+    if (dateTo) dateTo.value = '';
+    
+    // Hide the clear button
+    updateClearFiltersButton();
+    
+    // Reload contacts with no filters
+    loadContacts();
+}
+
+function updateClearFiltersButton() {
+    const clearBtn = document.getElementById('clearAllFiltersBtn');
+    if (!clearBtn) return;
+    
+    const eventFilter = document.getElementById('eventFilter');
+    const tagFilter = document.getElementById('tagFilter');
+    const dateFilter = document.getElementById('dateFilter');
+    
+    // Show button if any filter is not set to 'all'
+    const hasFilters = 
+        (eventFilter && eventFilter.value !== 'all') ||
+        (tagFilter && tagFilter.value !== 'all') ||
+        (dateFilter && dateFilter.value !== 'all');
+    
+    clearBtn.style.display = hasFilters ? 'block' : 'none';
 }
 
 // Selection mode functions
@@ -2202,88 +2654,160 @@ async function bulkExportContacts() {
 async function bulkAddTagToContacts() {
     const selectedIds = getSelectedContactIds();
     if (selectedIds.length === 0) {
-        alert('Please select contacts to tag');
+        showToast('Please select contacts to tag', 'warning');
         return;
     }
     
     try {
         // Load available tags
         const tags = await api.getTags(false);
-        if (tags.length === 0) {
-            alert('No tags available. Please create a tag first.');
-            return;
+        
+        // Show bulk tag modal
+        const modal = document.getElementById('bulkTagModal');
+        const countEl = document.getElementById('bulkTagCount');
+        const tagsList = document.getElementById('bulkTagsList');
+        const newTagInput = document.getElementById('bulkNewTagInput');
+        
+        if (!modal || !countEl || !tagsList || !newTagInput) return;
+        
+        countEl.textContent = selectedIds.length;
+        newTagInput.value = '';
+        
+        // Populate tags with checkboxes (3-state: unchecked, checked, indeterminate)
+        tagsList.innerHTML = '';
+        
+        if (tags.length > 0) {
+            for (const tag of tags) {
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.id = `bulkTag_${tag.id}`;
+                checkbox.value = tag.id;
+                checkbox.dataset.tagName = tag.name;
+                
+                const label = document.createElement('label');
+                label.htmlFor = `bulkTag_${tag.id}`;
+                label.textContent = tag.name;
+                label.style.cssText = 'display: flex; align-items: center; padding: 8px; cursor: pointer; border-radius: 6px;';
+                label.onmouseover = () => label.style.background = '#f3f4f6';
+                label.onmouseout = () => label.style.background = 'transparent';
+                
+                label.insertBefore(checkbox, label.firstChild);
+                tagsList.appendChild(label);
+            }
+        } else {
+            tagsList.innerHTML = '<p style="color: #666; font-size: 14px; padding: 12px;">No tags available. Create a new tag below.</p>';
         }
         
-        // Ask user if they want to add or remove tags
-        const isAdd = confirm(
-            `Tag ${selectedIds.length} contact(s)?\n\n` +
-            `Click OK to ADD a tag\n` +
-            `Click Cancel to REMOVE a tag`
-        );
+        modal.classList.remove('hidden');
+    } catch (error) {
+        showToast('Failed to load tags: ' + error.message, 'error');
+    }
+}
+
+async function applyBulkTags() {
+    const selectedIds = getSelectedContactIds();
+    const tagsList = document.getElementById('bulkTagsList');
+    const newTagInput = document.getElementById('bulkNewTagInput');
+    
+    if (!tagsList || !newTagInput) return;
+    
+    try {
+        // Get selected tags
+        const checkboxes = tagsList.querySelectorAll('input[type="checkbox"]:checked');
+        const selectedTagNames = Array.from(checkboxes).map(cb => cb.dataset.tagName);
         
-        // Show tag selection dialog
-        const tagNames = tags.map(t => t.name).join('\n');
-        const action = isAdd ? 'add' : 'remove';
-        const tagName = prompt(
-            `Enter tag name to ${action} from ${selectedIds.length} contact(s):\n\nAvailable tags:\n${tagNames}`
-        );
-        
-        if (!tagName || !tagName.trim()) return;
-        
-        const trimmedTag = tagName.trim();
-        let tagId = tags.find(t => t.name.toLowerCase() === trimmedTag.toLowerCase())?.id;
-        
-        // For adding: create tag if it doesn't exist
-        if (isAdd && !tagId) {
+        // Add new tag if provided
+        const newTagName = newTagInput.value.trim();
+        if (newTagName) {
             try {
-                const newTag = await api.createTag(trimmedTag);
-                tagId = newTag.id;
+                await api.createTag(newTagName);
+                selectedTagNames.push(newTagName);
             } catch (error) {
-                alert('Failed to create tag: ' + error.message);
+                showToast('Failed to create new tag: ' + error.message, 'error');
                 return;
             }
         }
         
-        // For removing: check if tag exists
-        if (!isAdd && !tagId) {
-            alert(`Tag "${trimmedTag}" not found.`);
+        if (selectedTagNames.length === 0) {
+            showToast('Please select or create at least one tag', 'warning');
             return;
         }
         
-        // Add or remove tag from all selected contacts
+        // Apply tags to all selected contacts
         let successCount = 0;
         for (const contactId of selectedIds) {
             try {
                 const contact = await api.getContact(contactId);
                 const currentTags = contact.tags?.map(t => t.name || t) || [];
                 
-                if (isAdd) {
-                    // Add tag if not already present
-                    if (!currentTags.includes(trimmedTag)) {
-                        const updatedTags = [...currentTags, trimmedTag];
-                        await api.updateContact(contactId, { tags: updatedTags }, null, []);
+                // Merge selected tags with existing tags (no duplicates)
+                const mergedTags = [...new Set([...currentTags, ...selectedTagNames])];
+                
+                await api.updateContact(contactId, { tags: mergedTags }, null, []);
                         successCount++;
-                    }
-                } else {
-                    // Remove tag if present
-                    if (currentTags.includes(trimmedTag)) {
-                        const updatedTags = currentTags.filter(t => t !== trimmedTag);
-                        await api.updateContact(contactId, { tags: updatedTags }, null, []);
-                        successCount++;
-                    }
-                }
             } catch (error) {
-                console.error(`Failed to ${action} tag from contact ${contactId}:`, error);
+                console.error(`Failed to add tags to contact ${contactId}:`, error);
             }
         }
         
-        const actionText = isAdd ? 'Added' : 'Removed';
-        alert(`${actionText} tag "${trimmedTag}" from ${successCount} of ${selectedIds.length} contacts`);
+        showToast(`Added tags to ${successCount} of ${selectedIds.length} contacts`, 'success');
+        
+        // Close modal and reload contacts
+        document.getElementById('bulkTagModal')?.classList.add('hidden');
+        await loadContacts();
+    } catch (error) {
+        showToast('Failed to update tags: ' + error.message, 'error');
+    }
+}
+
+async function bulkAddEventToContacts() {
+    const selectedIds = getSelectedContactIds();
+    if (selectedIds.length === 0) {
+        showToast('Please select contacts first', 'warning');
+        return;
+    }
+    
+    try {
+        // Load available events
+        const events = await api.getEvents();
+        if (events.length === 0) {
+            showToast('No events available. Please create an event first.', 'warning');
+            return;
+        }
+        
+        // Show event selection dialog
+        const eventNames = events.map(e => `${e.name} (${e.location})`).join('\n');
+        const eventName = prompt(
+            `Select an event to assign to ${selectedIds.length} contact(s):\n\nAvailable events:\n${eventNames}\n\nEnter event name:`
+        );
+        
+        if (!eventName || !eventName.trim()) return;
+        
+        const trimmedName = eventName.trim();
+        const selectedEvent = events.find(e => e.name.toLowerCase() === trimmedName.toLowerCase());
+        
+        if (!selectedEvent) {
+            showToast(`Event "${trimmedName}" not found.`, 'error');
+            return;
+        }
+        
+        // Update all selected contacts
+        let successCount = 0;
+        for (const contactId of selectedIds) {
+            try {
+                await api.updateContact(contactId, { event_id: selectedEvent.id }, null, []);
+                successCount++;
+            } catch (error) {
+                console.error(`Failed to add event to contact ${contactId}:`, error);
+            }
+        }
+        
+        showToast(`Added event "${selectedEvent.name}" to ${successCount} of ${selectedIds.length} contacts`, 'success');
         
         // Reload contacts
         await loadContacts();
     } catch (error) {
-        alert('Failed to update tags: ' + error.message);
+        showToast('Failed to update events: ' + error.message, 'error');
     }
 }
 
@@ -2744,6 +3268,8 @@ async function saveContact() {
     const name = document.getElementById('contactName')?.value;
     const email = document.getElementById('contactEmail')?.value;
     const role = document.getElementById('contactRole')?.value;
+    const company = document.getElementById('contactCompany')?.value;
+    const website = document.getElementById('contactWebsite')?.value;
     const mobileInput = document.getElementById('contactMobile')?.value;
     const countryCode = document.getElementById('contactCountryCode')?.value || '+91';
     // Combine country code with mobile number
@@ -2873,6 +3399,8 @@ async function saveContact() {
             name,
             email: email || null,
             role_company: role || null,
+            company: company || null,
+            website: website || null,
             mobile: mobile || null,
             linkedin_url: linkedin || null,
             meeting_context: finalContext || null,
@@ -3144,8 +3672,13 @@ function displayContactProfile(data, isOwnProfile = false) {
     const linkedInEl = document.getElementById('contactViewLinkedIn');
     if (linkedInItem && linkedInEl) {
         if (data.linkedin_url) {
-            linkedInEl.href = data.linkedin_url;
-            linkedInEl.textContent = data.linkedin_url;
+            // Ensure URL has protocol
+            let linkedInUrl = data.linkedin_url;
+            if (!linkedInUrl.startsWith('http://') && !linkedInUrl.startsWith('https://')) {
+                linkedInUrl = 'https://' + linkedInUrl;
+            }
+            linkedInEl.href = linkedInUrl;
+            linkedInEl.textContent = data.linkedin_url; // Show original text
             linkedInItem.style.display = 'flex';
         } else {
             linkedInItem.style.display = 'none';
@@ -3166,7 +3699,7 @@ function displayContactProfile(data, isOwnProfile = false) {
     const dateItem = document.getElementById('contactViewDateItem');
     const dateEl = document.getElementById('contactViewDate');
     if (dateItem && dateEl && !isOwnProfile && data.meeting_date) {
-        dateEl.textContent = new Date(data.meeting_date).toLocaleString();
+        dateEl.textContent = formatDateTime(data.meeting_date);
         dateItem.style.display = 'flex';
     } else if (dateItem) {
         dateItem.style.display = 'none';
@@ -3856,11 +4389,219 @@ async function handleQRCodeScanned(data) {
             alert('Error parsing contact card: ' + error.message);
         }
     } else if (data.startsWith('http://') || data.startsWith('https://')) {
-        // It's a URL - could be a profile link
-        alert('URL QR code detected: ' + data + '\n\nProfile links are not yet supported for automatic contact creation.');
+        // It's a URL - check if it's a profile link
+        const urlMatch = data.match(/\/profile\/([a-f0-9-]+)/i);
+        if (urlMatch && urlMatch[1]) {
+            const userId = urlMatch[1];
+            try {
+                await loadPublicProfile(userId);
+            } catch (error) {
+                console.error('Error loading profile:', error);
+                showToast('Failed to load profile: ' + error.message, 'error');
+            }
+        } else {
+            showToast('URL QR code detected but not a pplai profile link', 'warning');
+        }
     } else {
         // Unknown format
         alert('QR code detected but format not recognized:\n' + data);
+    }
+}
+
+// Standalone public profile renderer (for /profile/{id} URLs without auth)
+async function renderStandalonePublicProfile(userId) {
+    const loadingScreen = document.getElementById('loadingScreen');
+    const authScreen = document.getElementById('authScreen');
+    const appContainer = document.getElementById('appContainer');
+    const publicScreen = document.getElementById('publicProfileScreen');
+    
+    // Hide all other screens
+    if (loadingScreen) loadingScreen.classList.add('hidden');
+    if (authScreen) authScreen.classList.add('hidden');
+    if (appContainer) appContainer.classList.add('hidden');
+    
+    // Show public profile screen
+    if (publicScreen) {
+        publicScreen.classList.remove('hidden');
+        
+        // Show loading state
+        togglePublicProfileLoading(true);
+        
+        try {
+            // Fetch public profile without auth
+            const profile = await api.getPublicProfile(userId);
+            
+            // Populate the standalone view
+            const photoEl = document.getElementById('publicProfilePhoto');
+            const photoPlaceholderEl = document.getElementById('publicProfilePhotoPlaceholder');
+            const nameEl = document.getElementById('publicProfileName');
+            const roleEl = document.getElementById('publicProfileRole');
+            const aboutEl = document.getElementById('publicProfileAbout');
+            
+            if (photoEl) {
+                photoEl.src = profile.profile_photo_url || '';
+                photoEl.style.display = profile.profile_photo_url ? 'block' : 'none';
+            }
+            if (photoPlaceholderEl) {
+                photoPlaceholderEl.style.display = profile.profile_photo_url ? 'none' : 'flex';
+            }
+            
+            if (nameEl) nameEl.textContent = profile.name || '';
+            if (roleEl) {
+                roleEl.textContent = profile.role_company || '';
+                roleEl.style.display = profile.role_company ? 'block' : 'none';
+            }
+            if (aboutEl) aboutEl.textContent = profile.about_me || 'No bio available';
+            
+            // Contact actions (using correct IDs from HTML)
+            setPublicProfileAction('publicProfileCall', profile.mobile, () => window.location.href = `tel:${profile.mobile}`);
+            setPublicProfileAction('publicProfileEmail', profile.email, () => window.location.href = `mailto:${profile.email}`);
+            setPublicProfileAction('publicProfileLinkedIn', profile.linkedin_url, () => window.open(ensureHttps(profile.linkedin_url), '_blank'));
+            setPublicProfileAction('publicProfileWhatsapp', profile.whatsapp || profile.mobile, () => window.open(`https://wa.me/${(profile.whatsapp || profile.mobile).replace(/\D/g, '')}`, '_blank'));
+            
+            // Meta info (using correct IDs from HTML)
+            const emailValueEl = document.getElementById('publicProfileEmailValue');
+            const mobileValueEl = document.getElementById('publicProfileMobileValue');
+            const linkedinValueEl = document.getElementById('publicProfileLinkedInValue');
+            
+            if (emailValueEl) emailValueEl.textContent = profile.email || 'Not shared';
+            if (mobileValueEl) mobileValueEl.textContent = profile.mobile || 'Not shared';
+            if (linkedinValueEl) linkedinValueEl.textContent = profile.linkedin_url || 'Not shared';
+            
+            // Open in app button - stores the profile ID and redirects to home
+            const openInAppBtn = document.getElementById('publicProfileOpenAppBtn');
+            if (openInAppBtn) {
+                openInAppBtn.onclick = () => {
+                    sessionStorage.setItem('pendingProfileView', userId);
+                    window.location.href = '/';
+                };
+            }
+            
+            // Save to contacts button (requires login)
+            const saveBtn = document.getElementById('publicProfileSaveBtn');
+            if (saveBtn) {
+                saveBtn.onclick = () => {
+                    sessionStorage.setItem('pendingProfileView', userId);
+                    window.location.href = '/';
+                };
+            }
+            
+            // Back button
+            const backBtn = document.getElementById('publicProfileBackBtn');
+            if (backBtn) {
+                backBtn.onclick = () => {
+                    window.location.href = '/';
+                };
+            }
+            
+            console.log('✅ Profile fields populated, hiding loader...');
+            togglePublicProfileLoading(false);
+            console.log('✅ Profile rendering complete!');
+        } catch (error) {
+            console.error('Error loading public profile:', error);
+            showPublicProfileError(error.message || 'Failed to load profile');
+        }
+    }
+}
+
+// Helper to ensure URLs have https://
+function ensureHttps(url) {
+    if (!url) return '';
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+        return url;
+    }
+    return `https://${url}`;
+}
+
+// Helper to set action button visibility and handler
+function setPublicProfileAction(btnId, value, handler) {
+    const btn = document.getElementById(btnId);
+    if (btn) {
+        if (value) {
+            btn.style.display = 'flex';
+            btn.onclick = handler;
+        } else {
+            btn.style.display = 'none';
+        }
+    }
+}
+
+// Toggle loading state for public profile
+function togglePublicProfileLoading(isLoading) {
+    const loader = document.getElementById('publicProfileLoading');
+    const content = document.getElementById('publicProfileContent');
+    const error = document.getElementById('publicProfileError');
+    
+    if (loader) {
+        loader.style.display = isLoading ? 'flex' : 'none';
+    }
+    if (content) {
+        if (isLoading) {
+            content.classList.add('hidden');
+        } else {
+            content.classList.remove('hidden');
+        }
+    }
+    if (error) {
+        error.classList.add('hidden');
+    }
+}
+
+// Show error state for public profile
+function showPublicProfileError(message) {
+    const loader = document.getElementById('publicProfileLoading');
+    const content = document.getElementById('publicProfileContent');
+    const error = document.getElementById('publicProfileError');
+    
+    if (loader) loader.style.display = 'none';
+    if (content) content.classList.add('hidden');
+    if (error) {
+        error.classList.remove('hidden');
+        error.innerHTML = `
+            <div style="text-align: center; padding: 40px 20px;">
+                <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin: 0 auto 20px; color: #ef4444;">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="8" x2="12" y2="12"></line>
+                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                </svg>
+                <h3 style="margin: 0 0 12px 0; font-size: 20px; font-weight: 600; color: #1f2937;">Profile not found</h3>
+                <p style="margin: 0 0 24px 0; color: #6b7280; font-size: 15px;">${message}</p>
+                <button onclick="window.location.href='/'" class="btn-primary">Go to pplai</button>
+            </div>
+        `;
+    }
+}
+
+async function loadPublicProfile(userId) {
+    try {
+        // Fetch public profile from API
+        const profile = await api.getPublicProfile(userId);
+        
+        // Display the profile in contact view modal
+        displayContactProfile(profile, false);
+        
+        // Show save button for this public profile
+        const saveBtn = document.getElementById('saveContactFromViewBtn');
+        if (saveBtn) {
+            saveBtn.style.display = 'block';
+        }
+        
+        // Store the profile data for saving
+        currentViewingContact = {
+            name: profile.name,
+            email: profile.email,
+            role_company: profile.role_company,
+            mobile: profile.mobile,
+            whatsapp: profile.whatsapp,
+            linkedin_url: profile.linkedin_url,
+            about_me: profile.about_me,
+            contact_photo_url: profile.profile_photo_url
+        };
+        
+        showToast('Profile loaded successfully', 'success');
+    } catch (error) {
+        console.error('Error loading public profile:', error);
+        throw error;
     }
 }
 
@@ -4085,77 +4826,95 @@ function openBusinessCardScanner() {
         `;
         document.body.appendChild(loadingModal);
         
+        const updateProgress = (message) => {
+            const statusEl = loadingModal.querySelector('p');
+            if (statusEl) statusEl.textContent = message;
+        };
+            
+        const removeLoadingModal = () => {
+            if (loadingModal.parentNode) {
+            document.body.removeChild(loadingModal);
+            }
+        };
+
+        let contactInfo = null;
+        let portraitFile = null;
+        let cardFileForMedia = null;
+
         try {
-            // Use Tesseract.js for OCR
-            const { data: { text } } = await Tesseract.recognize(file, 'eng', {
-                logger: m => {
-                    if (m.status === 'recognizing text') {
-                        const progress = Math.round(m.progress * 100);
-                        loadingModal.querySelector('p').textContent = `Scanning... ${progress}%`;
+            updateProgress('Preparing image...');
+            
+            // Always preprocess - converts HEIC to JPEG which is universally supported
+            const preprocessResult = await preprocessCardImage(file);
+            const processedFile = preprocessResult?.file || file;
+            cardFileForMedia = preprocessResult?.file || file;
+
+            let cloudErrorDetail = null;
+
+            if (navigator.onLine) {
+                // Only try files that are valid (not null/undefined and have size)
+                const backendFileCandidates = [];
+                if (processedFile && processedFile.size > 0) {
+                    backendFileCandidates.push(processedFile);
+                }
+                if (file && file.size > 0 && processedFile !== file) {
+                    backendFileCandidates.push(file);
+                }
+                if (backendFileCandidates.length === 0) {
+                    backendFileCandidates.push(file); // Last resort
+                }
+
+                for (const candidate of backendFileCandidates) {
+                    try {
+                        updateProgress('Scanning card (cloud)...');
+                        const result = await api.analyzeBusinessCard(candidate);
+                        if (result) {
+                            contactInfo = result.fields || null;
+                            if (result.portrait_image) {
+                                portraitFile = base64ToFile(result.portrait_image, `portrait-${Date.now()}.png`, 'image/png');
+                            }
+                            // Always use the original file for media, not the processed/cropped version
+                            cardFileForMedia = file;
+                        }
+                        break;
+                    } catch (cloudError) {
+                        console.warn('Cloud OCR attempt failed:', cloudError);
+                        cloudErrorDetail = cloudError?.message || cloudError;
                     }
                 }
-            });
-            
-            // Parse extracted text
-            const contactInfo = parseBusinessCardText(text);
-            
-            // Remove loading modal
-            document.body.removeChild(loadingModal);
-            
-            // Open contact modal with pre-filled data
-            openContactModal();
-            
-            // Pre-fill form with extracted data
-            if (contactInfo.name) {
-                const nameEl = document.getElementById('contactName');
-                if (nameEl) nameEl.value = contactInfo.name;
             }
-            if (contactInfo.email) {
-                const emailEl = document.getElementById('contactEmail');
-                if (emailEl) emailEl.value = contactInfo.email;
+
+            if (!contactInfo) {
+                updateProgress('Scanning card (offline mode)...');
+                const localSource = processedFile || file;
+                const { data: { text } } = await Tesseract.recognize(localSource, 'eng', {
+                    logger: m => {
+                        if (m.status === 'recognizing text') {
+                            const progress = Math.round(m.progress * 100);
+                            updateProgress(`Scanning locally... ${progress}%`);
+                        }
+                    }
+                });
+                contactInfo = parseBusinessCardText(text);
+                cardFileForMedia = localSource;
             }
-            if (contactInfo.phone) {
-                const mobileEl = document.getElementById('contactMobile');
-                if (mobileEl) mobileEl.value = contactInfo.phone;
+
+            removeLoadingModal();
+
+            if (!contactInfo) {
+                const extraMessage = cloudErrorDetail
+                    ? `\n\nCloud OCR error: ${cloudErrorDetail}`
+                    : '';
+                alert(`We could not extract information from this card. Please enter details manually.${extraMessage}`);
+                return;
             }
-            if (contactInfo.company) {
-                const roleEl = document.getElementById('contactRole');
-                if (roleEl) roleEl.value = contactInfo.company;
-            }
-            if (contactInfo.linkedin) {
-                const linkedinEl = document.getElementById('contactLinkedIn');
-                if (linkedinEl) linkedinEl.value = contactInfo.linkedin;
-            }
-            
-            // Set the uploaded image as contact photo
-            const photoInput = document.getElementById('contactPhotoInput');
-            if (photoInput) {
-                const dataTransfer = new DataTransfer();
-                dataTransfer.items.add(file);
-                photoInput.files = dataTransfer.files;
-                
-                // Trigger preview
-                const preview = document.getElementById('contactPhotoPreview');
-                if (preview) {
-                    const reader = new FileReader();
-                    reader.onload = (e) => {
-                        preview.src = e.target.result;
-                        preview.classList.remove('hidden');
-                        document.querySelector('#contactPhotoUpload .photo-placeholder')?.classList.add('hidden');
-                    };
-                    reader.readAsDataURL(file);
-                }
-            }
-            
-            // Show success message
-            setTimeout(() => {
-                alert('Business card scanned! Please review and complete the contact information.');
-            }, 300);
-            
+
+            cardFileForMedia = cardFileForMedia || processedFile || file;
+            await populateContactForm(contactInfo, { portraitFile, cardFile: cardFileForMedia });
         } catch (error) {
             console.error('OCR Error:', error);
-            document.body.removeChild(loadingModal);
-            alert('Failed to scan business card. Please try again or enter manually.');
+            removeLoadingModal();
+            alert('Failed to scan business card. Please try again or enter manually.\n\n' + (error.message || error));
         }
     };
     
@@ -4188,8 +4947,21 @@ function openEventPassScanner() {
         document.body.appendChild(loadingModal);
         
         try {
-            // Use Tesseract.js for OCR
-            const { data: { text } } = await Tesseract.recognize(file, 'eng', {
+            // Check if it's HEIC - Tesseract can't handle HEIC
+            const isHeic = file.type && file.type.toLowerCase().includes('heic') || 
+                          file.name && file.name.toLowerCase().match(/\.(heic|heif)$/);
+            
+            if (isHeic) {
+                document.body.removeChild(loadingModal);
+                alert('HEIC images are not supported for event pass scanning.\n\nPlease:\n1. Take a new photo in JPG/PNG format, or\n2. Convert the HEIC to JPG first, or\n3. Use the Business Card scanner instead (it supports HEIC)');
+                return;
+            }
+            
+            loadingModal.querySelector('p').textContent = 'Preparing image...';
+            const preprocessResult = await preprocessCardImage(file);
+            const processedFile = preprocessResult?.file || file;
+
+            const { data: { text } } = await Tesseract.recognize(processedFile, 'eng', {
                 logger: m => {
                     if (m.status === 'recognizing text') {
                         const progress = Math.round(m.progress * 100);
@@ -4198,68 +4970,25 @@ function openEventPassScanner() {
                 }
             });
             
-            // Parse extracted text
             const contactInfo = parseEventPassText(text);
             
-            // Remove loading modal
             document.body.removeChild(loadingModal);
             
-            // Open contact modal with pre-filled data
-            openContactModal();
-            
-            // Pre-fill form with extracted data
-            if (contactInfo.name) {
-                const nameEl = document.getElementById('contactName');
-                if (nameEl) nameEl.value = contactInfo.name;
+            if (!contactInfo) {
+                alert('We could not extract information from this pass. Please enter details manually.');
+                return;
             }
-            if (contactInfo.email) {
-                const emailEl = document.getElementById('contactEmail');
-                if (emailEl) emailEl.value = contactInfo.email;
-            }
-            if (contactInfo.phone) {
-                const mobileEl = document.getElementById('contactMobile');
-                if (mobileEl) mobileEl.value = contactInfo.phone;
-            }
-            if (contactInfo.company) {
-                const roleEl = document.getElementById('contactRole');
-                if (roleEl) roleEl.value = contactInfo.company;
-            }
-            if (contactInfo.linkedin) {
-                const linkedinEl = document.getElementById('contactLinkedIn');
-                if (linkedinEl) linkedinEl.value = contactInfo.linkedin;
-            }
+
+            await populateContactForm(contactInfo, { cardFile: processedFile });
+
             if (contactInfo.eventName) {
-                // Add event name to meeting context
                 const context = document.getElementById('contactContext');
                 if (context) {
-                    context.value = `Met at: ${contactInfo.eventName}`;
+                    context.value = context.value
+                        ? `${context.value}\nMet at: ${contactInfo.eventName}`
+                        : `Met at: ${contactInfo.eventName}`;
                 }
             }
-            
-            // Set the uploaded image as contact photo
-            const photoInput = document.getElementById('contactPhotoInput');
-            if (photoInput) {
-                const dataTransfer = new DataTransfer();
-                dataTransfer.items.add(file);
-                photoInput.files = dataTransfer.files;
-                
-                // Trigger preview
-                const preview = document.getElementById('contactPhotoPreview');
-                if (preview) {
-                    const reader = new FileReader();
-                    reader.onload = (e) => {
-                        preview.src = e.target.result;
-                        preview.classList.remove('hidden');
-                        document.querySelector('#contactPhotoUpload .photo-placeholder')?.classList.add('hidden');
-                    };
-                    reader.readAsDataURL(file);
-                }
-            }
-            
-            // Show success message
-            setTimeout(() => {
-                alert('Event pass/ID card scanned! Please review and complete the contact information.');
-            }, 300);
             
         } catch (error) {
             console.error('OCR Error:', error);
@@ -4271,178 +5000,319 @@ function openEventPassScanner() {
     input.click();
 }
 
-// Parse event pass/ID card text to extract contact information
-function parseEventPassText(text) {
+const JOB_TITLE_KEYWORDS = [
+    'manager','director','engineer','developer','designer','consultant','specialist','lead','head','officer','executive',
+    'chief','founder','co-founder','president','vice','vp','chair','partner','analyst','architect','strategist','scientist',
+    'advisor','associate','assistant','coordinator','administrator','representative','supervisor','professor',
+    'teacher','doctor','lawyer','attorney','marketing','sales','product','research','growth','recruiter','hr','talent',
+    'operations','finance','digital','brand','customer','support','agent','broker','realtor','estate','property'
+];
+
+function normalizeOcrText(rawText) {
+    if (!rawText) return '';
+    return rawText
+        .replace(/\r\n?/g, '\n')
+        .replace(/\u00A0/g, ' ')
+        .replace(/[•·●▪■]/g, ' ')
+        .replace(/[“”]/g, '"')
+        .replace(/[‘’]/g, '\'')
+        .replace(/\u2013|\u2014|\u2212/g, '-')
+        .replace(/[|¦]/g, 'I')
+        .split('\n')
+        .map(line => line.replace(/\s{2,}/g, ' ').trimEnd())
+        .join('\n');
+}
+
+function toTitleCase(value) {
+    if (!value) return '';
+    return value
+        .split(/\s+/)
+        .map(word => {
+            if (!word) return '';
+            if (word.toUpperCase() === word) {
+                return word.charAt(0) + word.slice(1).toLowerCase();
+            }
+            return word.charAt(0).toUpperCase() + word.slice(1);
+        })
+        .join(' ')
+        .trim();
+}
+
+function normalizePhoneCandidate(candidate) {
+    if (!candidate) return '';
+    let cleaned = candidate.replace(/[^\d+]/g, '');
+    if (!cleaned) return '';
+    if (cleaned.startsWith('00')) {
+        cleaned = '+' + cleaned.slice(2);
+    }
+    if (!cleaned.startsWith('+') && cleaned.length > 10) {
+        cleaned = '+' + cleaned;
+    }
+    return cleaned;
+}
+
+function cleanLinkedInUrl(url) {
+    if (!url) return '';
+    let cleaned = url.trim();
+    cleaned = cleaned.replace(/[),.;]+$/, '');
+    if (!/^https?:\/\//i.test(cleaned)) {
+        cleaned = 'https://' + cleaned.replace(/^www\./i, '');
+    }
+    return cleaned;
+}
+
+function deriveCompanyFromEmail(email) {
+    if (!email || !email.includes('@')) return '';
+    const domain = email.split('@')[1];
+    if (!domain) return '';
+    const companyPart = domain.split('.')[0];
+    if (!companyPart) return '';
+    return toTitleCase(companyPart.replace(/[-_]/g, ' '));
+}
+
+function applyPhoneToForm(phone) {
+    const countrySelect = document.getElementById('contactCountryCode');
+    const mobileEl = document.getElementById('contactMobile');
+    if (!mobileEl || !countrySelect) return;
+
+    if (!phone) {
+        mobileEl.value = '';
+        return;
+    }
+
+    const trimmed = phone.trim();
+    const match = trimmed.match(/^(\+\d{1,4})([\s\-().]*)(.*)$/);
+
+    if (match) {
+        const countryCode = match[1];
+        const number = (match[3] || match[2] || '').replace(/[^\d]/g, '') || trimmed.replace(/[^\d]/g, '');
+
+        const option = Array.from(countrySelect.options).find(opt => opt.value === countryCode);
+        if (option) {
+            countrySelect.value = countryCode;
+        }
+        mobileEl.value = number || trimmed.replace(/^\+/, '');
+    } else {
+        mobileEl.value = trimmed.replace(/[^\d+]/g, '');
+    }
+}
+
+function isLikelyJobTitle(line) {
+    if (!line) return false;
+    const lower = line.toLowerCase();
+    return JOB_TITLE_KEYWORDS.some(keyword => lower.includes(keyword));
+}
+
+function extractCommonContactInfo(rawText) {
     const info = {
         name: '',
         email: '',
         phone: '',
         company: '',
         linkedin: '',
-        eventName: '',
-        role: ''
+        website: '',
+        title: ''
     };
     
-    const lines = text.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+    const normalizedText = normalizeOcrText(rawText);
+    const sanitizedForEmail = normalizedText
+        .replace(/\s@\s/g, '@')
+        .replace(/\s\.\s/g, '.')
+        .replace(/\sDOT\s/gi, '.')
+        .replace(/\sAT\s/gi, '@');
     
-    // Email pattern
-    const emailRegex = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g;
-    const emails = text.match(emailRegex);
-    if (emails && emails.length > 0) {
+    const lines = normalizedText.split('\n').map(line => line.trim()).filter(Boolean);
+    const labelRegex = /^(name|contact|email|e-mail|mail|phone|mobile|cell|tel|linkedin|website|url|company|organisation|organization|org|title|position|designation|role)\s*[:\-]\s*/i;
+    
+    const lineData = lines.map((line, index) => {
+        const stripped = line.replace(labelRegex, '').trim();
+        return {
+            raw: line,
+            stripped,
+            lower: stripped.toLowerCase(),
+            originalLower: line.toLowerCase(),
+            index
+        };
+    });
+    
+    const emailRegex = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g;
+    for (const entry of lineData) {
+        const match = entry.raw.match(emailRegex);
+        if (match && match.length) {
+            info.email = match[0];
+            break;
+        }
+    }
+    if (!info.email) {
+        const emails = sanitizedForEmail.match(emailRegex);
+        if (emails && emails.length) {
         info.email = emails[0];
     }
-    
-    // Phone patterns (various formats)
-    const phoneRegex = /(\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}|\d{10,}/g;
-    const phones = text.match(phoneRegex);
-    if (phones && phones.length > 0) {
-        // Clean up phone number
-        info.phone = phones[0].replace(/[-.\s()]/g, '');
-        if (info.phone.length > 10) {
-            info.phone = '+' + info.phone;
-        }
     }
     
-    // LinkedIn URL
-    const linkedinRegex = /(?:linkedin\.com\/in\/|linkedin\.com\/pub\/)[\w-]+/gi;
-    const linkedinMatch = text.match(linkedinRegex);
-    if (linkedinMatch && linkedinMatch.length > 0) {
-        info.linkedin = 'https://' + linkedinMatch[0];
-    }
-    
-    // Event name patterns (common keywords)
-    const eventKeywords = ['conference', 'summit', 'expo', 'exhibition', 'forum', 'meetup', 'event', 'gitex', 'tech', 'trade show', 'symposium'];
-    const eventRegex = new RegExp(eventKeywords.join('|'), 'i');
-    
-    // Name - usually first line or first two words of first substantial line
-    for (let i = 0; i < Math.min(5, lines.length); i++) {
-        const line = lines[i];
-        const lowerLine = line.toLowerCase();
-        
-        // Skip if it looks like email, phone, or URL
-        if (emailRegex.test(line) || phoneRegex.test(line) || line.includes('http') || line.includes('www.')) {
-            continue;
+    const phoneRegex = /(\+?\d{1,3}[\s().-]*)?(?:\d[\s().-]*){7,}\d/g;
+    const phoneLabelRegex = /^(?:phone|mobile|cell|tel|ph|p|m|t)\b/i;
+    const phoneCandidates = [];
+    for (const entry of lineData) {
+        const source = phoneLabelRegex.test(entry.raw) ? entry.raw : entry.stripped;
+        const match = source.match(phoneRegex);
+        if (match && match.length) {
+            phoneCandidates.push({
+                raw: match[0],
+                priority: phoneLabelRegex.test(entry.raw) ? 1 : 2
+            });
         }
-        
-        // Extract name (usually first or second line, 2-50 chars, not all caps unless short)
-        if (!info.name && i < 3 && line.length >= 2 && line.length <= 50) {
-            const words = line.split(/\s+/);
-            if (words.length <= 4 && !line.match(/^\d+$/)) {
-                info.name = line;
+    }
+    if (!phoneCandidates.length) {
+        const match = sanitizedForEmail.match(phoneRegex);
+        if (match && match.length) {
+            phoneCandidates.push({ raw: match[0], priority: 3 });
+        }
+    }
+    if (phoneCandidates.length) {
+        phoneCandidates.sort((a, b) => {
+            if (a.priority !== b.priority) return a.priority - b.priority;
+            return normalizePhoneCandidate(b.raw).length - normalizePhoneCandidate(a.raw).length;
+        });
+        info.phone = normalizePhoneCandidate(phoneCandidates[0].raw);
+        }
+    
+    const linkedinRegex = /(https?:\/\/)?(www\.)?linkedin\.com\/[^\s,;]+/i;
+    for (const entry of lineData) {
+        if (entry.lower.includes('linkedin')) {
+            const match = entry.raw.match(linkedinRegex) || entry.stripped.match(linkedinRegex);
+            if (match && match.length) {
+                info.linkedin = cleanLinkedInUrl(match[0]);
+                break;
             }
         }
-        
-        // Extract company (look for company indicators or after name)
-        if (!info.company && (i > 0 && i < 5)) {
-            if (lowerLine.includes('inc') || lowerLine.includes('ltd') || lowerLine.includes('corp') || 
-                lowerLine.includes('company') || lowerLine.includes('llc') || lowerLine.includes('gmbh')) {
-                info.company = line;
-            } else if (i === 1 || i === 2) {
-                // Second or third line might be company
-                const potentialCompany = line;
-                if (potentialCompany.length > 2 && potentialCompany.length < 100 && !emailRegex.test(potentialCompany)) {
-                    info.company = potentialCompany;
+    }
+    if (!info.linkedin) {
+        const match = sanitizedForEmail.match(linkedinRegex);
+        if (match && match.length) {
+            info.linkedin = cleanLinkedInUrl(match[0]);
+    }
+    }
+    
+    const websiteRegex = /(https?:\/\/)?(www\.)?[a-zA-Z0-9][a-zA-Z0-9-]{1,61}[a-zA-Z0-9]\.[a-zA-Z]{2,}(?:\/[^\s,;]*)?/g;
+    for (const entry of lineData) {
+        const match = entry.raw.match(websiteRegex);
+        if (match && match.length) {
+            const candidate = match[0];
+            if (!candidate.toLowerCase().includes('linkedin')) {
+                info.website = candidate.startsWith('http') ? candidate : `https://${candidate.replace(/^www\./i, '')}`;
+                break;
+    }
+        }
+    }
+    
+    const labelledName = lineData.find(entry => /^name\b/i.test(entry.raw) && entry.stripped);
+    if (labelledName) {
+        info.name = toTitleCase(labelledName.stripped);
+    }
+    if (!info.name) {
+        for (const entry of lineData) {
+            if (entry.stripped.length < 2 || entry.stripped.length > 60) continue;
+            if (/\d/.test(entry.stripped)) continue;
+            if (entry.lower.includes('@') || entry.lower.includes('www.') || entry.lower.includes('http')) continue;
+            if (isLikelyJobTitle(entry.stripped)) {
+                if (!info.title) info.title = toTitleCase(entry.stripped);
+                continue;
+            }
+            const words = entry.stripped.split(/\s+/).filter(Boolean);
+            if (words.length < 2 || words.length > 4) continue;
+            const capitalized = words.filter(word => /^[A-Z][a-zA-Z'’.-]*$/.test(word) || /^[A-Z]{2,}$/.test(word));
+            if (capitalized.length >= Math.max(2, Math.floor(words.length * 0.6))) {
+                info.name = toTitleCase(entry.stripped);
+                    break;
                 }
             }
         }
-        
-        // Extract event name
-        if (!info.eventName && eventRegex.test(lowerLine)) {
-            info.eventName = line;
+    if (!info.name && info.email) {
+        const localPart = info.email.split('@')[0];
+        if (localPart.includes('.')) {
+            const words = localPart.split(/[._-]/).filter(Boolean);
+            if (words.length >= 2) {
+                info.name = toTitleCase(words.join(' '));
+            }
         }
     }
     
-    return info;
-}
-
-// Parse business card text to extract contact information
-function parseBusinessCardText(text) {
-    const info = {
-        name: '',
-        email: '',
-        phone: '',
-        company: '',
-        linkedin: '',
-        website: ''
-    };
-    
-    const lines = text.split('\n').map(line => line.trim()).filter(line => line.length > 0);
-    
-    // Email pattern
-    const emailRegex = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g;
-    const emails = text.match(emailRegex);
-    if (emails && emails.length > 0) {
-        info.email = emails[0];
+    const labelledCompany = lineData.find(entry => /^(company|organisation|organization|org)\b/i.test(entry.raw) && entry.stripped);
+    if (labelledCompany) {
+        info.company = toTitleCase(labelledCompany.stripped);
     }
-    
-    // Phone patterns (various formats)
-    const phoneRegex = /(\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}|\d{10,}/g;
-    const phones = text.match(phoneRegex);
-    if (phones && phones.length > 0) {
-        // Clean up phone number
-        info.phone = phones[0].replace(/[-.\s()]/g, '');
-        if (info.phone.length > 10) {
-            info.phone = '+' + info.phone;
+    if (!info.company) {
+        for (const entry of lineData) {
+            const lower = entry.lower;
+            if (lower.includes('inc') || lower.includes('llc') || lower.includes('ltd') || lower.includes('corp') ||
+                lower.includes('company') || lower.includes('gmbh') || lower.includes('plc') || lower.includes('pty') ||
+                lower.includes('pvt') || lower.includes('limited')) {
+                info.company = toTitleCase(entry.stripped || entry.raw);
+            break;
+            }
         }
     }
-    
-    // LinkedIn URL
-    const linkedinRegex = /(?:linkedin\.com\/in\/|linkedin\.com\/pub\/)[\w-]+/gi;
-    const linkedinMatch = text.match(linkedinRegex);
-    if (linkedinMatch && linkedinMatch.length > 0) {
-        info.linkedin = 'https://' + linkedinMatch[0];
-    }
-    
-    // Website URL
-    const websiteRegex = /(?:www\.)?[a-zA-Z0-9][a-zA-Z0-9-]{1,61}[a-zA-Z0-9]\.[a-zA-Z]{2,}/g;
-    const websites = text.match(websiteRegex);
-    if (websites && websites.length > 0 && !websites[0].includes('linkedin')) {
-        info.website = websites[0].startsWith('www.') ? 'https://' + websites[0] : websites[0];
-    }
-    
-    // Name - usually first line or first two words of first substantial line
-    for (let i = 0; i < Math.min(3, lines.length); i++) {
-        const line = lines[i];
-        // Skip if it looks like email, phone, or URL
-        if (!emailRegex.test(line) && !phoneRegex.test(line) && !websiteRegex.test(line)) {
-            // Check if it looks like a name (2-4 words, capitalized)
-            const words = line.split(/\s+/);
-            if (words.length >= 2 && words.length <= 4) {
-                const isNameLike = words.every(word => 
-                    word.length > 0 && 
-                    (word[0] === word[0].toUpperCase() || /^[A-Z]/.test(word))
-                );
-                if (isNameLike && !info.name) {
-                    info.name = line;
+    if (!info.company) {
+        for (const entry of lineData) {
+            if (entry.index === 0) continue;
+            if (entry.stripped.length < 3 || entry.stripped.length > 60) continue;
+            if (/\d/.test(entry.stripped)) continue;
+            const words = entry.stripped.split(/\s+/).filter(Boolean);
+            if (words.length >= 2 && words.length <= 5) {
+                const uppercaseCount = words.filter(word => /^[A-Z][A-Za-z'’.-]*$/.test(word) || /^[A-Z]{2,}$/.test(word)).length;
+                if (uppercaseCount >= Math.floor(words.length * 0.6) && !isLikelyJobTitle(entry.stripped)) {
+                    info.company = toTitleCase(entry.stripped);
                     break;
                 }
             }
         }
     }
+    if (!info.company) {
+        info.company = deriveCompanyFromEmail(info.email);
+    }
     
-    // Company - look for common company indicators or capitalized multi-word phrases
-    for (const line of lines) {
-        if (line.toLowerCase().includes('inc') || 
-            line.toLowerCase().includes('llc') || 
-            line.toLowerCase().includes('ltd') ||
-            line.toLowerCase().includes('corp') ||
-            line.toLowerCase().includes('company')) {
-            info.company = line;
-            break;
-        } else if (!info.company && line.length > 3 && line.length < 50) {
-            const words = line.split(/\s+/);
-            if (words.length >= 2 && words.length <= 5) {
-                const isCompanyLike = words.every(word => 
-                    word.length > 0 && 
-                    (word[0] === word[0].toUpperCase() || /^[A-Z]/.test(word))
-                );
-                if (isCompanyLike && line !== info.name) {
-                    info.company = line;
-                }
-            }
+    if (!info.title) {
+        const titleEntry = lineData.find(entry => isLikelyJobTitle(entry.stripped));
+        if (titleEntry) {
+            info.title = toTitleCase(titleEntry.stripped);
         }
     }
     
+    return { info, lines: lineData };
+}
+
+// Parse event pass/ID card text to extract contact information
+function parseEventPassText(text) {
+    const { info, lines } = extractCommonContactInfo(text);
+    const eventInfo = {
+        name: info.name,
+        email: info.email,
+        phone: info.phone,
+        company: info.company,
+        linkedin: info.linkedin,
+        eventName: '',
+        role: info.title
+    };
+    
+    const eventKeywords = ['conference', 'summit', 'expo', 'exhibition', 'forum', 'meetup', 'event', 'gitex', 'tech', 'trade show', 'symposium', 'fair', 'festival'];
+    const eventRegex = new RegExp(eventKeywords.join('|'), 'i');
+    
+    for (const entry of lines) {
+        if (!eventInfo.eventName && eventRegex.test(entry.lower)) {
+            eventInfo.eventName = entry.raw;
+        }
+        if (!eventInfo.role && isLikelyJobTitle(entry.stripped)) {
+            eventInfo.role = toTitleCase(entry.stripped);
+                }
+            }
+    
+    return eventInfo;
+    }
+    
+// Parse business card text to extract contact information
+function parseBusinessCardText(text) {
+    const { info } = extractCommonContactInfo(text);
     return info;
 }
 
@@ -4976,6 +5846,41 @@ function closeModal() {
     document.querySelectorAll('.modal').forEach(modal => modal.classList.add('hidden'));
 }
 
+// Toast Notification System
+function showToast(message, type = 'info', duration = 5000) {
+    const container = document.getElementById('toastContainer');
+    if (!container) return;
+    
+    const icons = {
+        success: '✓',
+        error: '✕',
+        warning: '⚠',
+        info: 'ℹ'
+    };
+    
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    toast.innerHTML = `
+        <div class="toast-icon">${icons[type] || icons.info}</div>
+        <div class="toast-content">
+            <div class="toast-message">${message}</div>
+        </div>
+        <button class="toast-close" onclick="this.parentElement.remove()">×</button>
+    `;
+    
+    container.appendChild(toast);
+    
+    // Auto-remove after duration
+    if (duration > 0) {
+        setTimeout(() => {
+            toast.classList.add('removing');
+            setTimeout(() => toast.remove(), 300);
+        }, duration);
+    }
+    
+    return toast;
+}
+
 function updateCharCount() {
     const textarea = document.getElementById('contactContext');
     const counter = document.getElementById('contextCharCount');
@@ -4984,10 +5889,30 @@ function updateCharCount() {
     }
 }
 
+function formatDate(date) {
+    // Format date as "26-Nov-2025"
+    const d = new Date(date);
+    const day = d.getDate();
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const month = months[d.getMonth()];
+    const year = d.getFullYear();
+    return `${day}-${month}-${year}`;
+}
+
+function formatDateTime(date) {
+    // Format date and time as "26-Nov-2025 14:30"
+    const d = new Date(date);
+    const day = d.getDate();
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const month = months[d.getMonth()];
+    const year = d.getFullYear();
+    const hours = d.getHours().toString().padStart(2, '0');
+    const minutes = d.getMinutes().toString().padStart(2, '0');
+    return `${day}-${month}-${year} ${hours}:${minutes}`;
+}
+
 function formatDateRange(start, end) {
-    const startDate = new Date(start);
-    const endDate = new Date(end);
-    return `${startDate.toLocaleDateString()} - ${endDate.toLocaleDateString()}`;
+    return `${formatDate(start)} - ${formatDate(end)}`;
 }
 
 function copyToClipboard(text) {
@@ -5189,7 +6114,7 @@ function displayUsers(users) {
     }
 
     usersList.innerHTML = users.map(user => {
-        const createdDate = new Date(user.created_at).toLocaleDateString();
+        const createdDate = formatDate(user.created_at);
         const adminBadge = user.is_admin ? '<span class="admin-badge" style="background: #ef4444; color: white; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; margin-left: 8px;">ADMIN</span>' : '';
         
         return `
@@ -5357,7 +6282,7 @@ async function saveAdminUser() {
 
         if (editingUserId) {
             await api.updateUser(editingUserId, userData);
-            alert('User updated successfully');
+            showToast('User updated successfully', 'success');
         } else {
             // For new users, we need to provide a password
             const password = prompt('Enter password for new user (minimum 6 characters):');
@@ -5376,7 +6301,7 @@ async function saveAdminUser() {
                 about_me: about || null,
                 is_admin: isAdmin
             });
-            alert('User created successfully');
+            showToast('User created successfully', 'success');
         }
 
         document.getElementById('adminUserModal').classList.add('hidden');

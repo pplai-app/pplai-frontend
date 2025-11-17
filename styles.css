@@ -1541,6 +1541,214 @@ body {
     padding: 6px 12px;
 }
 
+/* Public Profile View */
+.public-profile-wrapper {
+    min-height: 100vh;
+    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 32px 16px 24px;
+    box-sizing: border-box;
+}
+
+.public-profile-card {
+    width: 100%;
+    max-width: 480px;
+    background: #fff;
+    border-radius: 24px;
+    padding: 24px;
+    box-shadow: 0 20px 40px rgba(15, 23, 42, 0.12);
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.public-profile-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.public-profile-brand {
+    font-weight: 600;
+    color: var(--text-primary, #111827);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 16px;
+}
+
+.brand-dot {
+    width: 10px;
+    height: 10px;
+    background: linear-gradient(120deg, #667eea, #764ba2);
+    border-radius: 50%;
+    display: inline-block;
+}
+
+.public-profile-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border: none;
+    background: transparent;
+    color: var(--text-secondary, #4b5563);
+    font-size: 14px;
+    cursor: pointer;
+}
+
+.public-profile-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    padding: 32px 0;
+}
+
+.public-profile-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 12px;
+}
+
+.public-profile-content.hidden {
+    display: none;
+}
+
+.public-profile-photo {
+    width: 120px;
+    height: 120px;
+    border-radius: 32px;
+    overflow: hidden;
+    background: rgba(102, 126, 234, 0.08);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.public-profile-photo img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: none;
+}
+
+.public-profile-photo .photo-placeholder {
+    font-size: 48px;
+}
+
+.public-profile-role {
+    color: var(--text-secondary, #4b5563);
+    font-size: 16px;
+    margin: 0;
+}
+
+.public-profile-about {
+    color: var(--text-primary, #111827);
+    font-size: 15px;
+    line-height: 1.4;
+    margin: 0;
+}
+
+.public-profile-actions {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 12px;
+    margin-top: 12px;
+}
+
+.public-profile-action {
+    border: 1px solid rgba(102, 126, 234, 0.15);
+    border-radius: 12px;
+    padding: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    text-decoration: none;
+    color: var(--text-primary, #111827);
+    background: rgba(102, 126, 234, 0.05);
+    font-size: 14px;
+}
+
+.public-profile-action svg {
+    color: #667eea;
+}
+
+.public-profile-meta {
+    width: 100%;
+    background: rgba(102, 126, 234, 0.05);
+    border-radius: 16px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 8px;
+}
+
+.meta-item {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.meta-label {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-secondary, #6b7280);
+    margin-bottom: 4px;
+}
+
+.public-profile-cta {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 16px;
+}
+
+.public-profile-error {
+    background: rgba(239, 68, 68, 0.1);
+    color: #991b1b;
+    padding: 16px;
+    border-radius: 12px;
+    text-align: center;
+}
+
+.public-profile-footer {
+    margin-top: 16px;
+    color: #475467;
+    font-size: 13px;
+    text-align: center;
+}
+
+#publicProfileScreen .btn-primary {
+    width: 100%;
+    border: none;
+    border-radius: 12px;
+    padding: 14px;
+    font-size: 16px;
+    background: linear-gradient(120deg, #667eea, #764ba2);
+    color: white;
+    cursor: pointer;
+}
+
+#publicProfileScreen .btn-secondary {
+    width: 100%;
+    border: 1px solid rgba(102, 126, 234, 0.3);
+    border-radius: 12px;
+    padding: 14px;
+    font-size: 16px;
+    background: transparent;
+    color: #4f46e5;
+    cursor: pointer;
+}
+
 @media (max-width: 640px) {
     .tag-item {
         flex-direction: column;
@@ -2221,4 +2429,118 @@ body {
 .icon-btn.active {
     background: var(--primary);
     color: white;
+}
+
+/* Toast Notifications */
+.toast-container {
+    position: fixed;
+    top: 80px;
+    right: 20px;
+    z-index: 10000;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-width: 400px;
+}
+
+.toast {
+    background: white;
+    border-radius: 12px;
+    padding: 16px 20px;
+    box-shadow: var(--shadow-lg);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    animation: slideIn 0.3s ease-out;
+    border-left: 4px solid var(--primary);
+}
+
+.toast.success {
+    border-left-color: var(--success);
+}
+
+.toast.error {
+    border-left-color: var(--danger);
+}
+
+.toast.warning {
+    border-left-color: var(--warning);
+}
+
+.toast.info {
+    border-left-color: var(--primary);
+}
+
+.toast-icon {
+    font-size: 24px;
+    flex-shrink: 0;
+}
+
+.toast-content {
+    flex: 1;
+}
+
+.toast-title {
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+}
+
+.toast-message {
+    font-size: 14px;
+    color: var(--text-secondary);
+}
+
+.toast-close {
+    background: none;
+    border: none;
+    font-size: 20px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 0;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    transition: background 0.2s;
+}
+
+.toast-close:hover {
+    background: rgba(0, 0, 0, 0.05);
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(400px);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes slideOut {
+    from {
+        transform: translateX(0);
+        opacity: 1;
+    }
+    to {
+        transform: translateX(400px);
+        opacity: 0;
+    }
+}
+
+.toast.removing {
+    animation: slideOut 0.3s ease-in forwards;
+}
+
+@media (max-width: 768px) {
+    .toast-container {
+        right: 12px;
+        left: 12px;
+        max-width: none;
+    }
 }

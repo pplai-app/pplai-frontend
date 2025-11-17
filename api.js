@@ -6,6 +6,9 @@ let API_BASE_URL = window.API_BASE_URL || 'http://localhost:8000/api';
 // Force HTTPS if we're on HTTPS (fix at initialization time)
 // This MUST happen before any API calls are made
 (function() {
+    if (!API_BASE_URL || API_BASE_URL.includes('${API_BASE_URL}')) {
+        API_BASE_URL = 'http://localhost:8000/api';
+    }
     if (typeof window !== 'undefined' && window.location.protocol === 'https:') {
         if (API_BASE_URL.startsWith('http://')) {
             API_BASE_URL = API_BASE_URL.replace('http://', 'https://');
@@ -522,11 +525,32 @@ const api = {
         return apiRequest(`/contacts/${contactId}`);
     },
 
+    async analyzeBusinessCard(file) {
+        const formData = new FormData();
+        formData.append('file', file, file.name || 'business-card.jpg');
+
+        const token = getAuthToken();
+        const response = await fetch(normalizeApiUrl('/ocr/business-card'), {
+            method: 'POST',
+            headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+            body: formData,
+        });
+
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({ error: 'OCR request failed' }));
+            throw new Error(error.error || error.detail || 'OCR request failed');
+        }
+
+        return response.json();
+    },
+
     async createContact(contactData, photoFile, mediaFiles) {
         const formData = new FormData();
         formData.append('name', contactData.name);
         if (contactData.email) formData.append('email', contactData.email);
         if (contactData.role_company) formData.append('role_company', contactData.role_company);
+        if (contactData.company) formData.append('company', contactData.company);
+        if (contactData.website) formData.append('website', contactData.website);
         if (contactData.mobile) formData.append('mobile', contactData.mobile);
         if (contactData.linkedin_url) formData.append('linkedin_url', contactData.linkedin_url);
         if (contactData.meeting_context) formData.append('meeting_context', contactData.meeting_context);
@@ -564,6 +588,8 @@ const api = {
         if (contactData.name) formData.append('name', contactData.name);
         if (contactData.email !== undefined) formData.append('email', contactData.email);
         if (contactData.role_company !== undefined) formData.append('role_company', contactData.role_company);
+        if (contactData.company !== undefined) formData.append('company', contactData.company);
+        if (contactData.website !== undefined) formData.append('website', contactData.website);
         if (contactData.mobile !== undefined) formData.append('mobile', contactData.mobile);
         if (contactData.linkedin_url !== undefined) formData.append('linkedin_url', contactData.linkedin_url);
         if (contactData.meeting_context !== undefined) formData.append('meeting_context', contactData.meeting_context);

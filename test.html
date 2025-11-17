@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Page</title>
+</head>
+<body>
+    <h1>Test Page</h1>
+    <p>If you see this, the server is working.</p>
+    <script src="api.js"></script>
+    <script>
+        if (typeof api !== 'undefined') {
+            document.body.innerHTML += '<p style="color: green;">✓ api.js loaded successfully!</p>';
+        } else {
+            document.body.innerHTML += '<p style="color: red;">✗ api.js failed to load</p>';
+        }
+    </script>
+</body>
+</html>
+

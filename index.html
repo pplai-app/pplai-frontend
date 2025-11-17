@@ -10,8 +10,8 @@
     <title>pplai.app - Networking App</title>
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cdefs%3E%3ClinearGradient id='grad' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' style='stop-color:%23667eea;stop-opacity:1' /%3E%3Cstop offset='100%25' style='stop-color:%23764ba2;stop-opacity:1' /%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='100' height='100' fill='url(%23grad)' rx='20'/%3E%3Ctext x='50' y='70' font-size='60' font-weight='bold' fill='white' text-anchor='middle' font-family='Arial'%3EM%3C/text%3E%3C/svg%3E">
     <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cdefs%3E%3ClinearGradient id='grad' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' style='stop-color:%23667eea;stop-opacity:1' /%3E%3Cstop offset='100%25' style='stop-color:%23764ba2;stop-opacity:1' /%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='100' height='100' fill='url(%23grad)' rx='20'/%3E%3Ctext x='50' y='70' font-size='60' font-weight='bold' fill='white' text-anchor='middle' font-family='Arial'%3EM%3C/text%3E%3C/svg%3E">
-    <link rel="manifest" href="manifest.json">
-    <link rel="stylesheet" href="styles.css">
+    <link rel="manifest" href="/manifest.json">
+    <link rel="stylesheet" href="/styles.css">
     <!-- jsQR for QR scanning -->
     <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
     <!-- Tesseract.js for OCR -->
@@ -33,7 +33,7 @@
     <div id="authScreen" class="screen hidden">
         <div class="auth-container">
             <div class="logo">
-                <h1>Meet AI</h1>
+                <h1>pplai</h1>
                 <p>Network smarter at events</p>
             </div>
             <div class="auth-buttons">
@@ -71,10 +71,96 @@
         </div>
     </div>
 
+    <!-- Public Profile Screen (for shared links) -->
+    <div id="publicProfileScreen" class="screen hidden">
+        <div class="public-profile-wrapper">
+            <div class="public-profile-card">
+                <div class="public-profile-header">
+                    <div class="public-profile-brand">
+                        <span class="brand-dot"></span>
+                        pplai
+                    </div>
+                    <button id="publicProfileBackBtn" class="public-profile-back">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M15 18l-6-6 6-6"></path>
+                        </svg>
+                        Back to pplai
+                    </button>
+                </div>
+                <div id="publicProfileLoading" class="public-profile-loading">
+                    <div class="loading-spinner"></div>
+                    <p>Loading profile…</p>
+                </div>
+                <div id="publicProfileContent" class="public-profile-content hidden">
+                    <div class="public-profile-photo" id="publicProfilePhotoContainer">
+                        <img id="publicProfilePhoto" alt="Profile photo">
+                        <div id="publicProfilePhotoPlaceholder" class="photo-placeholder">👤</div>
+                    </div>
+                    <h1 id="publicProfileName"></h1>
+                    <p id="publicProfileRole" class="public-profile-role"></p>
+                    <p id="publicProfileAbout" class="public-profile-about"></p>
+
+                    <div class="public-profile-actions" id="publicProfileActions">
+                        <a id="publicProfileCall" class="public-profile-action" target="_blank" rel="noopener">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.44 12.44 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.44 12.44 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+                            </svg>
+                            <span id="publicProfileCallText">Call</span>
+                        </a>
+                        <a id="publicProfileEmail" class="public-profile-action" target="_blank" rel="noopener">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M4 4h16v16H4z"></path>
+                                <polyline points="22,6 12,13 2,6"></polyline>
+                            </svg>
+                            <span id="publicProfileEmailText">Email</span>
+                        </a>
+                        <a id="publicProfileLinkedIn" class="public-profile-action" target="_blank" rel="noopener">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M4.98 3.5C4.98 4.88 3.86 6 2.5 6S0 4.88 0 3.5 1.12 1 2.5 1s2.48 1.12 2.48 2.5zM.5 8h4V24h-4V8zm7.5 0h3.7v2.2h.05c.52-.98 1.8-2.2 3.7-2.2 4 0 4.7 2.6 4.7 6V24h-4v-7c0-1.7-.03-3.9-2.4-3.9-2.4 0-2.8 1.8-2.8 3.8V24h-4V8z"/>
+                            </svg>
+                            <span>LinkedIn</span>
+                        </a>
+                        <a id="publicProfileWhatsapp" class="public-profile-action" target="_blank" rel="noopener">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M.057 24l1.687-6.163a11.867 11.867 0 01-1.62-6.01C.122 5.281 5.353 0 12.057 0c3.183 0 6.167 1.24 8.413 3.487a11.82 11.82 0 013.49 8.414c-.003 6.803-5.234 12.031-11.94 12.031a11.9 11.9 0 01-6.012-1.616L.057 24zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.877.002-5.462-4.415-9.89-9.881-9.894-5.452 0-9.887 4.433-9.889 9.881a9.82 9.82 0 001.588 5.26l-.999 3.648 3.9-1.61zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.94 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.52.149-.173.198-.297.298-.495.099-.198.05-.372-.025-.521-.075-.149-.669-1.611-.916-2.207-.242-.579-.487-.5-.669-.51l-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.095 3.2 5.076 4.487.709.306 1.262.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.29.173-1.414z"/>
+                            </svg>
+                            <span>WhatsApp</span>
+                        </a>
+                    </div>
+
+                    <div class="public-profile-meta">
+                        <div class="meta-item">
+                            <span class="meta-label">Email</span>
+                            <span id="publicProfileEmailValue"></span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-label">Mobile</span>
+                            <span id="publicProfileMobileValue"></span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-label">LinkedIn</span>
+                            <span id="publicProfileLinkedInValue"></span>
+                        </div>
+                    </div>
+
+                    <div class="public-profile-cta">
+                        <button id="publicProfileSaveBtn" class="btn-primary">Save to pplai</button>
+                        <button id="publicProfileOpenAppBtn" class="btn-secondary">Open in app</button>
+                    </div>
+                </div>
+                <div id="publicProfileError" class="public-profile-error hidden"></div>
+            </div>
+            <p class="public-profile-footer">Powered by pplai.app – scan, save, and follow up smarter.</p>
+        </div>
+    </div>
+
     <!-- Main App Container -->
     <div id="appContainer" class="screen hidden">
+        <!-- Toast Notifications Container -->
+        <div id="toastContainer" class="toast-container"></div>
+        
         <!-- Current Event Banner (shown at top of all views) -->
-        <div class="current-event-banner" id="currentEventBanner" style="display: none;">
+        <div class="current-event-banner" id="currentEventBanner">
             <div class="banner-content">
                 <div>
                     <strong>Current Event:</strong>
@@ -131,14 +217,7 @@
         <!-- Home View -->
         <div id="homeView" class="view active">
             <div class="view-header">
-                <h2>Meet AI</h2>
-                <button id="quickAuthBtn" class="icon-btn" title="Logout">
-                    <svg id="authBtnIcon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-                        <polyline points="16 17 21 12 16 7"></polyline>
-                        <line x1="21" y1="12" x2="9" y2="12"></line>
-                    </svg>
-                </button>
+                <h2>pplai</h2>
             </div>
             <div class="action-cards">
                 <div class="action-card" id="scanQRCard">
@@ -154,7 +233,7 @@
                         </svg>
                     </div>
                     <h3>Scan QR Code</h3>
-                    <p>Scan a Meet AI QR code</p>
+                    <p>Scan a pplai QR code</p>
                 </div>
                 <div class="action-card" id="scanCardCard">
                     <div class="action-icon card-icon">
@@ -278,6 +357,15 @@
                     </svg>
                     <span>Tag</span>
                 </button>
+                <button id="bulkAddEventBtn" class="bulk-action-btn" title="Set Event">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                        <line x1="16" y1="2" x2="16" y2="6"></line>
+                        <line x1="8" y1="2" x2="8" y2="6"></line>
+                        <line x1="3" y1="10" x2="21" y2="10"></line>
+                    </svg>
+                    <span>Event</span>
+                </button>
                 <button id="bulkDeleteBtn" class="bulk-action-btn bulk-action-danger" title="Delete All">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <polyline points="3 6 5 6 21 6"></polyline>
@@ -302,6 +390,10 @@
                 </div>
             </div>
             <div id="contactsFilters" class="contacts-filters hidden">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                    <h4 style="margin: 0; font-size: 14px; font-weight: 600;">Filters</h4>
+                    <button id="clearAllFiltersBtn" class="btn-small btn-secondary" style="display: none;">Clear All</button>
+                </div>
                 <select id="eventFilter" class="filter-select">
                     <option value="all">All Events</option>
                 </select>
@@ -467,6 +559,17 @@
                 </div>
                 <div id="offlineIndicator" class="offline-indicator hidden" style="margin-top: 16px; padding: 12px; background: rgba(255, 193, 7, 0.1); border-radius: 8px; text-align: center; font-size: 14px; color: #856404;">
                     <span>📡 Offline Mode - Using cached data</span>
+                </div>
+                <!-- Logout Button -->
+                <div style="margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--border-color);">
+                    <button id="quickAuthBtn" class="btn-secondary" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                        <svg id="authBtnIcon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                            <polyline points="16 17 21 12 16 7"></polyline>
+                            <line x1="21" y1="12" x2="9" y2="12"></line>
+                        </svg>
+                        <span>Logout</span>
+                    </button>
                 </div>
             </div>
         </div>
@@ -662,6 +765,10 @@
                             <span class="detail-label">📆 Met On</span>
                             <span class="detail-value" id="contactViewDate"></span>
                         </div>
+                        <div class="detail-item" id="contactViewLocationItem" style="display: none;">
+                            <span class="detail-label">📍 Location</span>
+                            <span class="detail-value" id="contactViewLocation"></span>
+                        </div>
                     </div>
                     
                     <div class="detail-section" id="contactViewContextItem" style="display: none; margin-top: 24px;">
@@ -820,6 +927,14 @@
                     <input type="url" id="contactLinkedIn" class="input-field">
                 </div>
                 <div class="form-group">
+                    <label for="contactWebsite">Website</label>
+                    <input type="url" id="contactWebsite" class="input-field" placeholder="Company website">
+                </div>
+                <div class="form-group">
+                    <label for="contactCompany">Company</label>
+                    <input type="text" id="contactCompany" class="input-field" placeholder="Company name">
+                </div>
+                <div class="form-group">
                     <label for="contactEvent">Event</label>
                     <select id="contactEvent" class="input-field">
                         <option value="">Select an event (optional)</option>
@@ -938,22 +1053,53 @@
         </div>
     </div>
 
+    <!-- Bulk Tag Modal -->
+    <div id="bulkTagModal" class="modal hidden">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h3>Manage Tags for <span id="bulkTagCount">0</span> Contacts</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div style="margin-bottom: 20px;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: 500;">Select tags to add or remove:</label>
+                    <div id="bulkTagsList" class="tags-checkbox-list" style="max-height: 300px; overflow-y: auto;">
+                        <!-- Dynamically populated -->
+                    </div>
+                </div>
+                <div style="margin-bottom: 20px;">
+                    <label for="bulkNewTagInput" style="display: block; margin-bottom: 8px; font-weight: 500;">Or create a new tag:</label>
+                    <input type="text" id="bulkNewTagInput" placeholder="Enter new tag name" style="width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 8px;">
+                </div>
+                <div class="modal-actions">
+                    <button id="applyBulkTagsBtn" class="btn-primary">Apply Changes</button>
+                    <button class="btn-secondary modal-close">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Inject API_BASE_URL and GOOGLE_CLIENT_ID from environment variables -->
     <script>
         // Force HTTPS conversion immediately, before any other code runs
         (function() {
             var apiBaseUrl = '${API_BASE_URL}';
+            if (!apiBaseUrl || apiBaseUrl.includes('${API_BASE_URL}')) {
+                apiBaseUrl = 'http://localhost:8000/api';
+            }
             // If we're on HTTPS and API_BASE_URL is HTTP, convert it
             if (window.location.protocol === 'https:' && apiBaseUrl.startsWith('http://')) {
                 apiBaseUrl = apiBaseUrl.replace('http://', 'https://');
                 console.warn('🔒 [HTML] Converted API_BASE_URL from HTTP to HTTPS:', apiBaseUrl);
             }
             window.API_BASE_URL = apiBaseUrl;
-            window.GOOGLE_CLIENT_ID = '${GOOGLE_CLIENT_ID}';
+            // Use placeholder if not replaced by envsubst (local development)
+            const googleClientId = '${GOOGLE_CLIENT_ID}';
+            window.GOOGLE_CLIENT_ID = googleClientId.startsWith('${') ? '' : googleClientId;
         })();
     </script>
-    <script src="api.js"></script>
-    <script src="offline-queue.js"></script>
-    <script src="script.js"></script>
+    <script src="/api.js"></script>
+    <script src="/offline-queue.js"></script>
+    <script src="/script.js"></script>
 </body>
 </html>

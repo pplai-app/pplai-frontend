@@ -74,7 +74,7 @@ jobs:
         # Use production API URL
         API_BASE_URL="${{ secrets.API_BASE_URL }}"
         if [ -z "$API_BASE_URL" ]; then
-          API_BASE_URL="https://app.pplai.app/api"
+          API_BASE_URL="https://api.pplai.app/api"
           echo "✅ Using default API_BASE_URL: $API_BASE_URL"
         else
           echo "✅ Using API_BASE_URL from secret: $API_BASE_URL"

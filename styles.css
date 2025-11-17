@@ -252,16 +252,7 @@ body {
     display: none;
 }
 
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-        transform: translateY(10px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
+/* fadeIn animation moved to bottom with other animations */
 
 .view-header {
     display: flex;
@@ -298,6 +289,22 @@ body {
     box-shadow: var(--shadow-md);
     background: var(--primary);
     color: white;
+}
+
+.icon-btn:active {
+    transform: translateY(0);
+    box-shadow: var(--shadow);
+}
+
+.icon-btn:focus-visible {
+    outline: 3px solid rgba(102, 126, 234, 0.4);
+    outline-offset: 2px;
+}
+
+.icon-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
 }
 
 /* Action Cards */
@@ -1145,8 +1152,19 @@ body {
 .chat-empty-state {
     text-align: center;
     color: var(--text-secondary);
-    padding: 40px 20px;
+    padding: 48px 20px;
     font-size: 14px;
+    background: rgba(255, 255, 255, 0.5);
+    border-radius: 12px;
+    margin: 16px;
+}
+
+.chat-empty-state::before {
+    content: '💬';
+    display: block;
+    font-size: 48px;
+    margin-bottom: 12px;
+    opacity: 0.5;
 }
 
 @media (max-width: 480px) {
@@ -1173,6 +1191,8 @@ body {
     align-items: center;
     justify-content: center;
     gap: 8px;
+    position: relative;
+    overflow: hidden;
 }
 
 .btn-primary {
@@ -1188,6 +1208,19 @@ body {
 
 .btn-primary:active {
     transform: translateY(0);
+    box-shadow: var(--shadow);
+}
+
+.btn-primary:focus-visible {
+    outline: 3px solid rgba(102, 126, 234, 0.4);
+    outline-offset: 2px;
+}
+
+.btn-primary:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: var(--shadow-sm);
 }
 
 .btn-secondary {
@@ -1200,6 +1233,22 @@ body {
 .btn-secondary:hover {
     border-color: var(--primary);
     box-shadow: var(--shadow-md);
+    transform: translateY(-1px);
+}
+
+.btn-secondary:active {
+    transform: translateY(0);
+}
+
+.btn-secondary:focus-visible {
+    outline: 3px solid rgba(102, 126, 234, 0.4);
+    outline-offset: 2px;
+}
+
+.btn-secondary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
 }
 
 .btn-small {
@@ -1210,10 +1259,29 @@ body {
 .btn-danger {
     background: var(--danger);
     color: white;
+    box-shadow: var(--shadow-md);
 }
 
 .btn-danger:hover {
     background: #dc2626;
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+}
+
+.btn-danger:active {
+    transform: translateY(0);
+    box-shadow: var(--shadow);
+}
+
+.btn-danger:focus-visible {
+    outline: 3px solid rgba(239, 68, 68, 0.4);
+    outline-offset: 2px;
+}
+
+.btn-danger:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
 }
 
 /* Modals */
@@ -1223,14 +1291,14 @@ body {
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(0, 0, 0, 0.5);
-    backdrop-filter: blur(4px);
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(8px);
     display: flex;
     align-items: center;
     justify-content: center;
     z-index: 1000;
     padding: 20px;
-    animation: fadeIn 0.3s ease-out;
+    animation: fadeIn 0.2s ease-out;
 }
 
 .modal.hidden {
@@ -1245,7 +1313,26 @@ body {
     max-height: 90vh;
     overflow-y: auto;
     box-shadow: var(--shadow-xl);
-    animation: slideUp 0.3s ease-out;
+    animation: slideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transform-origin: center;
+}
+
+.modal-content::-webkit-scrollbar {
+    width: 8px;
+}
+
+.modal-content::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 10px;
+}
+
+.modal-content::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 10px;
+}
+
+.modal-content::-webkit-scrollbar-thumb:hover {
+    background: var(--text-secondary);
 }
 
 .modal-header {
@@ -1280,6 +1367,16 @@ body {
 .modal-close:hover {
     background: var(--danger);
     color: white;
+    transform: rotate(90deg);
+}
+
+.modal-close:focus-visible {
+    outline: 3px solid rgba(239, 68, 68, 0.4);
+    outline-offset: 2px;
+}
+
+.modal-close:active {
+    transform: rotate(90deg) scale(0.95);
 }
 
 .modal-body {
@@ -1311,11 +1408,33 @@ body {
     background: white;
 }
 
+.input-field:hover,
+.textarea-field:hover {
+    border-color: rgba(102, 126, 234, 0.3);
+}
+
 .input-field:focus,
 .textarea-field:focus {
     outline: none;
     border-color: var(--primary);
     box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+}
+
+.input-field:disabled,
+.textarea-field:disabled {
+    background: #f9fafb;
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.input-field:invalid:not(:focus):not(:placeholder-shown),
+.textarea-field:invalid:not(:focus):not(:placeholder-shown) {
+    border-color: var(--danger);
+}
+
+.input-field:valid:not(:focus):not(:placeholder-shown),
+.textarea-field:valid:not(:focus):not(:placeholder-shown) {
+    border-color: var(--success);
 }
 
 .textarea-field {
@@ -2191,21 +2310,69 @@ body {
 /* Empty State */
 .empty-state {
     text-align: center;
-    padding: 48px 24px;
+    padding: 64px 24px;
     color: var(--text-secondary);
     font-size: 16px;
+    background: white;
+    border-radius: 16px;
+    box-shadow: var(--shadow-sm);
+    margin: 20px 0;
+}
+
+.empty-state::before {
+    content: '📭';
+    display: block;
+    font-size: 64px;
+    margin-bottom: 16px;
+    opacity: 0.5;
+}
+
+.empty-state h3 {
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 8px;
+}
+
+.empty-state p {
+    font-size: 14px;
+    line-height: 1.6;
+    max-width: 400px;
+    margin: 0 auto;
 }
 
 /* Animations */
 @keyframes slideUp {
     from {
         opacity: 0;
-        transform: translateY(20px);
+        transform: translateY(20px) scale(0.95);
     }
     to {
         opacity: 1;
-        transform: translateY(0);
+        transform: translateY(0) scale(1);
     }
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.5;
+    }
+}
+
+.loading-pulse {
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
 /* Utility Classes */
@@ -2601,4 +2768,285 @@ body {
     flex-direction: column;
     align-items: center;
     justify-content: center;
+}
+
+/* Scanner Modal Styles */
+.fullscreen-modal {
+    max-width: 100vw;
+    max-height: 100vh;
+    width: 100vw;
+    height: 100vh;
+    margin: 0;
+    border-radius: 0;
+    padding: 0;
+    overflow: hidden;
+}
+
+.fullscreen-modal .modal-header {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(10px);
+    padding: 16px 20px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.fullscreen-modal .modal-header h3 {
+    color: white;
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.fullscreen-modal .modal-header .modal-close {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    border: none;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    font-size: 24px;
+    line-height: 1;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+}
+
+.fullscreen-modal .modal-header .modal-close:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+.fullscreen-modal .modal-body {
+    position: relative;
+    width: 100%;
+    height: 100vh;
+    padding: 0;
+    background: #000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+/* Video elements - proper proportions */
+#qrVideo,
+#businessCardVideo,
+#eventPassVideo {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    background: #000;
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+
+/* Scanner Overlay */
+.scanner-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    z-index: 5;
+}
+
+/* Scanner Frame - Square for QR, Rectangle for cards */
+.scanner-frame {
+    position: relative;
+    border: 3px solid rgba(102, 126, 234, 0.8);
+    border-radius: 12px;
+    background: transparent;
+    box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5);
+    animation: scannerPulse 2s ease-in-out infinite;
+}
+
+/* QR Scanner Frame - Square */
+#qrScannerModal .scanner-frame {
+    width: 280px;
+    height: 280px;
+}
+
+/* Card Scanner Frame - Rectangle */
+#businessCardScannerModal .scanner-frame,
+#eventPassScannerModal .scanner-frame {
+    width: 320px;
+    height: 200px;
+    max-width: 85vw;
+    max-height: 50vh;
+}
+
+/* Scanner Corner Indicators */
+.scanner-frame {
+    position: relative;
+    overflow: visible;
+}
+
+.scanner-corner {
+    position: absolute;
+    width: 30px;
+    height: 30px;
+    border: 4px solid rgba(102, 126, 234, 1);
+    z-index: 1;
+}
+
+.scanner-corner-top-left {
+    top: -3px;
+    left: -3px;
+    border-right: none;
+    border-bottom: none;
+    border-top-left-radius: 12px;
+}
+
+.scanner-corner-top-right {
+    top: -3px;
+    right: -3px;
+    border-left: none;
+    border-bottom: none;
+    border-top-right-radius: 12px;
+}
+
+.scanner-corner-bottom-left {
+    bottom: -3px;
+    left: -3px;
+    border-right: none;
+    border-top: none;
+    border-bottom-left-radius: 12px;
+}
+
+.scanner-corner-bottom-right {
+    bottom: -3px;
+    right: -3px;
+    border-left: none;
+    border-top: none;
+    border-bottom-right-radius: 12px;
+}
+
+/* Scanning Line Animation */
+.scanner-frame::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(102, 126, 234, 0.8) 20%,
+        rgba(118, 75, 162, 0.9) 50%,
+        rgba(102, 126, 234, 0.8) 80%,
+        transparent
+    );
+    animation: scanLine 2s linear infinite;
+    border-radius: 0;
+    z-index: 2;
+}
+
+/* Scanner Animations */
+@keyframes scannerPulse {
+    0%, 100% {
+        box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5),
+                    0 0 0 0 rgba(102, 126, 234, 0.4);
+    }
+    50% {
+        box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5),
+                    0 0 20px 5px rgba(102, 126, 234, 0.6);
+    }
+}
+
+@keyframes scanLine {
+    0% {
+        top: 0;
+        opacity: 1;
+    }
+    50% {
+        opacity: 1;
+    }
+    100% {
+        top: 100%;
+        opacity: 0;
+    }
+}
+
+/* Scanner Hint Text */
+.scanner-hint {
+    position: absolute;
+    bottom: 100px;
+    left: 50%;
+    transform: translateX(-50%);
+    color: white;
+    font-size: 16px;
+    font-weight: 500;
+    text-align: center;
+    z-index: 10;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(10px);
+    padding: 12px 24px;
+    border-radius: 24px;
+    pointer-events: none;
+    white-space: nowrap;
+}
+
+/* Scanner Control Buttons */
+#businessCardCaptureBtn,
+#businessCardUploadBtn,
+#eventPassCaptureBtn,
+#eventPassUploadBtn {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(10px);
+    transition: all 0.2s;
+}
+
+#businessCardCaptureBtn:hover,
+#eventPassCaptureBtn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+}
+
+#businessCardUploadBtn:hover,
+#eventPassUploadBtn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+    background: rgba(255, 255, 255, 0.9);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    #qrScannerModal .scanner-frame {
+        width: 250px;
+        height: 250px;
+    }
+    
+    #businessCardScannerModal .scanner-frame,
+    #eventPassScannerModal .scanner-frame {
+        width: 280px;
+        height: 175px;
+    }
+    
+    .scanner-hint {
+        font-size: 14px;
+        padding: 10px 20px;
+        bottom: 120px;
+    }
+    
+    #businessCardCaptureBtn,
+    #businessCardUploadBtn,
+    #eventPassCaptureBtn,
+    #eventPassUploadBtn {
+        padding: 10px 20px;
+        font-size: 14px;
+    }
 }

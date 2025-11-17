@@ -735,28 +735,71 @@ function populatePublicProfileView(profile) {
     contentEl?.classList.remove('hidden');
 }
 
-function handlePublicProfileSave() {
+async function handlePublicProfileSave() {
     if (!currentPublicProfileId || !currentPublicProfile) return;
     
-    // Get the current URL to determine if it's from QR scan or shared profile
-    const profileUrl = `${window.location.origin}/profile/${currentPublicProfileId}`;
-    
-    // Store the profile data as pending contact save
-    const contactData = {
-        name: currentPublicProfile.name,
-        email: currentPublicProfile.email,
-        role_company: currentPublicProfile.role_company,
-        mobile: currentPublicProfile.mobile,
-        whatsapp: currentPublicProfile.whatsapp,
-        linkedin_url: currentPublicProfile.linkedin_url,
-        about_me: currentPublicProfile.about_me,
-        contact_photo_url: currentPublicProfile.profile_photo_url,
-        // Mark as from QR/shared profile and include profile URL
-        fromPplaiProfile: true,
-        pplaiProfileUrl: profileUrl
-    };
-    sessionStorage.setItem('pendingContactSave', JSON.stringify(contactData));
-    window.location.href = '/';
+    try {
+        // Convert profile to contact format for vCard generation
+        const contactData = {
+            name: currentPublicProfile.name || '',
+            email: currentPublicProfile.email || null,
+            email_addresses: currentPublicProfile.email ? [{ address: currentPublicProfile.email }] : [],
+            mobile: currentPublicProfile.mobile || null,
+            whatsapp: currentPublicProfile.whatsapp || null,
+            phone_numbers: [],
+            role_company: currentPublicProfile.role_company || null,
+            company: null,
+            website: null,
+            linkedin_url: currentPublicProfile.linkedin_url || null,
+            contact_photo_url: currentPublicProfile.profile_photo_url || null,
+            meeting_context: currentPublicProfile.about_me || null,
+            tags: [],
+            event: null
+        };
+        
+        // Add phone numbers
+        if (currentPublicProfile.mobile) {
+            contactData.phone_numbers.push({
+                number: currentPublicProfile.mobile,
+                is_whatsapp: false
+            });
+        }
+        if (currentPublicProfile.whatsapp && currentPublicProfile.whatsapp !== currentPublicProfile.mobile) {
+            contactData.phone_numbers.push({
+                number: currentPublicProfile.whatsapp,
+                is_whatsapp: true
+            });
+        }
+        
+        // Generate vCard with embedded photo
+        const vcard = await generateContactVCardWithPhoto(contactData);
+        const blob = new Blob([vcard], { type: 'text/vcard' });
+        const url = URL.createObjectURL(blob);
+        
+        // Try Web Share API first (works on mobile)
+        if (navigator.share && navigator.canShare) {
+            const file = new File([blob], `${contactData.name.replace(/\s+/g, '_')}.vcf`, { type: 'text/vcard' });
+            if (navigator.canShare({ files: [file] })) {
+                navigator.share({
+                    title: `Save ${contactData.name}`,
+                    text: `Contact card for ${contactData.name}`,
+                    files: [file]
+                }).then(() => {
+                    URL.revokeObjectURL(url);
+                }).catch(() => {
+                    // Fallback to download
+                    downloadVCard(url, contactData.name);
+                });
+                return;
+            }
+        }
+        
+        // Fallback: Download vCard
+        downloadVCard(url, contactData.name);
+    } catch (error) {
+        console.error('Error saving contact to phone:', error);
+        showToast('Failed to save contact to phone: ' + error.message, 'error');
+    }
 }
 
 function formatPhoneForLink(number) {
@@ -3541,7 +3584,7 @@ async function bulkAddTagToContacts() {
             // Create a flex container for inline tags that wrap
             const flexContainer = document.createElement('div');
             flexContainer.className = 'bulk-tags-flex';
-            flexContainer.style.cssText = 'display: flex; flex-wrap: wrap; gap: 8px; align-items: center;';
+            flexContainer.style.cssText = 'display: flex; flex-wrap: wrap; gap: 6px; align-items: center;';
             
             for (const tag of tags) {
                 const color = getTagColor(tag.name);
@@ -3554,12 +3597,12 @@ async function bulkAddTagToContacts() {
                 tagBadge.dataset.tagName = tag.name;
                 tagBadge.textContent = tag.name;
                 tagBadge.style.cssText = `
-                    padding: 4px 10px;
-                    border-radius: 12px;
-                    border: 1.5px solid ${color.border};
+                    padding: 2px 6px;
+                    border-radius: 8px;
+                    border: 1px solid ${color.border};
                     background: ${color.bg};
                     color: ${color.text};
-                    font-size: 11px;
+                    font-size: 10px;
                     font-weight: 500;
                     cursor: pointer;
                     transition: all 0.2s ease;
@@ -3680,7 +3723,7 @@ async function addBulkTags() {
                 const mergedTags = [...new Set([...currentTags, ...selectedTagNames])];
                 
                 await api.updateContact(contactId, { tags: mergedTags }, null, []);
-                successCount++;
+                        successCount++;
             } catch (error) {
                 console.error(`Failed to add tags to contact ${contactId}:`, error);
                 errorCount++;
@@ -6209,39 +6252,93 @@ async function renderStandalonePublicProfile(userId) {
             if (mobileValueEl) mobileValueEl.textContent = profile.mobile || 'Not shared';
             if (linkedinValueEl) linkedinValueEl.textContent = profile.linkedin_url || 'Not shared';
             
-            // Open in app button - stores the profile ID and redirects to home
+            // Open in app button - requires login, then stores the profile ID and redirects to home
             const openInAppBtn = document.getElementById('publicProfileOpenAppBtn');
             if (openInAppBtn) {
                 openInAppBtn.onclick = () => {
+                    const currentUser = getCurrentUser();
+                    if (!currentUser) {
+                        // Store profile ID for after login
                     sessionStorage.setItem('pendingProfileView', userId);
+                        showToast('🔐 Please login to open in app', 'info');
+                        // Redirect to home where login screen will be shown
+                        setTimeout(() => {
                     window.location.href = '/';
+                        }, 1500);
+                    } else {
+                        // Already logged in, proceed
+                        sessionStorage.setItem('pendingProfileView', userId);
+                        window.location.href = '/';
+                    }
                 };
             }
             
-            // Save to contacts button (requires login)
+            // Save to phone contacts button - works without login (saves directly to phone)
             const saveBtn = document.getElementById('publicProfileSaveBtn');
             if (saveBtn) {
-                saveBtn.onclick = () => {
-                    // Get the current URL to determine if it's from QR scan or shared profile
-                    const currentUrl = window.location.href;
-                    const profileUrl = `${window.location.origin}/profile/${userId}`;
-                    
-                    // Store the profile data as pending contact save
-                    const contactData = {
-                        name: profile.name,
-                        email: profile.email,
-                        role_company: profile.role_company,
-                        mobile: profile.mobile,
-                        whatsapp: profile.whatsapp,
-                        linkedin_url: profile.linkedin_url,
-                        about_me: profile.about_me,
-                        contact_photo_url: profile.profile_photo_url,
-                        // Mark as from QR/shared profile and include profile URL
-                        fromPplaiProfile: true,
-                        pplaiProfileUrl: profileUrl
-                    };
-                    sessionStorage.setItem('pendingContactSave', JSON.stringify(contactData));
-                    window.location.href = '/';
+                saveBtn.onclick = async () => {
+                    try {
+                        // Convert profile to contact format for vCard generation
+                        const contactData = {
+                            name: profile.name || '',
+                            email: profile.email || null,
+                            email_addresses: profile.email ? [{ address: profile.email }] : [],
+                            mobile: profile.mobile || null,
+                            whatsapp: profile.whatsapp || null,
+                            phone_numbers: [],
+                            role_company: profile.role_company || null,
+                            company: null,
+                            website: null,
+                            linkedin_url: profile.linkedin_url || null,
+                            contact_photo_url: profile.profile_photo_url || null,
+                            meeting_context: profile.about_me || null,
+                            tags: [],
+                            event: null
+                        };
+                        
+                        // Add phone numbers
+                        if (profile.mobile) {
+                            contactData.phone_numbers.push({
+                                number: profile.mobile,
+                                is_whatsapp: false
+                            });
+                        }
+                        if (profile.whatsapp && profile.whatsapp !== profile.mobile) {
+                            contactData.phone_numbers.push({
+                                number: profile.whatsapp,
+                                is_whatsapp: true
+                            });
+                        }
+                        
+                        // Generate vCard with embedded photo
+                        const vcard = await generateContactVCardWithPhoto(contactData);
+                        const blob = new Blob([vcard], { type: 'text/vcard' });
+                        const url = URL.createObjectURL(blob);
+                        
+                        // Try Web Share API first (works on mobile)
+                        if (navigator.share && navigator.canShare) {
+                            const file = new File([blob], `${contactData.name.replace(/\s+/g, '_')}.vcf`, { type: 'text/vcard' });
+                            if (navigator.canShare({ files: [file] })) {
+                                navigator.share({
+                                    title: `Save ${contactData.name}`,
+                                    text: `Contact card for ${contactData.name}`,
+                                    files: [file]
+                                }).then(() => {
+                                    URL.revokeObjectURL(url);
+                                }).catch(() => {
+                                    // Fallback to download
+                                    downloadVCard(url, contactData.name);
+                                });
+                                return;
+                            }
+                        }
+                        
+                        // Fallback: Download vCard
+                        downloadVCard(url, contactData.name);
+                    } catch (error) {
+                        console.error('Error saving contact to phone:', error);
+                        alert('Failed to save contact to phone: ' + (error.message || 'Unknown error'));
+                    }
                 };
             }
             

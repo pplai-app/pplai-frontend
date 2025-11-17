@@ -2544,3 +2544,24 @@ body {
         max-width: none;
     }
 }
+
+/* Export Modal Styles */
+.export-format-btn:hover {
+    border-color: var(--primary) !important;
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(240, 147, 251, 0.05) 100%) !important;
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.export-format-btn:active {
+    transform: translateY(0);
+    box-shadow: var(--shadow-sm);
+}
+
+#exportProgress, #exportSuccess, #exportError {
+    min-height: 150px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}

@@ -1079,6 +1079,54 @@
         </div>
     </div>
 
+    <!-- Export Modal -->
+    <div id="exportModal" class="modal hidden">
+        <div class="modal-content" style="max-width: 450px;">
+            <div class="modal-header">
+                <h3>Export <span id="exportCount">0</span> <span id="exportType">Contacts</span></h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div style="margin-bottom: 24px;">
+                    <label style="display: block; margin-bottom: 12px; font-weight: 500; font-size: 15px;">Choose export format:</label>
+                    <div style="display: grid; gap: 12px;">
+                        <button id="exportPDFBtn" class="export-format-btn" style="display: flex; align-items: center; gap: 12px; padding: 16px; border: 2px solid var(--border-color); border-radius: 12px; background: white; cursor: pointer; transition: all 0.2s;">
+                            <div style="font-size: 32px;">📄</div>
+                            <div style="text-align: left; flex: 1;">
+                                <div style="font-weight: 600; font-size: 16px; margin-bottom: 4px;">PDF Document</div>
+                                <div style="font-size: 13px; color: var(--text-secondary);">Professional format with photos and details</div>
+                            </div>
+                        </button>
+                        <button id="exportCSVBtn" class="export-format-btn" style="display: flex; align-items: center; gap: 12px; padding: 16px; border: 2px solid var(--border-color); border-radius: 12px; background: white; cursor: pointer; transition: all 0.2s;">
+                            <div style="font-size: 32px;">📊</div>
+                            <div style="text-align: left; flex: 1;">
+                                <div style="font-weight: 600; font-size: 16px; margin-bottom: 4px;">CSV Spreadsheet</div>
+                                <div style="font-size: 13px; color: var(--text-secondary);">Import into Excel, Google Sheets, or CRM</div>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+                <div id="exportProgress" class="hidden" style="text-align: center; padding: 20px;">
+                    <div style="font-size: 32px; margin-bottom: 12px;">⏳</div>
+                    <div style="font-weight: 500; margin-bottom: 8px;">Generating export...</div>
+                    <div style="font-size: 13px; color: var(--text-secondary);">This may take a moment</div>
+                </div>
+                <div id="exportSuccess" class="hidden" style="text-align: center; padding: 20px;">
+                    <div style="font-size: 48px; margin-bottom: 12px;">✅</div>
+                    <div style="font-weight: 600; font-size: 18px; margin-bottom: 8px; color: var(--primary-color);">Export Complete!</div>
+                    <div style="font-size: 14px; color: var(--text-secondary); margin-bottom: 20px;">Your file has been downloaded</div>
+                    <button class="btn-primary modal-close">Done</button>
+                </div>
+                <div id="exportError" class="hidden" style="text-align: center; padding: 20px;">
+                    <div style="font-size: 48px; margin-bottom: 12px;">❌</div>
+                    <div style="font-weight: 600; font-size: 18px; margin-bottom: 8px; color: var(--danger-color);">Export Failed</div>
+                    <div id="exportErrorMessage" style="font-size: 14px; color: var(--text-secondary); margin-bottom: 20px;"></div>
+                    <button class="btn-secondary modal-close">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Inject API_BASE_URL and GOOGLE_CLIENT_ID from environment variables -->
     <script>
         // Force HTTPS conversion immediately, before any other code runs

@@ -2632,32 +2632,84 @@ async function bulkSaveContacts() {
     }
 }
 
+// Export modal state
+let exportModalData = {
+    ids: [],
+    type: 'contacts', // 'contacts' or 'event'
+    eventId: null
+};
+
 async function bulkExportContacts() {
     const selectedIds = getSelectedContactIds();
     if (selectedIds.length === 0) {
-        alert('Please select contacts to export');
+        showToast('Please select contacts to export', 'warning');
         return;
     }
     
-    // Show export format selection
-    const format = confirm(
-        `Export ${selectedIds.length} contact(s)?\n\n` +
-        `Click OK for PDF\n` +
-        `Click Cancel for CSV`
-    );
+    // Show export modal
+    exportModalData.ids = selectedIds;
+    exportModalData.type = 'contacts';
+    showExportModal(selectedIds.length, 'Contacts');
+}
+
+function showExportModal(count, type) {
+    const modal = document.getElementById('exportModal');
+    const exportCount = document.getElementById('exportCount');
+    const exportType = document.getElementById('exportType');
+    const selectionDiv = document.querySelector('#exportModal .modal-body > div:first-child');
+    const progressDiv = document.getElementById('exportProgress');
+    const successDiv = document.getElementById('exportSuccess');
+    const errorDiv = document.getElementById('exportError');
+    
+    // Reset state
+    exportCount.textContent = count;
+    exportType.textContent = type;
+    selectionDiv.classList.remove('hidden');
+    progressDiv.classList.add('hidden');
+    successDiv.classList.add('hidden');
+    errorDiv.classList.add('hidden');
+    
+    modal.classList.remove('hidden');
+}
+
+async function handleExportFormat(format) {
+    const selectionDiv = document.querySelector('#exportModal .modal-body > div:first-child');
+    const progressDiv = document.getElementById('exportProgress');
+    const successDiv = document.getElementById('exportSuccess');
+    const errorDiv = document.getElementById('exportError');
+    const errorMessage = document.getElementById('exportErrorMessage');
+    
+    // Show progress
+    selectionDiv.classList.add('hidden');
+    progressDiv.classList.remove('hidden');
     
     try {
-        if (format) {
-            // Export as PDF
-            await api.exportContactsPDF(selectedIds);
-            alert(`Exported ${selectedIds.length} contacts to PDF`);
+        if (exportModalData.type === 'contacts') {
+            // Export contacts
+            if (format === 'pdf') {
+                await api.exportContactsPDF(exportModalData.ids);
+            } else {
+                await api.exportContactsCSV(exportModalData.ids);
+            }
         } else {
-            // Export as CSV
-            await api.exportContactsCSV(selectedIds);
-            alert(`Exported ${selectedIds.length} contacts to CSV`);
+            // Export event
+            if (format === 'pdf') {
+                await api.exportEventPDF(exportModalData.eventId);
+            } else {
+                await api.exportEventCSV(exportModalData.eventId);
+            }
         }
+        
+        // Show success
+        progressDiv.classList.add('hidden');
+        successDiv.classList.remove('hidden');
+        
     } catch (error) {
-        alert('Failed to export contacts: ' + error.message);
+        console.error('Export error:', error);
+        // Show error
+        progressDiv.classList.add('hidden');
+        errorDiv.classList.remove('hidden');
+        errorMessage.textContent = error.message || 'Failed to generate export. Please try again.';
     }
 }
 

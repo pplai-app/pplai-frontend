@@ -218,6 +218,25 @@ function setupEventListeners() {
         }
     });
     
+    // AI Follow-up buttons
+    document.getElementById('aiEmailBtn')?.addEventListener('click', async () => {
+        if (currentViewingContactId && currentViewingContact) {
+            await handleAiFollowup(currentViewingContactId, currentViewingContact, 'email');
+        }
+    });
+    
+    document.getElementById('aiWhatsAppBtn')?.addEventListener('click', async () => {
+        if (currentViewingContactId && currentViewingContact) {
+            await handleAiFollowup(currentViewingContactId, currentViewingContact, 'whatsapp');
+        }
+    });
+    
+    document.getElementById('aiSmsBtn')?.addEventListener('click', async () => {
+        if (currentViewingContactId && currentViewingContact) {
+            await handleAiFollowup(currentViewingContactId, currentViewingContact, 'sms');
+        }
+    });
+    
     // Contact action buttons
     document.getElementById('saveToContactsBtn')?.addEventListener('click', saveContactToDevice);
     document.getElementById('emailContactBtn')?.addEventListener('click', emailContact);
@@ -3318,6 +3337,116 @@ async function checkExistingContact(email, mobile) {
     }
 }
 
+// Handle AI-powered follow-up actions (email, WhatsApp, SMS)
+async function handleAiFollowup(contactId, contact, type) {
+    try {
+        showToast('✨ Generating AI follow-up...', 'info');
+        
+        // Fetch AI-generated follow-ups (also invalidates contact cache)
+        const followupData = await api.getContactFollowups(contactId);
+        
+        if (!followupData || !followupData.followups) {
+            showToast('❌ No AI suggestions available', 'error');
+            return;
+        }
+
+        // Update current contact summary in UI/cache if new summary provided
+        if (followupData.summary) {
+            currentViewingContact.ai_summary = followupData.summary;
+            
+            // Update contacts array so list reflects fresh summary
+            if (Array.isArray(allContacts) && allContacts.length) {
+                const idx = allContacts.findIndex(c => c.id === contactId);
+                if (idx !== -1) {
+                    allContacts[idx] = {
+                        ...allContacts[idx],
+                        ai_summary: followupData.summary
+                    };
+                    // Re-render list with updated summary
+                    filterContactsBySearch();
+                }
+            }
+            
+            const aiSummaryItem = document.getElementById('contactViewAiSummaryItem');
+            const aiSummaryEl = document.getElementById('contactViewAiSummary');
+            if (aiSummaryItem && aiSummaryEl) {
+                aiSummaryEl.textContent = followupData.summary;
+                aiSummaryItem.style.display = 'block';
+            }
+        }
+        
+        const followup = followupData.followups[type];
+        
+        if (!followup) {
+            showToast(`❌ No ${type} template available`, 'error');
+            return;
+        }
+        
+        // Handle different follow-up types
+        switch(type) {
+            case 'email':
+                handleAiEmail(contact, followup);
+                break;
+            case 'whatsapp':
+                handleAiWhatsApp(contact, followup);
+                break;
+            case 'sms':
+                handleAiSms(contact, followup);
+                break;
+        }
+        
+        showToast(`✨ AI ${type} ready!`, 'success');
+        
+    } catch (error) {
+        console.error('Error getting AI follow-up:', error);
+        showToast(`❌ Failed to generate ${type}`, 'error');
+    }
+}
+
+// Handle AI-generated email
+function handleAiEmail(contact, emailTemplate) {
+    // Extract subject and body from template
+    let subject = 'Follow-up';
+    let body = emailTemplate;
+    
+    // Parse subject if present
+    const subjectMatch = emailTemplate.match(/Subject:\s*(.+?)(\n|$)/i);
+    if (subjectMatch) {
+        subject = subjectMatch[1].trim();
+        body = emailTemplate.replace(/Subject:\s*(.+?)(\n|$)/i, '').trim();
+    }
+    
+    // Create mailto link
+    const mailtoUrl = `mailto:${contact.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    
+    // Open email client
+    window.open(mailtoUrl, '_blank');
+}
+
+// Handle AI-generated WhatsApp message
+function handleAiWhatsApp(contact, message) {
+    // Format phone number (remove spaces, dashes, etc.)
+    const phone = contact.mobile.replace(/[^\d+]/g, '');
+    
+    // Create WhatsApp URL
+    const whatsappUrl = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+    
+    // Open WhatsApp
+    window.open(whatsappUrl, '_blank');
+}
+
+// Handle AI-generated SMS
+function handleAiSms(contact, message) {
+    // Format phone number
+    const phone = contact.mobile.replace(/[^\d+]/g, '');
+    
+    // Create SMS URL (works on mobile devices)
+    const smsUrl = `sms:${phone}?body=${encodeURIComponent(message)}`;
+    
+    // Open SMS app
+    window.open(smsUrl, '_blank');
+}
+
 async function saveContactFromView() {
     if (!currentViewingContactId || !currentViewingContact) {
         alert('No contact to save');
@@ -3674,7 +3803,7 @@ function displayContactProfile(data, isOwnProfile = false) {
         titleEl.textContent = isOwnProfile ? 'My Profile' : 'Contact Details';
     }
     
-    // Show/hide edit and delete buttons
+    // Show/hide action buttons
     const editBtn = document.getElementById('editContactBtn');
     if (editBtn) {
         editBtn.style.display = isOwnProfile ? 'none' : 'block';
@@ -3683,6 +3812,18 @@ function displayContactProfile(data, isOwnProfile = false) {
     const deleteBtn = document.getElementById('deleteContactBtn');
     if (deleteBtn) {
         deleteBtn.style.display = isOwnProfile ? 'none' : 'block';
+    }
+    
+    // Show AI follow-up buttons only for contacts (not own profile)
+    const aiEmailBtn = document.getElementById('aiEmailBtn');
+    const aiWhatsAppBtn = document.getElementById('aiWhatsAppBtn');
+    const aiSmsBtn = document.getElementById('aiSmsBtn');
+    
+    if (aiEmailBtn && aiWhatsAppBtn && aiSmsBtn) {
+        const showAiButtons = !isOwnProfile && data.email; // Only show if contact has email
+        aiEmailBtn.style.display = showAiButtons ? 'block' : 'none';
+        aiWhatsAppBtn.style.display = showAiButtons && data.mobile ? 'block' : 'none';
+        aiSmsBtn.style.display = showAiButtons && data.mobile ? 'block' : 'none';
     }
     
     // Photo
@@ -3794,7 +3935,21 @@ function displayContactProfile(data, isOwnProfile = false) {
         locationItem.style.display = 'none';
     }
     
-    // Context (only for contacts)
+    // AI Summary (only for contacts) - displayed prominently
+    const aiSummaryItem = document.getElementById('contactViewAiSummaryItem');
+    const aiSummaryEl = document.getElementById('contactViewAiSummary');
+    if (aiSummaryItem && aiSummaryEl && !isOwnProfile) {
+        if (data.ai_summary) {
+            aiSummaryEl.textContent = data.ai_summary;
+            aiSummaryItem.style.display = 'block';
+        } else {
+            aiSummaryItem.style.display = 'none';
+        }
+    } else if (aiSummaryItem) {
+        aiSummaryItem.style.display = 'none';
+    }
+    
+    // Context (only for contacts) - original notes
     const contextItem = document.getElementById('contactViewContextItem');
     const contextEl = document.getElementById('contactViewContext');
     if (contextItem && contextEl && !isOwnProfile) {

@@ -525,6 +525,13 @@ const api = {
         return apiRequest(`/contacts/${contactId}`);
     },
 
+    async getContactFollowups(contactId) {
+        const data = await apiRequest(`/contacts/${contactId}/followups`);
+        // Contact intelligence may have been regenerated - invalidate cached contacts
+        cacheInvalidation.invalidateContacts();
+        return data;
+    },
+
     async analyzeBusinessCard(file) {
         const formData = new FormData();
         formData.append('file', file, file.name || 'business-card.jpg');

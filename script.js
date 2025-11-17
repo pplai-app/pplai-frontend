@@ -175,6 +175,28 @@ function setupEventListeners() {
     document.getElementById('saveEventBtn')?.addEventListener('click', saveEvent);
     document.getElementById('eventsSearchInput')?.addEventListener('input', filterEvents);
     document.getElementById('clearEventsSearch')?.addEventListener('click', clearEventsSearch);
+    document.getElementById('eventsDateFilter')?.addEventListener('change', () => {
+        const dateFilter = document.getElementById('eventsDateFilter');
+        const customRange = document.getElementById('eventsCustomDateRange');
+        if (dateFilter && customRange) {
+            if (dateFilter.value === 'custom') {
+                customRange.classList.remove('hidden');
+            } else {
+                customRange.classList.add('hidden');
+            }
+        }
+        filterEvents();
+        updateEventsClearFiltersButton();
+    });
+    document.getElementById('eventsDateFrom')?.addEventListener('change', () => {
+        filterEvents();
+        updateEventsClearFiltersButton();
+    });
+    document.getElementById('eventsDateTo')?.addEventListener('change', () => {
+        filterEvents();
+        updateEventsClearFiltersButton();
+    });
+    document.getElementById('clearEventsFiltersBtn')?.addEventListener('click', clearEventsFilters);
     
     // Contacts search
     document.getElementById('contactsSearchInput')?.addEventListener('input', filterContactsBySearch);
@@ -1868,6 +1890,10 @@ async function loadEvents() {
 function filterEvents() {
     const searchInput = document.getElementById('eventsSearchInput');
     const clearBtn = document.getElementById('clearEventsSearch');
+    const dateFilter = document.getElementById('eventsDateFilter');
+    const dateFrom = document.getElementById('eventsDateFrom');
+    const dateTo = document.getElementById('eventsDateTo');
+    
     if (!searchInput) return;
     
     const searchTerm = searchInput.value.toLowerCase().trim();
@@ -1881,22 +1907,65 @@ function filterEvents() {
         }
     }
     
-    if (searchTerm === '') {
-        // Show all events if search is empty
-        displayEvents(allEvents);
-        return;
+    let filteredEvents = [...allEvents];
+    
+    // Apply search filter
+    if (searchTerm !== '') {
+        filteredEvents = filteredEvents.filter(event => {
+            const name = (event.name || '').toLowerCase();
+            const location = (event.location || '').toLowerCase();
+            const description = (event.description || '').toLowerCase();
+            
+            return name.includes(searchTerm) || 
+                   location.includes(searchTerm) || 
+                   description.includes(searchTerm);
+        });
     }
-
-    // Filter events by name, location, or description
-    const filteredEvents = allEvents.filter(event => {
-        const name = (event.name || '').toLowerCase();
-        const location = (event.location || '').toLowerCase();
-        const description = (event.description || '').toLowerCase();
+    
+    // Apply date filter
+    if (dateFilter && dateFilter.value !== 'all') {
+        const now = new Date();
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
         
-        return name.includes(searchTerm) || 
-               location.includes(searchTerm) || 
-               description.includes(searchTerm);
-    });
+        filteredEvents = filteredEvents.filter(event => {
+            const startDate = new Date(event.start_date);
+            const endDate = new Date(event.end_date);
+            
+            if (dateFilter.value === 'today') {
+                return startDate <= today && endDate >= today;
+            } else if (dateFilter.value === 'week') {
+                const weekStart = new Date(today);
+                weekStart.setDate(today.getDate() - today.getDay());
+                const weekEnd = new Date(weekStart);
+                weekEnd.setDate(weekStart.getDate() + 6);
+                return (startDate >= weekStart && startDate <= weekEnd) || 
+                       (endDate >= weekStart && endDate <= weekEnd) ||
+                       (startDate <= weekStart && endDate >= weekEnd);
+            } else if (dateFilter.value === 'month') {
+                const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+                const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+                return (startDate >= monthStart && startDate <= monthEnd) || 
+                       (endDate >= monthStart && endDate <= monthEnd) ||
+                       (startDate <= monthStart && endDate >= monthEnd);
+            } else if (dateFilter.value === 'upcoming') {
+                return startDate > today;
+            } else if (dateFilter.value === 'past') {
+                return endDate < today;
+            } else if (dateFilter.value === 'custom') {
+                if (dateFrom && dateFrom.value) {
+                    const fromDate = new Date(dateFrom.value);
+                    if (endDate < fromDate) return false;
+                }
+                if (dateTo && dateTo.value) {
+                    const toDate = new Date(dateTo.value);
+                    toDate.setHours(23, 59, 59, 999);
+                    if (startDate > toDate) return false;
+                }
+                return true;
+            }
+            return true;
+        });
+    }
     
     displayEvents(filteredEvents);
 }
@@ -1913,7 +1982,40 @@ function clearEventsSearch() {
     }
     
     // Show all events
-    displayEvents(allEvents);
+    filterEvents();
+}
+
+function clearEventsFilters() {
+    const searchInput = document.getElementById('eventsSearchInput');
+    const dateFilter = document.getElementById('eventsDateFilter');
+    const customRange = document.getElementById('eventsCustomDateRange');
+    const dateFrom = document.getElementById('eventsDateFrom');
+    const dateTo = document.getElementById('eventsDateTo');
+    
+    if (searchInput) searchInput.value = '';
+    if (dateFilter) dateFilter.value = 'all';
+    if (customRange) customRange.classList.add('hidden');
+    if (dateFrom) dateFrom.value = '';
+    if (dateTo) dateTo.value = '';
+    
+    filterEvents();
+    updateEventsClearFiltersButton();
+}
+
+function updateEventsClearFiltersButton() {
+    const clearBtn = document.getElementById('clearEventsFiltersBtn');
+    const searchInput = document.getElementById('eventsSearchInput');
+    const dateFilter = document.getElementById('eventsDateFilter');
+    const dateFrom = document.getElementById('eventsDateFrom');
+    const dateTo = document.getElementById('eventsDateTo');
+    
+    if (!clearBtn) return;
+    
+    const hasSearch = searchInput && searchInput.value.trim().length > 0;
+    const hasDateFilter = dateFilter && dateFilter.value !== 'all';
+    const hasCustomDates = dateFrom && dateFrom.value || dateTo && dateTo.value;
+    
+    clearBtn.style.display = (hasSearch || hasDateFilter || hasCustomDates) ? 'block' : 'none';
 }
 
 async function loadEventsForContactForm() {
@@ -2841,29 +2943,71 @@ async function bulkAddTagToContacts() {
         countEl.textContent = selectedIds.length;
         newTagInput.value = '';
         
-        // Populate tags with checkboxes (3-state: unchecked, checked, indeterminate)
+        // Populate tags with checkboxes and color coding
         tagsList.innerHTML = '';
         
         if (tags.length > 0) {
+            // Create a grid container for better layout
+            const gridContainer = document.createElement('div');
+            gridContainer.className = 'bulk-tags-grid';
+            gridContainer.style.cssText = 'display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px;';
+            
             for (const tag of tags) {
+                const color = getTagColor(tag.name);
+                
+                const label = document.createElement('label');
+                label.htmlFor = `bulkTag_${tag.id}`;
+                label.className = 'bulk-tag-item';
+                label.style.cssText = `
+                    display: flex;
+                    align-items: center;
+                    gap: 10px;
+                    padding: 10px 12px;
+                    cursor: pointer;
+                    border-radius: 8px;
+                    border: 2px solid ${color.border};
+                    background: ${color.bg};
+                    transition: all 0.2s ease;
+                    margin: 0;
+                `;
+                
+                label.onmouseover = () => {
+                    label.style.transform = 'translateY(-2px)';
+                    label.style.boxShadow = '0 4px 8px rgba(0,0,0,0.1)';
+                    label.style.borderColor = color.text;
+                };
+                label.onmouseout = () => {
+                    label.style.transform = 'translateY(0)';
+                    label.style.boxShadow = 'none';
+                    label.style.borderColor = color.border;
+                };
+                
                 const checkbox = document.createElement('input');
                 checkbox.type = 'checkbox';
                 checkbox.id = `bulkTag_${tag.id}`;
                 checkbox.value = tag.id;
                 checkbox.dataset.tagName = tag.name;
+                checkbox.style.cssText = 'width: 18px; height: 18px; cursor: pointer; flex-shrink: 0;';
                 
-                const label = document.createElement('label');
-                label.htmlFor = `bulkTag_${tag.id}`;
-                label.textContent = tag.name;
-                label.style.cssText = 'display: flex; align-items: center; padding: 8px; cursor: pointer; border-radius: 6px;';
-                label.onmouseover = () => label.style.background = '#f3f4f6';
-                label.onmouseout = () => label.style.background = 'transparent';
+                const tagBadge = document.createElement('span');
+                tagBadge.className = 'bulk-tag-badge';
+                tagBadge.textContent = tag.name;
+                tagBadge.style.cssText = `
+                    color: ${color.text};
+                    font-size: 13px;
+                    font-weight: 500;
+                    flex: 1;
+                    text-align: left;
+                `;
                 
-                label.insertBefore(checkbox, label.firstChild);
-                tagsList.appendChild(label);
+                label.appendChild(checkbox);
+                label.appendChild(tagBadge);
+                gridContainer.appendChild(label);
             }
+            
+            tagsList.appendChild(gridContainer);
         } else {
-            tagsList.innerHTML = '<p style="color: #666; font-size: 14px; padding: 12px;">No tags available. Create a new tag below.</p>';
+            tagsList.innerHTML = '<p style="color: #666; font-size: 14px; padding: 12px; text-align: center;">No tags available. Create a new tag below.</p>';
         }
         
         modal.classList.remove('hidden');

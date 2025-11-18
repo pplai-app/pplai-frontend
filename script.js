@@ -1169,6 +1169,7 @@ let pushSubscriptionEndpoint = null;
 async function initializePushNotifications() {
     // Check if browser supports push notifications
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+        console.warn('⚠️ Push notifications not supported in this browser');
         debugLog('⚠️ Push notifications not supported in this browser');
         return;
     }
@@ -1176,18 +1177,28 @@ async function initializePushNotifications() {
     // Check if user is authenticated
     const currentUser = getCurrentUser();
     if (!currentUser) {
+        console.log('ℹ️ User not authenticated, skipping push notification setup');
         return;
     }
     
     try {
+        console.log('🔔 Initializing push notifications...');
+        
         // Register service worker
         const registration = await navigator.serviceWorker.register('/sw.js');
+        console.log('✅ Service Worker registered:', registration.scope);
         debugLog('✅ Service Worker registered');
+        
+        // Wait for service worker to be ready
+        await navigator.serviceWorker.ready;
+        console.log('✅ Service Worker ready');
         
         // Check if already subscribed
         const existingSubscription = await registration.pushManager.getSubscription();
         if (existingSubscription) {
             pushSubscriptionEndpoint = existingSubscription.endpoint;
+            console.log('✅ Already subscribed to push notifications');
+            console.log('   Endpoint:', existingSubscription.endpoint.substring(0, 50) + '...');
             debugLog('✅ Already subscribed to push notifications');
             // Update subscription in backend (in case user logged in from different device)
             await updatePushSubscription(existingSubscription);
@@ -1195,42 +1206,63 @@ async function initializePushNotifications() {
             return;
         }
         
+        // Check current permission
+        const currentPermission = Notification.permission;
+        console.log('📋 Current notification permission:', currentPermission);
+        
         // Request notification permission
-        const permission = await Notification.requestPermission();
+        let permission = currentPermission;
+        if (permission === 'default') {
+            console.log('📋 Requesting notification permission...');
+            permission = await Notification.requestPermission();
+            console.log('📋 Permission result:', permission);
+        }
+        
         if (permission !== 'granted') {
+            console.warn('⚠️ Notification permission denied:', permission);
             debugLog('⚠️ Notification permission denied');
             return;
         }
         
         // Get VAPID public key from backend
+        console.log('🔑 Getting VAPID public key from backend...');
         const vapidKeyResponse = await api.getVapidPublicKey();
         const vapidPublicKey = vapidKeyResponse.publicKey;
         
         if (!vapidPublicKey) {
+            console.error('❌ VAPID public key not available');
             debugLog('⚠️ VAPID public key not available');
             return;
         }
+        
+        console.log('✅ Got VAPID public key');
         
         // Convert VAPID key to Uint8Array
         const applicationServerKey = urlBase64ToUint8Array(vapidPublicKey);
         
         // Subscribe to push service
+        console.log('📝 Subscribing to push service...');
         const subscription = await registration.pushManager.subscribe({
             userVisibleOnly: true,
             applicationServerKey: applicationServerKey
         });
         
         pushSubscriptionEndpoint = subscription.endpoint;
+        console.log('✅ Subscribed to push notifications');
+        console.log('   Endpoint:', subscription.endpoint.substring(0, 50) + '...');
         
         // Send subscription to backend
         await updatePushSubscription(subscription);
+        console.log('✅ Subscription saved to backend');
         
         debugLog('✅ Subscribed to push notifications');
         
         // Set up app exit detection
         setupAppExitDetection();
+        console.log('✅ App exit detection set up');
         
     } catch (error) {
+        console.error('❌ Error initializing push notifications:', error);
         debugError('❌ Error initializing push notifications:', error);
     }
 }
@@ -1246,8 +1278,11 @@ async function updatePushSubscription(subscription) {
             user_agent: navigator.userAgent
         };
         
+        console.log('📤 Sending subscription to backend...');
         await api.subscribePush(subscriptionData);
+        console.log('✅ Subscription updated in backend');
     } catch (error) {
+        console.error('❌ Error updating push subscription:', error);
         debugError('❌ Error updating push subscription:', error);
     }
 }
@@ -1316,14 +1351,37 @@ function setupAppExitDetection() {
 async function sendProfileNotification() {
     try {
         const currentUser = getCurrentUser();
-        if (!currentUser || !pushSubscriptionEndpoint) {
+        if (!currentUser) {
+            console.warn('⚠️ Cannot send notification: User not logged in');
             return;
         }
         
+        if (!pushSubscriptionEndpoint) {
+            console.warn('⚠️ Cannot send notification: No push subscription endpoint');
+            // Try to get subscription
+            try {
+                const registration = await navigator.serviceWorker.ready;
+                const subscription = await registration.pushManager.getSubscription();
+                if (subscription) {
+                    pushSubscriptionEndpoint = subscription.endpoint;
+                    console.log('✅ Found push subscription endpoint');
+                } else {
+                    console.warn('⚠️ No push subscription found. User may need to grant permission.');
+                    return;
+                }
+            } catch (error) {
+                console.error('❌ Error checking push subscription:', error);
+                return;
+            }
+        }
+        
         // Send notification request to backend
-        await api.sendProfileNotification();
+        console.log('📤 Sending profile notification...');
+        const result = await api.sendProfileNotification();
+        console.log('✅ Profile notification sent:', result);
         debugLog('✅ Profile notification sent');
     } catch (error) {
+        console.error('❌ Error sending profile notification:', error);
         debugError('❌ Error sending profile notification:', error);
     }
 }

@@ -1236,16 +1236,41 @@ async function initializePushNotifications() {
         }
         
         console.log('✅ Got VAPID public key');
+        console.log('   Key length:', vapidPublicKey.length);
+        console.log('   Key preview:', vapidPublicKey.substring(0, 20) + '...');
         
         // Convert VAPID key to Uint8Array
-        const applicationServerKey = urlBase64ToUint8Array(vapidPublicKey);
+        let applicationServerKey;
+        try {
+            applicationServerKey = urlBase64ToUint8Array(vapidPublicKey);
+            console.log('✅ Converted VAPID key to Uint8Array');
+            console.log('   Array length:', applicationServerKey.length);
+            
+            // Validate key length (should be 65 bytes for P-256 uncompressed public key)
+            if (applicationServerKey.length !== 65) {
+                console.warn('⚠️ VAPID key length is', applicationServerKey.length, 'bytes (expected 65 for P-256)');
+            }
+        } catch (error) {
+            console.error('❌ Error converting VAPID key:', error);
+            throw new Error('Invalid VAPID key format: ' + error.message);
+        }
         
         // Subscribe to push service
         console.log('📝 Subscribing to push service...');
-        const subscription = await registration.pushManager.subscribe({
-            userVisibleOnly: true,
-            applicationServerKey: applicationServerKey
-        });
+        let subscription;
+        try {
+            subscription = await registration.pushManager.subscribe({
+                userVisibleOnly: true,
+                applicationServerKey: applicationServerKey
+            });
+        } catch (error) {
+            console.error('❌ Subscription failed:', error);
+            console.error('   Error name:', error.name);
+            console.error('   Error message:', error.message);
+            console.error('   VAPID key (first 50 chars):', vapidPublicKey.substring(0, 50));
+            console.error('   ApplicationServerKey length:', applicationServerKey.length);
+            throw error;
+        }
         
         pushSubscriptionEndpoint = subscription.endpoint;
         console.log('✅ Subscribed to push notifications');
@@ -1288,18 +1313,31 @@ async function updatePushSubscription(subscription) {
 }
 
 function urlBase64ToUint8Array(base64String) {
+    if (!base64String || typeof base64String !== 'string') {
+        throw new Error('Invalid base64 string');
+    }
+    
+    // Remove any whitespace
+    base64String = base64String.trim();
+    
+    // Add padding if needed
     const padding = '='.repeat((4 - base64String.length % 4) % 4);
     const base64 = (base64String + padding)
         .replace(/\-/g, '+')
         .replace(/_/g, '/');
     
-    const rawData = window.atob(base64);
-    const outputArray = new Uint8Array(rawData.length);
-    
-    for (let i = 0; i < rawData.length; ++i) {
-        outputArray[i] = rawData.charCodeAt(i);
+    try {
+        const rawData = window.atob(base64);
+        const outputArray = new Uint8Array(rawData.length);
+        
+        for (let i = 0; i < rawData.length; ++i) {
+            outputArray[i] = rawData.charCodeAt(i);
+        }
+        
+        return outputArray;
+    } catch (error) {
+        throw new Error('Failed to decode base64: ' + error.message);
     }
-    return outputArray;
 }
 
 function arrayBufferToBase64(buffer) {

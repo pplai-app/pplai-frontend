@@ -993,16 +993,16 @@ async function populateContactForm(contactInfo, options = {}) {
                 console.error('cardFile is not a valid File or Blob:', cardFile);
             } else {
                 console.log('Adding card file to media input:', cardFile.name, cardFile.size, 'bytes');
-                const mediaDataTransfer = new DataTransfer();
+            const mediaDataTransfer = new DataTransfer();
                 // Preserve existing files
                 if (mediaInput.files && mediaInput.files.length > 0) {
                     Array.from(mediaInput.files).forEach(existingFile => {
                         mediaDataTransfer.items.add(existingFile);
                     });
-                }
+            }
                 // Add the card file
-                mediaDataTransfer.items.add(cardFile);
-                mediaInput.files = mediaDataTransfer.files;
+            mediaDataTransfer.items.add(cardFile);
+            mediaInput.files = mediaDataTransfer.files;
                 
                 // Trigger change event - this will call handleMediaUpload which updates the preview
                 // Don't manually update preview to avoid duplicates
@@ -2277,7 +2277,7 @@ function generateContactVCard(contact) {
             vcard += `TEL;TYPE=CELL,WA:${escapeVCardValue(phone.number)}\n`;
         } else {
             vcard += `TEL;TYPE=CELL:${escapeVCardValue(phone.number)}\n`;
-        }
+    }
     });
     
     // Company
@@ -2597,9 +2597,12 @@ async function saveProfile() {
         setCurrentUser(updated);
         currentUser = updated;
         
-        // Clear QR cache when profile is updated
-        clearQRCache(updated.id, 'url');
-        clearQRCache(updated.id, 'vcard');
+        // Cache invalidation is handled in api.updateProfile()
+        // Clear QR cache when profile is updated (additional cleanup)
+        if (typeof clearQRCache === 'function') {
+            clearQRCache(updated.id, 'url');
+            clearQRCache(updated.id, 'vcard');
+        }
         
         displayProfile(updated);
         await loadProfileQR(); // Reload QR with new data
@@ -7244,7 +7247,7 @@ async function processBusinessCardFile(file) {
                         // Always use the original file for media, not the processed/cropped version
                         cardFileForMedia = file;
                         cloudErrorDetail = null; // Clear error on success
-                        break;
+                    break;
                     }
                 } catch (cloudError) {
                     const errorMessage = cloudError?.message || String(cloudError);

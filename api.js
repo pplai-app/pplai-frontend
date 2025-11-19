@@ -208,6 +208,11 @@ const cacheInvalidation = {
     // Invalidate profile cache
     invalidateProfile() {
         clearCachePattern('/profile');
+        // Also clear current user cache
+        const user = getCurrentUser();
+        if (user && user.id) {
+            clearCachePattern(`/profile/${user.id}`);
+        }
         console.log('Profile cache invalidated');
     },
     
@@ -458,8 +463,15 @@ const api = {
         const data = await response.json();
         setCurrentUser(data);
         
-        // Invalidate profile cache
+        // Invalidate profile cache (both current user and public profile)
         cacheInvalidation.invalidateProfile();
+        // Also invalidate public profile cache for this user
+        clearCachePattern(`/profile/${data.id}`);
+        // Clear QR cache when profile is updated
+        if (typeof clearQRCache === 'function') {
+            clearQRCache(data.id, 'url');
+            clearQRCache(data.id, 'vcard');
+        }
         
         return data;
     },
@@ -763,23 +775,32 @@ const api = {
     },
 
     async createFollowup(followupData) {
-        return apiRequest('/followups', {
+        const result = await apiRequest('/followups', {
             method: 'POST',
             body: JSON.stringify(followupData),
         });
+        // Follow-ups are part of contacts, invalidate contacts cache
+        cacheInvalidation.invalidateContacts();
+        return result;
     },
 
     async updateFollowup(followupId, followupData) {
-        return apiRequest(`/followups/${followupId}`, {
+        const result = await apiRequest(`/followups/${followupId}`, {
             method: 'PUT',
             body: JSON.stringify(followupData),
         });
+        // Follow-ups are part of contacts, invalidate contacts cache
+        cacheInvalidation.invalidateContacts();
+        return result;
     },
 
     async deleteFollowup(followupId) {
-        return apiRequest(`/followups/${followupId}`, {
+        const result = await apiRequest(`/followups/${followupId}`, {
             method: 'DELETE',
         });
+        // Follow-ups are part of contacts, invalidate contacts cache
+        cacheInvalidation.invalidateContacts();
+        return result;
     },
 
     // Export
@@ -940,6 +961,8 @@ const api = {
             method: 'POST',
             body: JSON.stringify(userData),
         });
+        // Admin operations might affect profile cache
+        cacheInvalidation.invalidateProfile();
         return result;
     },
 
@@ -948,13 +971,22 @@ const api = {
             method: 'PUT',
             body: JSON.stringify(userData),
         });
+        // Admin operations might affect profile cache
+        cacheInvalidation.invalidateProfile();
+        // Also invalidate public profile cache for this user
+        clearCachePattern(`/profile/${userId}`);
         return result;
     },
 
     async deleteUser(userId) {
-        return apiRequest(`/admins/users/${userId}`, {
+        const result = await apiRequest(`/admins/users/${userId}`, {
             method: 'DELETE',
         });
+        // Admin operations might affect profile cache
+        cacheInvalidation.invalidateProfile();
+        // Also invalidate public profile cache for this user
+        clearCachePattern(`/profile/${userId}`);
+        return result;
     },
 
     async loginAsUser(userId) {

@@ -303,6 +303,8 @@ function setupEventListeners() {
         if (file) {
             closeBusinessCardScanner();
             processBusinessCardFile(file);
+            // Reset input so same file can be selected again
+            e.target.value = '';
         }
     });
     

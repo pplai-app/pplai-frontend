@@ -4618,8 +4618,19 @@ function initializeContactForm() {
     // Clear media input and preview
     clearContactMedia();
     // Add one empty phone number field and one empty email field
-    addPhoneNumberField('', true, 0);
-    addEmailField('', 0);
+    // Check containers exist before adding fields
+    const emailContainer = document.getElementById('emailAddressesContainer');
+    const phoneContainer = document.getElementById('phoneNumbersContainer');
+    if (phoneContainer) {
+        addPhoneNumberField('', true, 0);
+    } else {
+        console.warn('phoneNumbersContainer not found, skipping phone field initialization');
+    }
+    if (emailContainer) {
+        addEmailField('', 0);
+    } else {
+        console.warn('emailAddressesContainer not found, skipping email field initialization');
+    }
 }
 
 // Clear contact media (input files and preview)
@@ -4644,9 +4655,34 @@ function clearContactMedia() {
 
 async function openContactModal(contactData = null) {
     const modal = document.getElementById('contactModal');
-    if (!modal) return;
+    if (!modal) {
+        console.error('Contact modal not found');
+        return;
+    }
     
     editingContactId = contactData ? contactData.id : null;
+    
+    // Show modal first
+    modal.classList.remove('hidden');
+    
+    // Wait for modal to be fully rendered
+    await new Promise(resolve => {
+        // Use requestAnimationFrame to ensure DOM is ready
+        requestAnimationFrame(() => {
+            setTimeout(resolve, 50);
+        });
+    });
+    
+    // Verify required elements exist
+    const emailContainer = document.getElementById('emailAddressesContainer');
+    const phoneContainer = document.getElementById('phoneNumbersContainer');
+    if (!emailContainer || !phoneContainer) {
+        console.error('Required form containers not found:', {
+            emailContainer: !!emailContainer,
+            phoneContainer: !!phoneContainer
+        });
+        // Still try to continue, but log the error
+    }
     
     // Update modal title
     const modalTitle = modal.querySelector('.modal-header h3');

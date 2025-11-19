@@ -5518,7 +5518,7 @@ async function saveContact() {
                 editingContactId = null;
                 
                 // Show success message
-                alert(`Contact "${contactData.name}" saved offline. It will be synced when you're back online.`);
+                showToast(`Contact "${contactData.name}" saved offline. It will be synced when you're back online. (pplai.app)`, 'info');
                 
                 // Reload contacts to show the offline contact (if we display them)
                 await loadContacts();
@@ -5536,7 +5536,7 @@ async function saveContact() {
                         const queueItem = await offlineQueue.addContact(contactData, photoFile, mediaFiles);
                         closeModal();
                         editingContactId = null;
-                        alert(`Contact "${contactData.name}" saved offline due to network error. It will be synced when connection is restored.`);
+                        showToast(`Contact "${contactData.name}" saved offline due to network error. It will be synced when connection is restored. (pplai.app)`, 'info');
                         await loadContacts();
                     } else {
                         throw error; // Re-throw non-network errors
@@ -8310,7 +8310,7 @@ async function toggleTagVisibility(tagId, isHidden) {
         if (!navigator.onLine) {
             offlineQueue.addTag({ is_hidden: isHidden }, 'hide', tagId);
             await loadTagsForManagement(); // Reload from cache
-            alert('Tag visibility change saved offline. It will sync when you\'re back online.');
+            showToast('Tag visibility change saved offline. It will sync when you\'re back online. (pplai.app)', 'info');
             return;
         }
         
@@ -8325,7 +8325,7 @@ async function toggleTagVisibility(tagId, isHidden) {
         if (error.message.includes('Failed to fetch') || error.message.includes('Network')) {
             offlineQueue.addTag({ is_hidden: isHidden }, 'hide', tagId);
             await loadTagsForManagement(); // Reload from cache
-            alert('Tag visibility change saved offline. It will sync when you\'re back online.');
+            showToast('Tag visibility change saved offline. It will sync when you\'re back online. (pplai.app)', 'info');
         } else {
             alert('Failed to update tag: ' + error.message);
         }
@@ -8337,7 +8337,7 @@ async function deleteTag(tagId) {
         if (!navigator.onLine) {
             offlineQueue.addTag({}, 'delete', tagId);
             await loadTagsForManagement(); // Reload from cache
-            alert('Tag deletion saved offline. It will sync when you\'re back online.');
+            showToast('Tag deletion saved offline. It will sync when you\'re back online. (pplai.app)', 'info');
             return;
         }
         
@@ -8352,7 +8352,7 @@ async function deleteTag(tagId) {
         if (error.message.includes('Failed to fetch') || error.message.includes('Network')) {
             offlineQueue.addTag({}, 'delete', tagId);
             await loadTagsForManagement(); // Reload from cache
-            alert('Tag deletion saved offline. It will sync when you\'re back online.');
+            showToast('Tag deletion saved offline. It will sync when you\'re back online. (pplai.app)', 'info');
         } else {
             alert('Failed to delete tag: ' + error.message);
         }

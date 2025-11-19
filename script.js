@@ -7214,8 +7214,13 @@ async function processBusinessCardFile(file) {
     };
         
     const removeLoadingModal = () => {
-        if (loadingModal.parentNode) {
+        if (loadingModal && loadingModal.parentNode) {
+            try {
             document.body.removeChild(loadingModal);
+            } catch (e) {
+                // Modal may have already been removed, ignore error
+                console.warn('Loading modal already removed:', e);
+            }
         }
     };
 
@@ -7427,7 +7432,13 @@ async function processEventPassFile(file) {
                       file.name && file.name.toLowerCase().match(/\.(heic|heif)$/);
         
         if (isHeic) {
+            if (loadingModal && loadingModal.parentNode) {
+                try {
             document.body.removeChild(loadingModal);
+                } catch (e) {
+                    console.warn('Loading modal already removed:', e);
+                }
+            }
             alert('HEIC images are not supported for event pass scanning.\n\nPlease:\n1. Take a new photo in JPG/PNG format, or\n2. Convert the HEIC to JPG first, or\n3. Use the Business Card scanner instead (it supports HEIC)');
             return;
         }
@@ -7447,7 +7458,13 @@ async function processEventPassFile(file) {
         
         const contactInfo = parseEventPassText(text);
         
-        document.body.removeChild(loadingModal);
+        if (loadingModal && loadingModal.parentNode) {
+            try {
+                document.body.removeChild(loadingModal);
+            } catch (e) {
+                console.warn('Loading modal already removed:', e);
+            }
+        }
         
         if (!contactInfo) {
             alert('We could not extract information from this pass. Please enter details manually.');
@@ -7467,7 +7484,13 @@ async function processEventPassFile(file) {
         
     } catch (error) {
         console.error('OCR Error:', error);
-        document.body.removeChild(loadingModal);
+        if (loadingModal && loadingModal.parentNode) {
+            try {
+                document.body.removeChild(loadingModal);
+            } catch (e) {
+                console.warn('Loading modal already removed:', e);
+            }
+        }
         alert('Failed to scan event pass/ID card. Please try again or enter manually.');
     }
 }

@@ -3384,7 +3384,7 @@ async function saveEvent() {
             console.warn('Network error, saving to offline queue:', error);
             if (editingEventId) {
                 offlineQueue.addEvent(eventData, true, editingEventId);
-                alert('Event update saved offline. It will sync when you\'re back online.');
+                showToast('Event update saved offline. It will sync when you\'re back online. (pplai.app)', 'info');
             } else {
                 offlineQueue.addEvent(eventData, false);
                 showToast('Event saved offline. It will sync when you\'re back online. (pplai.app)', 'info');

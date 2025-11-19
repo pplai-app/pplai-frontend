@@ -7012,6 +7012,10 @@ function parseVCard(vcardData) {
             contact.pplai_notes = unescapeVCardValue(value);
         } else if (field.startsWith('X-PPLAI-TAGS')) {
             contact.pplai_tags = unescapeVCardValue(value);
+        } else if (field.startsWith('X-PPLAI-DATE-MET')) {
+            contact.pplai_date_met = unescapeVCardValue(value);
+        } else if (field.startsWith('X-PPLAI-LOCATION')) {
+            contact.pplai_location = unescapeVCardValue(value);
         }
     }
     
@@ -7139,10 +7143,28 @@ async function createContactFromVCard(vcardContact) {
             }, 100);
         }
         
-        // Set meeting date if provided
-        if (vcardContact.pplai_date_connected) {
-            // Store for use when saving
+        // Set meeting date if provided (check both date_connected and date_met)
+        if (vcardContact.pplai_date_met) {
+            // Store for use when saving - prefer date_met over date_connected
+            window.tempVCardDate = vcardContact.pplai_date_met;
+        } else if (vcardContact.pplai_date_connected) {
+            // Fallback to date_connected
             window.tempVCardDate = vcardContact.pplai_date_connected;
+        }
+        
+        // Set meeting date in the form if available
+        if (window.tempVCardDate) {
+            setTimeout(() => {
+                const meetingDateInput = document.getElementById('contactMeetingDate');
+                if (meetingDateInput) {
+                    const dateStr = window.tempVCardDate; // YYYY-MM-DD format
+                    const [year, month, day] = dateStr.split('-');
+                    if (year && month && day) {
+                        // Set to noon to avoid timezone issues
+                        meetingDateInput.value = `${year}-${month}-${day}T12:00`;
+                    }
+                }
+            }, 150);
         }
         
         // Store pplai.app profile URL for use when saving

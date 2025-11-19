@@ -5175,6 +5175,31 @@ function handleAiEmail(contact, emailTemplate) {
         body = emailTemplate.replace(/Subject:\s*(.+?)(\n|$)/i, '').trim();
     }
     
+    // Add signature with pplai profile link and LinkedIn link
+    const currentUser = getCurrentUser();
+    if (currentUser) {
+        const frontendUrl = window.location.origin || 'https://pplai.app';
+        const pplaiProfileUrl = `${frontendUrl}/profile/${currentUser.id}`;
+        
+        let signature = '\n\n--\n';
+        if (currentUser.name) {
+            signature += currentUser.name;
+            if (currentUser.role_company) {
+                signature += `\n${currentUser.role_company}`;
+            }
+            signature += '\n';
+        }
+        signature += `View my profile: ${pplaiProfileUrl}`;
+        if (currentUser.linkedin_url) {
+            const linkedinUrl = currentUser.linkedin_url.startsWith('http') 
+                ? currentUser.linkedin_url 
+                : `https://${currentUser.linkedin_url}`;
+            signature += `\nLinkedIn: ${linkedinUrl}`;
+        }
+        
+        body += signature;
+    }
+    
     // Create mailto link
     const mailtoUrl = `mailto:${contact.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
     
@@ -5184,6 +5209,31 @@ function handleAiEmail(contact, emailTemplate) {
 
 // Handle AI-generated WhatsApp message
 function handleAiWhatsApp(contact, message) {
+    // Add signature with pplai profile link and LinkedIn link
+    const currentUser = getCurrentUser();
+    if (currentUser) {
+        const frontendUrl = window.location.origin || 'https://pplai.app';
+        const pplaiProfileUrl = `${frontendUrl}/profile/${currentUser.id}`;
+        
+        let signature = '\n\n';
+        if (currentUser.name) {
+            signature += `- ${currentUser.name}`;
+            if (currentUser.role_company) {
+                signature += `, ${currentUser.role_company}`;
+            }
+            signature += '\n';
+        }
+        signature += `Profile: ${pplaiProfileUrl}`;
+        if (currentUser.linkedin_url) {
+            const linkedinUrl = currentUser.linkedin_url.startsWith('http') 
+                ? currentUser.linkedin_url 
+                : `https://${currentUser.linkedin_url}`;
+            signature += `\nLinkedIn: ${linkedinUrl}`;
+        }
+        
+        message += signature;
+    }
+    
     // Format phone number (remove spaces, dashes, etc.)
     const phone = contact.mobile.replace(/[^\d+]/g, '');
     

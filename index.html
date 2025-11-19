@@ -794,11 +794,11 @@
                     </div>
                 </div>
                 <div class="form-group">
-                    <label for="eventDateRange">Event Dates *</label>
-                    <div class="date-range-container">
-                        <input type="date" id="eventStartDate" class="input-field date-range-input" placeholder="Start Date" required>
-                        <span class="date-range-separator">to</span>
-                        <input type="date" id="eventEndDate" class="input-field date-range-input" placeholder="End Date" required>
+                    <label>Event Dates *</label>
+                    <div class="date-range-container" role="group" aria-label="Event Dates">
+                        <input type="date" id="eventStartDate" class="input-field date-range-input" placeholder="Start Date" required aria-label="Event Start Date">
+                        <span class="date-range-separator" aria-hidden="true">to</span>
+                        <input type="date" id="eventEndDate" class="input-field date-range-input" placeholder="End Date" required aria-label="Event End Date">
                     </div>
                 </div>
                 <div class="form-group">

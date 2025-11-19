@@ -2313,17 +2313,29 @@ function generateContactVCard(contact) {
     }
     
     // Custom pplai.app fields
-    // Tags as custom field
-    if (contact.tags && contact.tags.length > 0) {
-        const tagNames = contact.tags.map(t => t.name || t).join(', ');
-        vcard += `X-PPLAI-TAGS:${escapeVCardValue(tagNames)}\n`;
+    // Tags as custom field - always include if tags exist
+    if (contact.tags && Array.isArray(contact.tags) && contact.tags.length > 0) {
+        const tagNames = contact.tags.map(t => {
+            // Handle both object format {name: "Tag"} and string format "Tag"
+            if (typeof t === 'string') return t;
+            return t.name || t;
+        }).filter(t => t).join(', ');
+        if (tagNames) {
+            vcard += `X-PPLAI-TAGS:${escapeVCardValue(tagNames)}\n`;
+        }
     }
     
-    // Date met on pplai.app as custom field (ISO format: YYYY-MM-DD)
+    // Date met on pplai.app as custom field (ISO format: YYYY-MM-DD) - always include if meeting_date exists
     if (contact.meeting_date) {
-        const meetingDate = new Date(contact.meeting_date);
-        const dateMetISO = meetingDate.toISOString().split('T')[0]; // YYYY-MM-DD format
-        vcard += `X-PPLAI-DATE-MET:${escapeVCardValue(dateMetISO)}\n`;
+        try {
+            const meetingDate = new Date(contact.meeting_date);
+            if (!isNaN(meetingDate.getTime())) {
+                const dateMetISO = meetingDate.toISOString().split('T')[0]; // YYYY-MM-DD format
+                vcard += `X-PPLAI-DATE-MET:${escapeVCardValue(dateMetISO)}\n`;
+            }
+        } catch (e) {
+            console.warn('Error formatting meeting_date for vCard:', e);
+        }
     }
     
     // Event as custom field

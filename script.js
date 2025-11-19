@@ -4738,7 +4738,7 @@ async function openContactModal(contactData = null) {
         const companyEl = document.getElementById('contactCompany');
         if (companyEl) companyEl.value = contactData.company || '';
         
-        const roleEl = document.getElementById('contactRole');
+        // roleEl already declared above, just update if needed
         if (roleEl && contactData.role_company) roleEl.value = contactData.role_company || '';
         
         // Handle meeting context - add pplai.app metadata if from QR/shared profile

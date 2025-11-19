@@ -1046,7 +1046,7 @@ async function populateContactForm(contactInfo, options = {}) {
 }
 
 function handleLogout() {
-    if (confirm('Are you sure you want to logout?')) {
+        if (confirm('Are you sure you want to logout from pplai.app?')) {
         clearAuthToken();
         currentUser = null;
         currentEvent = null;
@@ -1561,19 +1561,19 @@ async function handleEmailSignIn() {
     const signInBtn = document.getElementById('emailSignIn');
     
     if (!email) {
-        alert('Please enter your email');
+        showToast('Please enter your email', 'error');
         return;
     }
     
     if (!password) {
-        alert('Please enter your password');
+        showToast('Please enter your password', 'error');
         return;
     }
     
     // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-        alert('Please enter a valid email address');
+        showToast('Please enter a valid email address', 'error');
         return;
     }
     
@@ -1592,7 +1592,7 @@ async function handleEmailSignIn() {
             const savedToken = getAuthToken();
             if (!savedToken) {
                 debugError('Token was not saved after login!');
-                alert('Login succeeded but token was not saved. Please try again.');
+                showToast('Login succeeded but token was not saved. Please try again.', 'error');
                 return;
             }
             
@@ -1623,7 +1623,7 @@ async function handleEmailSignIn() {
             }
         } catch (error) {
             debugError('Login error:', error);
-            alert('Login failed: ' + (error.message || 'Unknown error'));
+            showToast('Login failed: ' + (error.message || 'Unknown error'), 'error');
         } finally {
             // Re-enable button
             if (signInBtn) {
@@ -1643,7 +1643,7 @@ async function handleEmailSignIn() {
             await loadInitialData();
         } catch (error) {
             console.error('Login error:', error);
-            alert('Login failed: ' + (error.message || 'Unknown error'));
+            showToast('Login failed: ' + (error.message || 'Unknown error'), 'error');
         }
     }
 }
@@ -1655,30 +1655,30 @@ async function handleEmailSignUp() {
     const signUpBtn = document.getElementById('emailSignUp');
     
     if (!email) {
-        alert('Please enter your email');
+        showToast('Please enter your email', 'error');
         return;
     }
     
     if (!password) {
-        alert('Please enter your password');
+        showToast('Please enter your password', 'error');
         return;
     }
     
     if (!name) {
-        alert('Please enter your name');
+        showToast('Please enter your name', 'error');
         return;
     }
     
     // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-        alert('Please enter a valid email address');
+        showToast('Please enter a valid email address', 'error');
         return;
     }
     
     // Validate password strength
     if (password.length < 6) {
-        alert('Password must be at least 6 characters long');
+        showToast('Password must be at least 6 characters long', 'error');
         return;
     }
     
@@ -1717,7 +1717,7 @@ async function handleEmailSignUp() {
             }
         } catch (error) {
             console.error('Signup error:', error);
-            alert('Sign up failed: ' + (error.message || 'Unknown error'));
+            showToast('Sign up failed: ' + (error.message || 'Unknown error'), 'error');
         } finally {
             // Re-enable button
             if (signUpBtn) {
@@ -1754,7 +1754,7 @@ async function handleEmailSignUp() {
             }
         } catch (error) {
             console.error('Signup error:', error);
-            alert('Sign up failed: ' + (error.message || 'Unknown error'));
+            showToast('Sign up failed: ' + (error.message || 'Unknown error'), 'error');
         }
     }
 }
@@ -1847,6 +1847,7 @@ async function loadProfile() {
                 </div>
                 <div class="empty-state">
                     <p>Error loading profile: ${error.message}</p>
+                    <p style="margin-top: 8px; font-size: 12px; opacity: 0.7;">If this persists, please contact support at pplai.app</p>
                     <button class="btn btn-primary" onclick="loadProfile()">Retry</button>
                 </div>
             `;
@@ -3364,7 +3365,7 @@ async function saveEvent() {
             if (!navigator.onLine) {
                 // Save to offline queue
                 offlineQueue.addEvent(eventData, false);
-                alert('Event saved offline. It will sync when you\'re back online.');
+                showToast('Event saved offline. It will sync when you\'re back online. (pplai.app)', 'info');
                 closeModal();
                 editingEventId = null;
                 await loadEvents(); // Reload from cache
@@ -3386,7 +3387,7 @@ async function saveEvent() {
                 alert('Event update saved offline. It will sync when you\'re back online.');
             } else {
                 offlineQueue.addEvent(eventData, false);
-                alert('Event saved offline. It will sync when you\'re back online.');
+                showToast('Event saved offline. It will sync when you\'re back online. (pplai.app)', 'info');
             }
             closeModal();
             editingEventId = null;
@@ -6137,7 +6138,7 @@ function loadChatMessages(contact) {
         // Scroll to bottom
         chatContainer.scrollTop = chatContainer.scrollHeight;
     } else {
-        chatContainer.innerHTML = '<div class="chat-empty-state" style="text-align: center; color: var(--text-secondary); padding: 20px;">No messages yet. Start a conversation!</div>';
+        chatContainer.innerHTML = '<div class="chat-empty-state" style="text-align: center; color: var(--text-secondary); padding: 20px;">No messages yet. Start a conversation!<br><small style="opacity: 0.7; margin-top: 8px; display: block;">Powered by pplai.app</small></div>';
     }
 }
 
@@ -7608,7 +7609,7 @@ async function processEventPassFile(file) {
         
         if (loadingModal && loadingModal.parentNode) {
             try {
-                document.body.removeChild(loadingModal);
+        document.body.removeChild(loadingModal);
             } catch (e) {
                 console.warn('Loading modal already removed:', e);
             }
@@ -7634,7 +7635,7 @@ async function processEventPassFile(file) {
         console.error('OCR Error:', error);
         if (loadingModal && loadingModal.parentNode) {
             try {
-                document.body.removeChild(loadingModal);
+        document.body.removeChild(loadingModal);
             } catch (e) {
                 console.warn('Loading modal already removed:', e);
             }
@@ -8795,7 +8796,7 @@ function displayUsers(users) {
     if (!usersList) return;
 
     if (users.length === 0) {
-        usersList.innerHTML = '<div class="empty-state"><p>No users found</p></div>';
+        usersList.innerHTML = '<div class="empty-state"><p>No users found</p><p style="margin-top: 8px; font-size: 12px; opacity: 0.7;">Powered by pplai.app</p></div>';
         return;
     }
 

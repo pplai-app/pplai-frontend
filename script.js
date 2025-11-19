@@ -944,12 +944,29 @@ async function populateContactForm(contactInfo, options = {}) {
     const { portraitFile = null, cardFile = null } = options;
 
     await openContactModal();
+    
+    // Wait a bit for the modal to fully render and form to be initialized
+    await new Promise(resolve => setTimeout(resolve, 100));
 
     const nameEl = document.getElementById('contactName');
-    if (nameEl && contactInfo.name) nameEl.value = contactInfo.name;
+    if (nameEl && contactInfo.name) {
+        nameEl.value = contactInfo.name;
+    } else if (!nameEl) {
+        console.error('contactName element not found');
+    }
 
-    const emailEl = document.getElementById('contactEmail');
-    if (emailEl && contactInfo.email) emailEl.value = contactInfo.email;
+    // Use the new email fields structure (emailAddressesContainer)
+    if (contactInfo.email) {
+        const emailContainer = document.getElementById('emailAddressesContainer');
+        if (emailContainer) {
+            // Clear existing email fields
+            emailContainer.innerHTML = '';
+            // Add the email from OCR
+            addEmailField(contactInfo.email, 0);
+        } else {
+            console.warn('emailAddressesContainer not found, email field may not be populated');
+        }
+    }
 
     applyPhoneToForm(contactInfo.phone);
 
@@ -971,12 +988,30 @@ async function populateContactForm(contactInfo, options = {}) {
     if (cardFile) {
         const mediaInput = document.getElementById('mediaInput');
         if (mediaInput) {
-            const mediaDataTransfer = new DataTransfer();
-            if (mediaInput.files) {
-                Array.from(mediaInput.files).forEach(existingFile => mediaDataTransfer.items.add(existingFile));
+            // Validate the cardFile is a valid File object
+            if (!(cardFile instanceof File) && !(cardFile instanceof Blob)) {
+                console.error('cardFile is not a valid File or Blob:', cardFile);
+            } else {
+                console.log('Adding card file to media input:', cardFile.name, cardFile.size, 'bytes');
+                const mediaDataTransfer = new DataTransfer();
+                // Preserve existing files
+                if (mediaInput.files && mediaInput.files.length > 0) {
+                    Array.from(mediaInput.files).forEach(existingFile => {
+                        mediaDataTransfer.items.add(existingFile);
+                    });
+                }
+                // Add the card file
+                mediaDataTransfer.items.add(cardFile);
+                mediaInput.files = mediaDataTransfer.files;
+                
+                // Trigger change event - this will call handleMediaUpload which updates the preview
+                // Don't manually update preview to avoid duplicates
+                mediaInput.dispatchEvent(new Event('change', { bubbles: true }));
+                
+                console.log('Card file added to media input. Total files:', mediaInput.files.length);
             }
-            mediaDataTransfer.items.add(cardFile);
-            mediaInput.files = mediaDataTransfer.files;
+        } else {
+            console.error('mediaInput element not found');
         }
     }
 
@@ -4572,9 +4607,31 @@ function clearPhoneNumbersAndEmails() {
 // Initialize form with empty phone/email fields
 function initializeContactForm() {
     clearPhoneNumbersAndEmails();
+    // Clear media input and preview
+    clearContactMedia();
     // Add one empty phone number field and one empty email field
     addPhoneNumberField('', true, 0);
     addEmailField('', 0);
+}
+
+// Clear contact media (input files and preview)
+function clearContactMedia() {
+    const mediaInput = document.getElementById('mediaInput');
+    if (mediaInput) {
+        // Clear the file input by creating a new empty DataTransfer
+        const dataTransfer = new DataTransfer();
+        mediaInput.files = dataTransfer.files;
+    }
+    
+    const mediaPreview = document.getElementById('mediaPreview');
+    if (mediaPreview) {
+        mediaPreview.innerHTML = '';
+    }
+    
+    // Also clear any compressed media files stored in window
+    if (window.compressedMediaFiles) {
+        window.compressedMediaFiles = [];
+    }
 }
 
 async function openContactModal(contactData = null) {
@@ -4717,18 +4774,39 @@ async function openContactModal(contactData = null) {
         }
         
         // Note: Media attachments are read-only in edit mode for now
-        document.getElementById('mediaPreview').innerHTML = '';
+        // Clear media preview (but don't clear input files in edit mode to preserve existing media)
+        const mediaPreviewEl = document.getElementById('mediaPreview');
+        if (mediaPreviewEl) {
+            mediaPreviewEl.innerHTML = '';
+        }
         } else {
-        // Clear form
-        document.getElementById('contactName').value = '';
-        document.getElementById('contactEmail').value = '';
-        document.getElementById('contactRole').value = '';
-        document.getElementById('contactMobile').value = '';
-        document.getElementById('contactLinkedIn').value = '';
-        document.getElementById('contactWebsite').value = '';
-        document.getElementById('contactContext').value = '';
-        document.getElementById('contactTags').innerHTML = '';
-        document.getElementById('mediaPreview').innerHTML = '';
+        // Clear form - use null-safe checks for all fields
+        const nameEl = document.getElementById('contactName');
+        if (nameEl) nameEl.value = '';
+        
+        // Email is now handled by emailAddressesContainer (cleared in initializeContactForm)
+        // No need to clear contactEmail as it doesn't exist anymore
+        
+        const roleEl = document.getElementById('contactRole');
+        if (roleEl) roleEl.value = '';
+        
+        // Mobile is now handled by phoneNumbersContainer (cleared in initializeContactForm)
+        // No need to clear contactMobile as it doesn't exist anymore
+        
+        const linkedinEl = document.getElementById('contactLinkedIn');
+        if (linkedinEl) linkedinEl.value = '';
+        
+        const websiteEl = document.getElementById('contactWebsite');
+        if (websiteEl) websiteEl.value = '';
+        
+        const contextEl = document.getElementById('contactContext');
+        if (contextEl) contextEl.value = '';
+        
+        const tagsEl = document.getElementById('contactTags');
+        if (tagsEl) tagsEl.innerHTML = '';
+        
+        const mediaPreviewEl = document.getElementById('mediaPreview');
+        if (mediaPreviewEl) mediaPreviewEl.innerHTML = '';
         const eventSelect = document.getElementById('contactEvent');
         if (eventSelect) {
             eventSelect.value = '';
@@ -5268,6 +5346,8 @@ async function saveContact() {
 
         const photoFile = photoInput?.files[0] || null;
         const mediaFiles = Array.from(mediaInput?.files || []);
+        
+        console.log('Saving contact with media files:', mediaFiles.length, mediaFiles.map(f => ({ name: f.name, size: f.size, type: f.type })));
 
         let savedContact;
         if (editingContactId) {
@@ -7152,25 +7232,42 @@ async function processBusinessCardFile(file) {
             for (const candidate of backendFileCandidates) {
                 try {
                     updateProgress('Scanning card (cloud)...');
+                    console.log('Attempting cloud OCR with file:', candidate.name, candidate.size, 'bytes');
                     const result = await api.analyzeBusinessCard(candidate);
                     if (result) {
+                        console.log('Cloud OCR succeeded. Extracted fields:', Object.keys(result.fields || {}));
                         contactInfo = result.fields || null;
                         if (result.portrait_image) {
                             portraitFile = base64ToFile(result.portrait_image, `portrait-${Date.now()}.png`, 'image/png');
+                            console.log('Portrait extracted from card');
                         }
                         // Always use the original file for media, not the processed/cropped version
                         cardFileForMedia = file;
+                        cloudErrorDetail = null; // Clear error on success
+                        break;
                     }
-                    break;
                 } catch (cloudError) {
-                    console.warn('Cloud OCR attempt failed:', cloudError);
-                    cloudErrorDetail = cloudError?.message || cloudError;
+                    const errorMessage = cloudError?.message || String(cloudError);
+                    console.warn('Cloud OCR attempt failed:', errorMessage);
+                    cloudErrorDetail = errorMessage;
+                    
+                    // If it's a service unavailable error or credentials error, don't try other candidates
+                    if (errorMessage.includes('503') || 
+                        errorMessage.includes('not available') || 
+                        errorMessage.includes('Service Unavailable') ||
+                        errorMessage.includes('credentials were not found') ||
+                        errorMessage.includes('default credentials') ||
+                        errorMessage.includes('authentication')) {
+                        console.warn('OCR service is unavailable or not configured, will use local Tesseract.js fallback');
+                        break;
+                    }
                 }
             }
         }
 
         if (!contactInfo) {
             updateProgress('Scanning card (offline mode)...');
+            console.log('Using local Tesseract OCR fallback');
             const localSource = processedFile || file;
             const { data: { text } } = await Tesseract.recognize(localSource, 'eng', {
                 logger: m => {
@@ -7180,21 +7277,38 @@ async function processBusinessCardFile(file) {
                     }
                 }
             });
+            console.log('Local OCR extracted text length:', text?.length || 0);
             contactInfo = parseBusinessCardText(text);
+            if (contactInfo && Object.keys(contactInfo).length > 0) {
+                console.log('Local OCR extracted fields:', Object.keys(contactInfo));
+            } else {
+                console.warn('Local OCR did not extract any contact fields');
+            }
             cardFileForMedia = localSource;
         }
 
         removeLoadingModal();
 
         if (!contactInfo) {
-            const extraMessage = cloudErrorDetail
+            // If cloud OCR failed but we tried local OCR, show a more helpful message
+            const extraMessage = cloudErrorDetail && !cloudErrorDetail.includes('credentials')
                 ? `\n\nCloud OCR error: ${cloudErrorDetail}`
+                : cloudErrorDetail && cloudErrorDetail.includes('credentials')
+                ? `\n\nNote: Cloud OCR is not configured locally. Used local Tesseract.js OCR instead.`
                 : '';
             alert(`We could not extract information from this card. Please enter details manually.${extraMessage}`);
             return;
         }
 
         cardFileForMedia = cardFileForMedia || processedFile || file;
+        
+        // Ensure we have a valid file object
+        if (!cardFileForMedia || (!(cardFileForMedia instanceof File) && !(cardFileForMedia instanceof Blob))) {
+            console.warn('cardFileForMedia is not a valid File/Blob, using original file:', cardFileForMedia);
+            cardFileForMedia = file;
+        }
+        
+        console.log('Calling populateContactForm with cardFile:', cardFileForMedia?.name, cardFileForMedia?.size, 'bytes');
         await populateContactForm(contactInfo, { portraitFile, cardFile: cardFileForMedia });
     } catch (error) {
         console.error('OCR Error:', error);
@@ -8213,6 +8327,12 @@ async function compressImages(files) {
 
 // Utility functions
 function closeModal() {
+    // Clear contact media when closing modal (if contact modal is open)
+    const contactModal = document.getElementById('contactModal');
+    if (contactModal && !contactModal.classList.contains('hidden')) {
+        clearContactMedia();
+    }
+    
     document.querySelectorAll('.modal').forEach(modal => modal.classList.add('hidden'));
 }
 

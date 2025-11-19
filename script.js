@@ -316,6 +316,8 @@ function setupEventListeners() {
         if (file) {
             closeEventPassScanner();
             processEventPassFile(file);
+            // Reset input so same file can be selected again
+            e.target.value = '';
         }
     });
     

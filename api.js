@@ -440,6 +440,7 @@ const api = {
         const formData = new FormData();
         if (photoFile) formData.append('photo', photoFile);
         if (profileData.name) formData.append('name', profileData.name);
+        if (profileData.email !== undefined) formData.append('email', profileData.email);
         if (profileData.role_company !== undefined) formData.append('role_company', profileData.role_company);
         if (profileData.mobile !== undefined) formData.append('mobile', profileData.mobile);
         if (profileData.whatsapp !== undefined) formData.append('whatsapp', profileData.whatsapp);

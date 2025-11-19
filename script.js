@@ -2586,6 +2586,7 @@ async function saveProfile() {
     try {
         const profileData = {
             name,
+            email,
             role_company: role,
             mobile,
             whatsapp,
@@ -2600,8 +2601,8 @@ async function saveProfile() {
         // Cache invalidation is handled in api.updateProfile()
         // Clear QR cache when profile is updated (additional cleanup)
         if (typeof clearQRCache === 'function') {
-            clearQRCache(updated.id, 'url');
-            clearQRCache(updated.id, 'vcard');
+        clearQRCache(updated.id, 'url');
+        clearQRCache(updated.id, 'vcard');
         }
         
         displayProfile(updated);

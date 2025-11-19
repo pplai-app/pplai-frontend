@@ -4656,8 +4656,11 @@ async function openContactModal(contactData = null) {
     // Clear or fill form
     if (contactData) {
         // Fill form with contact data
-        document.getElementById('contactName').value = contactData.name || '';
-        document.getElementById('contactRole').value = contactData.role_company || '';
+        const nameEl = document.getElementById('contactName');
+        if (nameEl) nameEl.value = contactData.name || '';
+        
+        const roleEl = document.getElementById('contactRole');
+        if (roleEl) roleEl.value = contactData.role_company || '';
         
         // Fill phone numbers
         clearPhoneNumbersAndEmails();
@@ -4686,8 +4689,17 @@ async function openContactModal(contactData = null) {
             addEmailField('', 0);
         }
         
-        document.getElementById('contactLinkedIn').value = contactData.linkedin_url || '';
-        document.getElementById('contactWebsite').value = contactData.website || '';
+        const linkedinEl = document.getElementById('contactLinkedIn');
+        if (linkedinEl) linkedinEl.value = contactData.linkedin_url || '';
+        
+        const websiteEl = document.getElementById('contactWebsite');
+        if (websiteEl) websiteEl.value = contactData.website || '';
+        
+        const companyEl = document.getElementById('contactCompany');
+        if (companyEl) companyEl.value = contactData.company || '';
+        
+        const roleEl = document.getElementById('contactRole');
+        if (roleEl && contactData.role_company) roleEl.value = contactData.role_company || '';
         
         // Handle meeting context - add pplai.app metadata if from QR/shared profile
         let meetingContext = contactData.meeting_context || contactData.about_me || '';
@@ -4728,7 +4740,8 @@ async function openContactModal(contactData = null) {
             }
         }
         
-        document.getElementById('contactContext').value = meetingContext;
+        const contextEl = document.getElementById('contactContext');
+        if (contextEl) contextEl.value = meetingContext;
         
         // Set event
         const eventSelect = document.getElementById('contactEvent');

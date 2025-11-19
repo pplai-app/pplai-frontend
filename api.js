@@ -439,13 +439,15 @@ const api = {
     async updateProfile(profileData, photoFile) {
         const formData = new FormData();
         if (photoFile) formData.append('photo', photoFile);
-        if (profileData.name) formData.append('name', profileData.name);
+        // Always send required fields
+        if (profileData.name !== undefined) formData.append('name', profileData.name);
         if (profileData.email !== undefined) formData.append('email', profileData.email);
-        if (profileData.role_company !== undefined) formData.append('role_company', profileData.role_company);
-        if (profileData.mobile !== undefined) formData.append('mobile', profileData.mobile);
-        if (profileData.whatsapp !== undefined) formData.append('whatsapp', profileData.whatsapp);
-        if (profileData.linkedin_url !== undefined) formData.append('linkedin_url', profileData.linkedin_url);
-        if (profileData.about_me !== undefined) formData.append('about_me', profileData.about_me);
+        // Send optional fields even if empty (so backend can clear them)
+        if (profileData.role_company !== undefined) formData.append('role_company', profileData.role_company || '');
+        if (profileData.mobile !== undefined) formData.append('mobile', profileData.mobile || '');
+        if (profileData.whatsapp !== undefined) formData.append('whatsapp', profileData.whatsapp || '');
+        if (profileData.linkedin_url !== undefined) formData.append('linkedin_url', profileData.linkedin_url || '');
+        if (profileData.about_me !== undefined) formData.append('about_me', profileData.about_me || '');
 
         const token = getAuthToken();
         const response = await fetch(normalizeApiUrl('/profile'), {

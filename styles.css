@@ -3257,7 +3257,7 @@ body {
     width: 320px;
     height: 200px;
     max-width: 85vw;
-    max-height: 50vh;
+    max-height: 40vh;
 }
 
 /* Scanner Corner Indicators */
@@ -3405,13 +3405,14 @@ body {
     #businessCardScannerModal .scanner-frame,
     #eventPassScannerModal .scanner-frame {
         width: 280px;
-        height: 175px;
+        height: 140px;
+        max-height: 30vh;
     }
     
     .scanner-hint {
         font-size: 14px;
         padding: 10px 20px;
-        bottom: 120px;
+        bottom: 100px;
     }
     
     #businessCardCaptureBtn,
@@ -3420,5 +3421,6 @@ body {
     #eventPassUploadBtn {
         padding: 10px 20px;
         font-size: 14px;
+        bottom: 20px !important;
     }
 }

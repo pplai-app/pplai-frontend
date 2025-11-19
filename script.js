@@ -758,6 +758,10 @@ async function handlePublicProfileSave() {
     if (!currentPublicProfileId || !currentPublicProfile) return;
     
     try {
+        // Add pplai profile URL
+        const frontendUrl = window.location.origin || 'https://pplai.app';
+        const pplaiProfileUrl = `${frontendUrl}/profile/${currentPublicProfileId}`;
+        
         // Convert profile to contact format for vCard generation
         const contactData = {
             name: currentPublicProfile.name || '',
@@ -773,7 +777,9 @@ async function handlePublicProfileSave() {
             contact_photo_url: currentPublicProfile.profile_photo_url || null,
             meeting_context: currentPublicProfile.about_me || null,
             tags: [],
-            event: null
+            event: null,
+            pplai_profile_url: pplaiProfileUrl,
+            id: currentPublicProfileId // Include ID so vCard generation can use it
         };
         
         // Add phone numbers
@@ -2350,6 +2356,18 @@ function generateContactVCard(contact) {
         vcard += `X-PPLAI-LOCATION:${escapeVCardValue(`${contact.meeting_latitude}, ${contact.meeting_longitude}`)}\n`;
     }
     
+    // Add pplai.app profile URL if available (for contacts from shared profiles or user's own profile)
+    if (contact.pplai_profile_url) {
+        vcard += `URL;TYPE=PPLAI:${escapeVCardValue(contact.pplai_profile_url)}\n`;
+    } else if (contact.profile_url) {
+        vcard += `URL;TYPE=PPLAI:${escapeVCardValue(contact.profile_url)}\n`;
+    } else if (contact.id) {
+        // If contact has an ID and it's a UUID (user profile), add profile URL
+        const frontendUrl = window.location.origin || 'https://pplai.app';
+        const pplaiProfileUrl = `${frontendUrl}/profile/${contact.id}`;
+        vcard += `URL;TYPE=PPLAI:${escapeVCardValue(pplaiProfileUrl)}\n`;
+    }
+    
     // Notes - combine all contact information
     let notes = [];
     
@@ -2659,6 +2677,10 @@ async function saveProfileToContacts() {
         }];
     }
     
+    // Add pplai profile URL
+    const frontendUrl = window.location.origin || 'https://pplai.app';
+    const pplaiProfileUrl = `${frontendUrl}/profile/${profile.id}`;
+    
     // Map about_me to meeting_context for the contact form
     const contactData = {
         name: profile.name || '',
@@ -2669,7 +2691,9 @@ async function saveProfileToContacts() {
         email: profile.email || '', // Keep for backward compatibility
         linkedin_url: profile.linkedin_url || '',
         meeting_context: profile.about_me || '', // Map about_me to meeting_context
-        contact_photo_url: profile.profile_photo_url || ''
+        contact_photo_url: profile.profile_photo_url || '',
+        pplai_profile_url: pplaiProfileUrl,
+        id: profile.id // Include ID so vCard generation can use it
     };
     
     // Open contact modal with profile data

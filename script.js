@@ -1628,7 +1628,33 @@ async function handleEmailSignIn() {
             }
         } catch (error) {
             debugError('Login error:', error);
-            showToast('Login failed: ' + (error.message || 'Unknown error'), 'error');
+            
+            // Check if account doesn't exist - redirect to sign-up
+            if (error.message && (error.message.includes("doesn't exist") || error.message.includes("404") || error.message.includes("Account doesn't exist"))) {
+                // Switch to sign-up mode with pre-filled email and password
+                const emailInput = document.getElementById('emailInput');
+                const passwordInput = document.getElementById('passwordInput');
+                
+                // Store email and password
+                const email = emailInput?.value?.trim();
+                const password = passwordInput?.value;
+                
+                // Switch to sign-up mode
+                isSignUpMode = true;
+                toggleEmailAuthMode();
+                
+                // Pre-fill email and password
+                if (emailInput && email) {
+                    emailInput.value = email;
+                }
+                if (passwordInput && password) {
+                    passwordInput.value = password;
+                }
+                
+                showToast('Account doesn\'t exist. Please complete sign up below.', 'info');
+            } else {
+                showToast('Login failed: ' + (error.message || 'Unknown error'), 'error');
+            }
         } finally {
             // Re-enable button
             if (signInBtn) {
@@ -1653,7 +1679,33 @@ async function handleEmailSignIn() {
             await loadInitialData();
         } catch (error) {
             console.error('Login error:', error);
-            showToast('Login failed: ' + (error.message || 'Unknown error'), 'error');
+            
+            // Check if account doesn't exist - redirect to sign-up
+            if (error.message && (error.message.includes("doesn't exist") || error.message.includes("404") || error.message.includes("Account doesn't exist"))) {
+                // Switch to sign-up mode with pre-filled email and password
+                const emailInput = document.getElementById('emailInput');
+                const passwordInput = document.getElementById('passwordInput');
+                
+                // Store email and password
+                const email = emailInput?.value?.trim();
+                const password = passwordInput?.value;
+                
+                // Switch to sign-up mode
+                isSignUpMode = true;
+                toggleEmailAuthMode();
+                
+                // Pre-fill email and password
+                if (emailInput && email) {
+                    emailInput.value = email;
+                }
+                if (passwordInput && password) {
+                    passwordInput.value = password;
+                }
+                
+                showToast('Account doesn\'t exist. Please complete sign up below.', 'info');
+            } else {
+                showToast('Login failed: ' + (error.message || 'Unknown error'), 'error');
+            }
         }
     }
 }

@@ -6641,7 +6641,30 @@ async function startVoiceRecording() {
     
     try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        mediaRecorder = new MediaRecorder(stream);
+        
+        // Detect supported MIME types for MediaRecorder (varies by browser/device)
+        // iPhone/Safari uses audio/mp4 or audio/m4a, Chrome uses audio/webm
+        let mimeType = 'audio/webm'; // Default fallback
+        let fileExtension = '.webm';
+        
+        // Check what MediaRecorder actually supports
+        if (MediaRecorder.isTypeSupported('audio/mp4')) {
+            mimeType = 'audio/mp4';
+            fileExtension = '.m4a';
+        } else if (MediaRecorder.isTypeSupported('audio/m4a')) {
+            mimeType = 'audio/m4a';
+            fileExtension = '.m4a';
+        } else if (MediaRecorder.isTypeSupported('audio/webm')) {
+            mimeType = 'audio/webm';
+            fileExtension = '.webm';
+        } else if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
+            mimeType = 'audio/webm;codecs=opus';
+            fileExtension = '.webm';
+        }
+        
+        // Create MediaRecorder with detected MIME type
+        const options = { mimeType: mimeType };
+        mediaRecorder = new MediaRecorder(stream, options);
         const audioChunks = [];
         
         mediaRecorder.ondataavailable = (event) => {
@@ -6651,8 +6674,9 @@ async function startVoiceRecording() {
         };
         
         mediaRecorder.onstop = async () => {
-            const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-            const audioFile = new File([audioBlob], `voice_note_${Date.now()}.webm`, { type: 'audio/webm' });
+            // Use the detected MIME type for the blob
+            const audioBlob = new Blob(audioChunks, { type: mimeType });
+            const audioFile = new File([audioBlob], `voice_note_${Date.now()}${fileExtension}`, { type: mimeType });
             
             // Upload voice note
             if (chatViewContactId) {

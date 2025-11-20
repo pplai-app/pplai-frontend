@@ -1630,7 +1630,7 @@ async function handleEmailSignIn() {
             debugError('Login error:', error);
             
             // Check if account doesn't exist - redirect to sign-up
-            if (error.message && (error.message.includes("doesn't exist") || error.message.includes("404") || error.message.includes("Account doesn't exist"))) {
+            if (error.message && (error.message.includes("doesn't exist") || error.message.includes("Please sign up") || error.message.includes("404") || error.message.includes("Account doesn't exist"))) {
                 // Switch to sign-up mode with pre-filled email and password
                 const emailInput = document.getElementById('emailInput');
                 const passwordInput = document.getElementById('passwordInput');
@@ -1681,7 +1681,7 @@ async function handleEmailSignIn() {
             console.error('Login error:', error);
             
             // Check if account doesn't exist - redirect to sign-up
-            if (error.message && (error.message.includes("doesn't exist") || error.message.includes("404") || error.message.includes("Account doesn't exist"))) {
+            if (error.message && (error.message.includes("doesn't exist") || error.message.includes("Please sign up") || error.message.includes("404") || error.message.includes("Account doesn't exist"))) {
                 // IMPORTANT: Pending actions (like pendingContactSave) are preserved in sessionStorage
                 // They will be restored after successful sign-up
                 
@@ -1711,6 +1711,12 @@ async function handleEmailSignIn() {
                     showToast('Account doesn\'t exist. Please complete sign up below. Your contact will be saved after sign up.', 'info');
                 } else {
                     showToast('Account doesn\'t exist. Please complete sign up below.', 'info');
+                }
+                
+                // Ensure we're on the auth screen
+                const authScreen = document.getElementById('authScreen');
+                if (authScreen && authScreen.classList.contains('hidden')) {
+                    showAuthScreen();
                 }
             } else {
                 showToast('Login failed: ' + (error.message || 'Unknown error'), 'error');

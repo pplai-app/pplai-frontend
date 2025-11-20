@@ -1682,6 +1682,9 @@ async function handleEmailSignIn() {
             
             // Check if account doesn't exist - redirect to sign-up
             if (error.message && (error.message.includes("doesn't exist") || error.message.includes("404") || error.message.includes("Account doesn't exist"))) {
+                // IMPORTANT: Pending actions (like pendingContactSave) are preserved in sessionStorage
+                // They will be restored after successful sign-up
+                
                 // Switch to sign-up mode with pre-filled email and password
                 const emailInput = document.getElementById('emailInput');
                 const passwordInput = document.getElementById('passwordInput');
@@ -1702,7 +1705,13 @@ async function handleEmailSignIn() {
                     passwordInput.value = password;
                 }
                 
-                showToast('Account doesn\'t exist. Please complete sign up below.', 'info');
+                // Check if there's a pending action to inform user
+                const pendingContactSave = sessionStorage.getItem('pendingContactSave');
+                if (pendingContactSave) {
+                    showToast('Account doesn\'t exist. Please complete sign up below. Your contact will be saved after sign up.', 'info');
+                } else {
+                    showToast('Account doesn\'t exist. Please complete sign up below.', 'info');
+                }
             } else {
                 showToast('Login failed: ' + (error.message || 'Unknown error'), 'error');
             }
@@ -1758,12 +1767,16 @@ async function handleEmailSignUp() {
             await loadInitialData();
             await checkAdminStatus();
             
-            // Check if there's a pending contact save action
+            // Initialize push notifications
+            await initializePushNotifications();
+            
+            // Restore any pending actions (e.g., contact save) that were interrupted by sign-up
             const pendingContactSave = sessionStorage.getItem('pendingContactSave');
             if (pendingContactSave) {
                 try {
                     const contactData = JSON.parse(pendingContactSave);
                     sessionStorage.removeItem('pendingContactSave');
+                    showToast('Restoring your contact...', 'info');
                     // Small delay to ensure UI is ready
                     setTimeout(async () => {
                         await openContactModal(contactData);

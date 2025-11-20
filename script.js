@@ -1800,28 +1800,6 @@ async function handleEmailSignIn() {
                     console.log('Sign up button display:', signUpBtnAfter?.style.display);
                     console.log('Sign up button exists:', !!signUpBtnAfter);
                 }, 200);
-                } else {
-                    // Already in sign-up mode, just update the UI
-                    const nameInput = document.getElementById('nameInput');
-                    const signInBtn = document.getElementById('emailSignIn');
-                    const signUpBtn = document.getElementById('emailSignUp');
-                    const toggleText = document.getElementById('emailAuthToggle');
-                    
-                    if (nameInput) nameInput.style.display = 'block';
-                    if (signInBtn) signInBtn.style.display = 'none';
-                    if (signUpBtn) signUpBtn.style.display = 'block';
-                    if (toggleText) {
-                        toggleText.innerHTML = 'Already have an account? <span style="color: var(--primary);">Sign in</span>';
-                    }
-                }
-                
-                // Pre-fill email and password
-                if (emailInput && email) {
-                    emailInput.value = email;
-                }
-                if (passwordInput && password) {
-                    passwordInput.value = password;
-                }
                 
                 // Check if there's a pending action to inform user
                 const pendingContactSave = sessionStorage.getItem('pendingContactSave');

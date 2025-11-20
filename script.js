@@ -1588,6 +1588,11 @@ async function handleEmailSignIn() {
             const response = await api.emailLogin(email, password);
             debugLog('Login successful');
             
+            // Show message if account was just created
+            if (response.is_signup) {
+                showToast('Account doesn\'t exist. Created new account!', 'success');
+            }
+            
             // Verify token was saved
             const savedToken = getAuthToken();
             if (!savedToken) {

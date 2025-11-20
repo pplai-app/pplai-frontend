@@ -1656,33 +1656,46 @@ async function handleEmailSignIn() {
                 const password = passwordInput?.value;
                 
                 console.log('Switching to sign-up mode, email:', email);
+                console.log('Current isSignUpMode:', isSignUpMode);
                 
-                // Switch to sign-up mode (only if not already in sign-up mode)
-                if (!isSignUpMode) {
-                    isSignUpMode = true;
-                    toggleEmailAuthMode();
-                } else {
-                    // Already in sign-up mode, just update the UI
-                    const nameInput = document.getElementById('nameInput');
-                    const signInBtn = document.getElementById('emailSignIn');
-                    const signUpBtn = document.getElementById('emailSignUp');
-                    const toggleText = document.getElementById('emailAuthToggle');
-                    
-                    if (nameInput) nameInput.style.display = 'block';
-                    if (signInBtn) signInBtn.style.display = 'none';
-                    if (signUpBtn) signUpBtn.style.display = 'block';
-                    if (toggleText) {
-                        toggleText.innerHTML = 'Already have an account? <span style="color: var(--primary);">Sign in</span>';
+                // Use setTimeout to ensure DOM is ready and auth screen is visible
+                setTimeout(() => {
+                    // Switch to sign-up mode (only if not already in sign-up mode)
+                    if (!isSignUpMode) {
+                        console.log('Setting isSignUpMode to true and calling toggleEmailAuthMode');
+                        isSignUpMode = true;
+                        toggleEmailAuthMode();
+                    } else {
+                        console.log('Already in sign-up mode, updating UI directly');
+                        // Already in sign-up mode, just update the UI
+                        const nameInput = document.getElementById('nameInput');
+                        const signInBtn = document.getElementById('emailSignIn');
+                        const signUpBtn = document.getElementById('emailSignUp');
+                        const toggleText = document.getElementById('emailAuthToggle');
+                        
+                        if (nameInput) nameInput.style.display = 'block';
+                        if (signInBtn) signInBtn.style.display = 'none';
+                        if (signUpBtn) signUpBtn.style.display = 'block';
+                        if (toggleText) {
+                            toggleText.innerHTML = 'Already have an account? <span style="color: var(--primary);">Sign in</span>';
+                        }
                     }
-                }
-                
-                // Pre-fill email and password
-                if (emailInput && email) {
-                    emailInput.value = email;
-                }
-                if (passwordInput && password) {
-                    passwordInput.value = password;
-                }
+                    
+                    // Pre-fill email and password after mode switch
+                    const emailInputAfter = document.getElementById('emailInput');
+                    const passwordInputAfter = document.getElementById('passwordInput');
+                    if (emailInputAfter && email) {
+                        emailInputAfter.value = email;
+                    }
+                    if (passwordInputAfter && password) {
+                        passwordInputAfter.value = password;
+                    }
+                    
+                    console.log('After toggle, isSignUpMode:', isSignUpMode);
+                    const signUpBtnAfter = document.getElementById('emailSignUp');
+                    console.log('Sign up button display:', signUpBtnAfter?.style.display);
+                    console.log('Sign up button exists:', !!signUpBtnAfter);
+                }, 200);
                 
                 // Check if there's a pending action to inform user
                 const pendingContactSave = sessionStorage.getItem('pendingContactSave');

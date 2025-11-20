@@ -2609,10 +2609,12 @@ async function saveProfile() {
         }
     }
 
-    if (!name || !email) {
-        alert('Name and email are required');
+    if (!email) {
+        showToast('Email is required', 'error');
         return;
     }
+    
+    // Name is optional - user can add it later
 
     try {
         const profileData = {

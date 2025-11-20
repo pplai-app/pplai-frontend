@@ -1720,9 +1720,23 @@ async function handleEmailSignIn() {
             console.error('Login error:', error);
             
             // Check if account doesn't exist - redirect to sign-up
-            if (error.message && (error.message.includes("doesn't exist") || error.message.includes("Please sign up") || error.message.includes("404") || error.message.includes("Account doesn't exist"))) {
+            const errorMsg = error.message || '';
+            const shouldRedirectToSignup = errorMsg.includes("doesn't exist") || 
+                                          errorMsg.includes("Please sign up") || 
+                                          errorMsg.includes("404") || 
+                                          errorMsg.includes("Account doesn't exist");
+            
+            console.log('Should redirect to signup?', shouldRedirectToSignup);
+            
+            if (shouldRedirectToSignup) {
                 // IMPORTANT: Pending actions (like pendingContactSave) are preserved in sessionStorage
                 // They will be restored after successful sign-up
+                
+                // Ensure auth screen is visible
+                const authScreen = document.getElementById('authScreen');
+                if (authScreen && authScreen.classList.contains('hidden')) {
+                    showAuthScreen();
+                }
                 
                 // Switch to sign-up mode with pre-filled email and password
                 const emailInput = document.getElementById('emailInput');
@@ -1732,9 +1746,26 @@ async function handleEmailSignIn() {
                 const email = emailInput?.value?.trim();
                 const password = passwordInput?.value;
                 
-                // Switch to sign-up mode
-                isSignUpMode = true;
-                toggleEmailAuthMode();
+                console.log('Switching to sign-up mode, email:', email);
+                
+                // Switch to sign-up mode (only if not already in sign-up mode)
+                if (!isSignUpMode) {
+                    isSignUpMode = true;
+                    toggleEmailAuthMode();
+                } else {
+                    // Already in sign-up mode, just update the UI
+                    const nameInput = document.getElementById('nameInput');
+                    const signInBtn = document.getElementById('emailSignIn');
+                    const signUpBtn = document.getElementById('emailSignUp');
+                    const toggleText = document.getElementById('emailAuthToggle');
+                    
+                    if (nameInput) nameInput.style.display = 'block';
+                    if (signInBtn) signInBtn.style.display = 'none';
+                    if (signUpBtn) signUpBtn.style.display = 'block';
+                    if (toggleText) {
+                        toggleText.innerHTML = 'Already have an account? <span style="color: var(--primary);">Sign in</span>';
+                    }
+                }
                 
                 // Pre-fill email and password
                 if (emailInput && email) {

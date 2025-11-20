@@ -1795,12 +1795,16 @@ async function handleEmailSignUp() {
             await loadInitialData();
             await checkAdminStatus();
             
-            // Check if there's a pending contact save action
+            // Initialize push notifications
+            await initializePushNotifications();
+            
+            // Restore any pending actions (e.g., contact save) that were interrupted by sign-up
             const pendingContactSave = sessionStorage.getItem('pendingContactSave');
             if (pendingContactSave) {
                 try {
                     const contactData = JSON.parse(pendingContactSave);
                     sessionStorage.removeItem('pendingContactSave');
+                    showToast('Restoring your contact...', 'info');
                     // Small delay to ensure UI is ready
                     setTimeout(async () => {
                         await openContactModal(contactData);
@@ -2610,7 +2614,7 @@ function displayProfile(profile) {
         } else {
             photoEl.style.display = 'none';
             photoContainer.style.display = 'none'; // Hide container when no photo
-        }
+    }
     }
     if (nameEl) nameEl.textContent = profile.name || 'No name set';
     if (roleEl) roleEl.textContent = profile.role_company || '';

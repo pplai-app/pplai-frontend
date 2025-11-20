@@ -1628,9 +1628,25 @@ async function handleEmailSignIn() {
             }
         } catch (error) {
             debugError('Login error:', error);
+            console.log('Error message:', error.message);
+            console.log('Error object:', error);
             
             // Check if account doesn't exist - redirect to sign-up
-            if (error.message && (error.message.includes("doesn't exist") || error.message.includes("Please sign up") || error.message.includes("404") || error.message.includes("Account doesn't exist"))) {
+            const errorMsg = error.message || '';
+            const shouldRedirectToSignup = errorMsg.includes("doesn't exist") || 
+                                          errorMsg.includes("Please sign up") || 
+                                          errorMsg.includes("404") || 
+                                          errorMsg.includes("Account doesn't exist");
+            
+            console.log('Should redirect to signup?', shouldRedirectToSignup);
+            
+            if (shouldRedirectToSignup) {
+                // Ensure auth screen is visible
+                const authScreen = document.getElementById('authScreen');
+                if (authScreen && authScreen.classList.contains('hidden')) {
+                    showAuthScreen();
+                }
+                
                 // Switch to sign-up mode with pre-filled email and password
                 const emailInput = document.getElementById('emailInput');
                 const passwordInput = document.getElementById('passwordInput');
@@ -1638,6 +1654,8 @@ async function handleEmailSignIn() {
                 // Store email and password
                 const email = emailInput?.value?.trim();
                 const password = passwordInput?.value;
+                
+                console.log('Switching to sign-up mode, email:', email);
                 
                 // Switch to sign-up mode
                 isSignUpMode = true;
@@ -1651,7 +1669,13 @@ async function handleEmailSignIn() {
                     passwordInput.value = password;
                 }
                 
-                showToast('Account doesn\'t exist. Please complete sign up below.', 'info');
+                // Check if there's a pending action to inform user
+                const pendingContactSave = sessionStorage.getItem('pendingContactSave');
+                if (pendingContactSave) {
+                    showToast('Account doesn\'t exist. Please complete sign up below. Your contact will be saved after sign up.', 'info');
+                } else {
+                    showToast('Account doesn\'t exist. Please complete sign up below.', 'info');
+                }
             } else {
                 showToast('Login failed: ' + (error.message || 'Unknown error'), 'error');
             }

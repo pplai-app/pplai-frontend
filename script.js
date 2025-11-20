@@ -1003,22 +1003,44 @@ async function populateContactForm(contactInfo, options = {}) {
                 console.error('cardFile is not a valid File or Blob:', cardFile);
             } else {
                 console.log('Adding card file to media input:', cardFile.name, cardFile.size, 'bytes');
+                
+                // Use DataTransfer API if available (modern browsers), otherwise fallback
+                if (typeof DataTransfer !== 'undefined' && DataTransfer.prototype.items) {
+                    try {
             const mediaDataTransfer = new DataTransfer();
-                // Preserve existing files
-                if (mediaInput.files && mediaInput.files.length > 0) {
-                    Array.from(mediaInput.files).forEach(existingFile => {
-                        mediaDataTransfer.items.add(existingFile);
-                    });
-            }
-                // Add the card file
+                        // Preserve existing files
+                        if (mediaInput.files && mediaInput.files.length > 0) {
+                            Array.from(mediaInput.files).forEach(existingFile => {
+                                mediaDataTransfer.items.add(existingFile);
+                            });
+                        }
+                        // Add the card file
             mediaDataTransfer.items.add(cardFile);
             mediaInput.files = mediaDataTransfer.files;
-                
-                // Trigger change event - this will call handleMediaUpload which updates the preview
-                // Don't manually update preview to avoid duplicates
-                mediaInput.dispatchEvent(new Event('change', { bubbles: true }));
-                
-                console.log('Card file added to media input. Total files:', mediaInput.files.length);
+                        
+                        // Trigger change event - this will call handleMediaUpload which updates the preview
+                        // Don't manually update preview to avoid duplicates
+                        mediaInput.dispatchEvent(new Event('change', { bubbles: true }));
+                        
+                        console.log('Card file added to media input. Total files:', mediaInput.files.length);
+                    } catch (error) {
+                        console.warn('DataTransfer API not fully supported, using fallback:', error);
+                        // Fallback: Store file in a global variable and handle it during save
+                        if (!window.pendingMediaFiles) {
+                            window.pendingMediaFiles = [];
+                        }
+                        window.pendingMediaFiles.push(cardFile);
+                        console.log('Card file stored in pendingMediaFiles (will be added during save)');
+                    }
+                } else {
+                    // Fallback for browsers without DataTransfer support (Safari < 11.1, IE11, etc.)
+                    console.warn('DataTransfer API not supported, using fallback method');
+                    if (!window.pendingMediaFiles) {
+                        window.pendingMediaFiles = [];
+                    }
+                    window.pendingMediaFiles.push(cardFile);
+                    console.log('Card file stored in pendingMediaFiles (will be added during save)');
+                }
             }
         } else {
             console.error('mediaInput element not found');
@@ -1029,9 +1051,22 @@ async function populateContactForm(contactInfo, options = {}) {
     if (photoInput && portraitFile) {
         const preview = document.getElementById('contactPhotoPreview');
         const placeholder = document.querySelector('#contactPhotoUpload .photo-placeholder');
+        
+        // Use DataTransfer API if available, otherwise store in pendingPhotoFile
+        if (typeof DataTransfer !== 'undefined' && DataTransfer.prototype.items) {
+            try {
         const photoDataTransfer = new DataTransfer();
         photoDataTransfer.items.add(portraitFile);
         photoInput.files = photoDataTransfer.files;
+            } catch (error) {
+                console.warn('DataTransfer API not fully supported for photo, using fallback:', error);
+                window.pendingPhotoFile = portraitFile;
+            }
+        } else {
+            // Fallback for browsers without DataTransfer support
+            console.warn('DataTransfer API not supported, using fallback for photo');
+            window.pendingPhotoFile = portraitFile;
+        }
 
         if (preview) {
             const reader = new FileReader();
@@ -5532,6 +5567,13 @@ async function saveContact() {
     const mediaInput = document.getElementById('mediaInput');
     let photoFile = photoInput?.files[0];
     let mediaFiles = mediaInput?.files ? Array.from(mediaInput.files) : [];
+    
+    // Include pending media files from fallback (for browsers without DataTransfer support)
+    if (window.pendingMediaFiles && window.pendingMediaFiles.length > 0) {
+        mediaFiles = [...mediaFiles, ...window.pendingMediaFiles];
+        // Clear pending files after use
+        window.pendingMediaFiles = [];
+    }
     
     // Compress contact photo if provided
     if (photoFile && photoFile.type.startsWith('image/')) {

@@ -1664,11 +1664,7 @@ async function handleEmailSignUp() {
         return;
     }
     
-    if (!name) {
-        showToast('Please enter your name', 'error');
-        return;
-    }
-    
+    // Name is optional - user can update it later in profile
     // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
@@ -2554,7 +2550,7 @@ function displayProfile(profile) {
             photoContainer.style.display = 'none'; // Hide container when no photo
         }
     }
-    if (nameEl) nameEl.textContent = profile.name;
+    if (nameEl) nameEl.textContent = profile.name || 'No name set';
     if (roleEl) roleEl.textContent = profile.role_company || '';
     
     // Update profile completeness
@@ -2712,10 +2708,11 @@ async function shareProfile() {
         
         if (navigator.share) {
             try {
-                const file = new File([blob], `${currentUser.name.replace(/\s+/g, '_')}.vcf`, { type: 'text/vcard' });
+                const userName = currentUser.name || 'Contact';
+                const file = new File([blob], `${userName.replace(/\s+/g, '_')}.vcf`, { type: 'text/vcard' });
                 await navigator.share({
-                    title: `${currentUser.name}'s Contact`,
-                    text: `Contact card for ${currentUser.name}`,
+                    title: `${userName}'s Contact`,
+                    text: `Contact card for ${userName}`,
                     files: [file]
                 });
                 URL.revokeObjectURL(url);
@@ -2739,9 +2736,10 @@ async function shareProfile() {
             
             if (navigator.share) {
                 try {
+                    const userName = currentUser.name || 'User';
                     await navigator.share({
-                        title: `${currentUser.name}'s Profile`,
-                        text: `Connect with ${currentUser.name} on pplai.app`,
+                        title: `${userName}'s Profile`,
+                        text: `Connect with ${userName} on pplai.app`,
                         url: profileUrl,
                     });
                 } catch (error) {
@@ -2757,9 +2755,10 @@ async function shareProfile() {
             const vcard = generateVCard(currentUser);
             const blob = new Blob([vcard], { type: 'text/vcard' });
             const url = URL.createObjectURL(blob);
+            const userName = currentUser.name || 'Contact';
             const a = document.createElement('a');
             a.href = url;
-            a.download = `${currentUser.name.replace(/\s+/g, '_')}.vcf`;
+            a.download = `${userName.replace(/\s+/g, '_')}.vcf`;
             a.click();
             URL.revokeObjectURL(url);
         }
@@ -8809,7 +8808,7 @@ function displayUsers(users) {
                 <div style="display: flex; justify-content: space-between; align-items: start; gap: 16px;">
                     <div style="flex: 1; min-width: 0;">
                         <div style="display: flex; align-items: center; margin-bottom: 8px;">
-                            <h3 style="margin: 0; font-size: 16px; font-weight: 600; color: var(--text-primary);">${escapeHtml(user.name)}</h3>
+                            <h3 style="margin: 0; font-size: 16px; font-weight: 600; color: var(--text-primary);">${escapeHtml(user.name || 'No name')}</h3>
                             ${adminBadge}
                         </div>
                         <p style="margin: 4px 0; color: var(--text-secondary); font-size: 14px;">📧 ${escapeHtml(user.email || 'No email')}</p>

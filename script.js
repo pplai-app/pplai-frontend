@@ -1641,6 +1641,14 @@ async function handleEmailSignIn() {
             console.log('Should redirect to signup?', shouldRedirectToSignup);
             
             if (shouldRedirectToSignup) {
+                // Show message immediately
+                const pendingContactSave = sessionStorage.getItem('pendingContactSave');
+                if (pendingContactSave) {
+                    showToast('Account doesn\'t exist. Please complete sign up below. Your contact will be saved after sign up.', 'info');
+                } else {
+                    showToast('Account doesn\'t exist. Please complete sign up below.', 'info');
+                }
+                
                 // Ensure auth screen is visible
                 const authScreen = document.getElementById('authScreen');
                 if (authScreen && authScreen.classList.contains('hidden')) {
@@ -1696,14 +1704,6 @@ async function handleEmailSignIn() {
                     console.log('Sign up button display:', signUpBtnAfter?.style.display);
                     console.log('Sign up button exists:', !!signUpBtnAfter);
                 }, 200);
-                
-                // Check if there's a pending action to inform user
-                const pendingContactSave = sessionStorage.getItem('pendingContactSave');
-                if (pendingContactSave) {
-                    showToast('Account doesn\'t exist. Please complete sign up below. Your contact will be saved after sign up.', 'info');
-                } else {
-                    showToast('Account doesn\'t exist. Please complete sign up below.', 'info');
-                }
             } else {
                 showToast('Login failed: ' + (error.message || 'Unknown error'), 'error');
             }
@@ -1745,6 +1745,14 @@ async function handleEmailSignIn() {
                 // IMPORTANT: Pending actions (like pendingContactSave) are preserved in sessionStorage
                 // They will be restored after successful sign-up
                 
+                // Show message immediately
+                const pendingContactSave = sessionStorage.getItem('pendingContactSave');
+                if (pendingContactSave) {
+                    showToast('Account doesn\'t exist. Please complete sign up below. Your contact will be saved after sign up.', 'info');
+                } else {
+                    showToast('Account doesn\'t exist. Please complete sign up below.', 'info');
+                }
+                
                 // Ensure auth screen is visible
                 const authScreen = document.getElementById('authScreen');
                 if (authScreen && authScreen.classList.contains('hidden')) {
@@ -1800,14 +1808,6 @@ async function handleEmailSignIn() {
                     console.log('Sign up button display:', signUpBtnAfter?.style.display);
                     console.log('Sign up button exists:', !!signUpBtnAfter);
                 }, 200);
-                
-                // Check if there's a pending action to inform user
-                const pendingContactSave = sessionStorage.getItem('pendingContactSave');
-                if (pendingContactSave) {
-                    showToast('Account doesn\'t exist. Please complete sign up below. Your contact will be saved after sign up.', 'info');
-                } else {
-                    showToast('Account doesn\'t exist. Please complete sign up below.', 'info');
-                }
             } else {
                 showToast('Login failed: ' + (error.message || 'Unknown error'), 'error');
             }

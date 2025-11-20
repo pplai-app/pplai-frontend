@@ -1782,12 +1782,6 @@ async function handleEmailSignIn() {
                 } else {
                     showToast('Account doesn\'t exist. Please complete sign up below.', 'info');
                 }
-                
-                // Ensure we're on the auth screen
-                const authScreen = document.getElementById('authScreen');
-                if (authScreen && authScreen.classList.contains('hidden')) {
-                    showAuthScreen();
-                }
             } else {
                 showToast('Login failed: ' + (error.message || 'Unknown error'), 'error');
             }

@@ -1643,6 +1643,11 @@ async function handleEmailSignIn() {
             const response = await api.emailLogin(email, password);
             console.log('Login successful:', response);
             
+            // Show message if account was just created
+            if (response.is_signup) {
+                showToast('Account doesn\'t exist. Created new account!', 'success');
+            }
+            
             currentUser = getCurrentUser();
             showApp();
             await loadInitialData();

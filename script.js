@@ -5568,6 +5568,12 @@ async function saveContact() {
     let photoFile = photoInput?.files[0];
     let mediaFiles = mediaInput?.files ? Array.from(mediaInput.files) : [];
     
+    // Include pending photo file from fallback (for browsers without DataTransfer support)
+    if (!photoFile && window.pendingPhotoFile) {
+        photoFile = window.pendingPhotoFile;
+        window.pendingPhotoFile = null; // Clear after use
+    }
+    
     // Include pending media files from fallback (for browsers without DataTransfer support)
     if (window.pendingMediaFiles && window.pendingMediaFiles.length > 0) {
         mediaFiles = [...mediaFiles, ...window.pendingMediaFiles];

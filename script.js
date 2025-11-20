@@ -1657,9 +1657,24 @@ async function handleEmailSignIn() {
                 
                 console.log('Switching to sign-up mode, email:', email);
                 
-                // Switch to sign-up mode
-                isSignUpMode = true;
-                toggleEmailAuthMode();
+                // Switch to sign-up mode (only if not already in sign-up mode)
+                if (!isSignUpMode) {
+                    isSignUpMode = true;
+                    toggleEmailAuthMode();
+                } else {
+                    // Already in sign-up mode, just update the UI
+                    const nameInput = document.getElementById('nameInput');
+                    const signInBtn = document.getElementById('emailSignIn');
+                    const signUpBtn = document.getElementById('emailSignUp');
+                    const toggleText = document.getElementById('emailAuthToggle');
+                    
+                    if (nameInput) nameInput.style.display = 'block';
+                    if (signInBtn) signInBtn.style.display = 'none';
+                    if (signUpBtn) signUpBtn.style.display = 'block';
+                    if (toggleText) {
+                        toggleText.innerHTML = 'Already have an account? <span style="color: var(--primary);">Sign in</span>';
+                    }
+                }
                 
                 // Pre-fill email and password
                 if (emailInput && email) {

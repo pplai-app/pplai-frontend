@@ -1515,10 +1515,10 @@ function toggleEmailAuthMode() {
     const toggleText = document.getElementById('emailAuthToggle');
     
     if (isSignUpMode) {
-        // Show name input for signup
+        // Show name input for signup (optional)
         if (nameInput) {
             nameInput.style.display = 'block';
-            nameInput.required = true;
+            nameInput.required = false; // Name is optional
         }
         if (signInBtn) signInBtn.style.display = 'none';
         if (signUpBtn) signUpBtn.style.display = 'block';

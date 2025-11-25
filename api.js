@@ -1,13 +1,13 @@
 // API Configuration
 // Update this to your backend URL in production
 // For production, set this via environment variable or build-time replacement
-let API_BASE_URL = window.API_BASE_URL || 'http://localhost:8002/api';
+let API_BASE_URL = window.API_BASE_URL || 'http://localhost:8000/api';
 
 // Force HTTPS if we're on HTTPS (fix at initialization time)
 // This MUST happen before any API calls are made
 (function () {
     if (!API_BASE_URL || API_BASE_URL.includes('${API_BASE_URL}')) {
-        API_BASE_URL = 'http://localhost:8002/api';
+        API_BASE_URL = 'http://localhost:8000/api';
     }
     if (typeof window !== 'undefined' && window.location.protocol === 'https:') {
         if (API_BASE_URL.startsWith('http://')) {

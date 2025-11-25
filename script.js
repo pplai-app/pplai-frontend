@@ -34,10 +34,10 @@ setTimeout(() => {
 // Initialize app
 document.addEventListener('DOMContentLoaded', async () => {
     debugLog('🚀 Initializing pplai.app...');
-    
+
     // Initialize push notifications after user is authenticated
     // (Will be called after successful login)
-    
+
     // Set up MutationObserver to prevent unauthorized view access
     // This helps prevent direct DOM manipulation from showing protected views
     const protectedViewIds = ['contactsView', 'eventsView', 'tagsView', 'profileView', 'adminView', 'chatView', 'homeView'];
@@ -62,7 +62,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     });
                 }
             });
-            
+
             // Check for class changes (removing 'hidden' class)
             if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
                 const target = mutation.target;
@@ -79,7 +79,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         });
     });
-    
+
     // Observe the app container for changes
     const appContainer = document.getElementById('appContainer');
     if (appContainer) {
@@ -90,12 +90,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             attributeFilter: ['class']
         });
     }
-    
+
     // Check if URL is a shared profile link
     const urlPath = window.location.pathname;
     const profileMatch = urlPath.match(/\/profile\/([a-f0-9-]+)/i);
     const profileUserId = profileMatch ? profileMatch[1] : null;
-    
+
     // Check if required functions exist (only for authenticated app)
     if (typeof getCurrentUser === 'undefined' || typeof getAuthToken === 'undefined') {
         debugError('❌ API functions not loaded! Check if api.js is loaded before script.js');
@@ -103,7 +103,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         showAuthScreen();
         return;
     }
-    
+
     // Initialize Google OAuth when Google SDK loads
     if (typeof google !== 'undefined' && google.accounts) {
         initializeGoogleSignIn();
@@ -115,12 +115,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         });
     }
-    
+
     try {
         // Check if user is authenticated
         const user = getCurrentUser();
         const token = getAuthToken();
-        
+
         debugLog('User check:', { hasUser: !!user, hasToken: !!token });
 
         if (user && token) {
@@ -136,7 +136,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 await checkAdminStatus();
                 // Initialize push notifications
                 await initializePushNotifications();
-                
+
                 // Check if there's a profile ID from URL (logged-in user viewing shared profile)
                 if (profileUserId) {
                     debugLog('📋 Logged-in user viewing public profile, opening in-app modal...');
@@ -150,21 +150,21 @@ document.addEventListener('DOMContentLoaded', async () => {
                         sessionStorage.removeItem('pendingProfileView');
                         await loadPublicProfile(pendingProfileId);
                     }
-                
-                // Check if there's a pending contact save action
-                const pendingContactSave = sessionStorage.getItem('pendingContactSave');
-                if (pendingContactSave) {
-                    try {
-                        const contactData = JSON.parse(pendingContactSave);
-                        sessionStorage.removeItem('pendingContactSave');
-                        // Small delay to ensure UI is ready
-                        setTimeout(async () => {
-                            await openContactModal(contactData);
-                        }, 500);
-                    } catch (error) {
-                        console.error('Error parsing pending contact save:', error);
-                        sessionStorage.removeItem('pendingContactSave');
-                    }
+
+                    // Check if there's a pending contact save action
+                    const pendingContactSave = sessionStorage.getItem('pendingContactSave');
+                    if (pendingContactSave) {
+                        try {
+                            const contactData = JSON.parse(pendingContactSave);
+                            sessionStorage.removeItem('pendingContactSave');
+                            // Small delay to ensure UI is ready
+                            setTimeout(async () => {
+                                await openContactModal(contactData);
+                            }, 500);
+                        } catch (error) {
+                            console.error('Error parsing pending contact save:', error);
+                            sessionStorage.removeItem('pendingContactSave');
+                        }
                     }
                 }
             } catch (error) {
@@ -179,19 +179,19 @@ document.addEventListener('DOMContentLoaded', async () => {
                 await renderStandalonePublicProfile(profileUserId);
                 return;
             }
-            
+
             debugLog('No user/token, showing auth screen');
             showAuthScreen();
         }
 
         setupEventListeners();
         initializeEmailAuthForm();
-        
+
         // Initialize offline sync
         if (typeof offlineQueue !== 'undefined' && offlineQueue.init) {
             offlineQueue.init();
         }
-        
+
         debugLog('✅ Initialization complete');
     } catch (error) {
         debugError('❌ Initialization error:', error);
@@ -252,7 +252,7 @@ function setupEventListeners() {
     });
     document.getElementById('importLumaUrlBtn')?.addEventListener('click', importLumaEventFromUrl);
     document.getElementById('importLumaApiBtn')?.addEventListener('click', importLumaEventsFromApi);
-    
+
     // Close Luma import modal
     document.getElementById('lumaImportModal')?.querySelector('.modal-close')?.addEventListener('click', () => {
         document.getElementById('lumaImportModal')?.classList.add('hidden');
@@ -282,17 +282,33 @@ function setupEventListeners() {
         updateEventsClearFiltersButton();
     });
     document.getElementById('clearEventsFiltersBtn')?.addEventListener('click', clearEventsFilters);
-    
+
+    document.getElementById('eventMediaUploadBtn')?.addEventListener('click', () => {
+        document.getElementById('eventMediaInput')?.click();
+    });
+    document.getElementById('eventMediaInput')?.addEventListener('change', handleEventMediaInputChange);
+    document.getElementById('eventMediaFilterBtn')?.addEventListener('click', (e) => {
+        e.preventDefault();
+        toggleEventMediaFilter();
+    });
+    document.getElementById('linkMediaToContactBtn')?.addEventListener('click', handleLinkMediaToContact);
+    document.getElementById('createContactFromMediaBtn')?.addEventListener('click', handleCreateContactFromMediaSelection);
+    document.getElementById('clearMediaSelectionBtn')?.addEventListener('click', clearEventMediaSelection);
+    document.querySelector('#eventMediaModal .modal-close')?.addEventListener('click', closeEventMediaModal);
+    document.querySelector('#contactPickerModal .modal-close')?.addEventListener('click', closeContactPicker);
+    document.getElementById('contactPickerSearch')?.addEventListener('input', (e) => filterContactPicker(e.target.value || ''));
+    document.getElementById('clearLibraryMediaSelectionBtn')?.addEventListener('click', () => clearPendingLibraryMediaSelection());
+
     // Contacts search
     document.getElementById('contactsSearchInput')?.addEventListener('input', filterContactsBySearch);
     document.getElementById('clearContactsSearch')?.addEventListener('click', clearContactsSearch);
-    
+
     // Contacts
     document.getElementById('scanQRCard')?.addEventListener('click', openQRScanner);
     document.getElementById('scanCardCard')?.addEventListener('click', openBusinessCardScanner);
     document.getElementById('scanEventPassCard')?.addEventListener('click', openEventPassScanner);
     document.getElementById('manualEntryCard')?.addEventListener('click', openContactModal);
-    
+
     // Business Card Scanner
     document.getElementById('businessCardCaptureBtn')?.addEventListener('click', captureBusinessCard);
     document.getElementById('businessCardUploadBtn')?.addEventListener('click', () => {
@@ -307,7 +323,7 @@ function setupEventListeners() {
             e.target.value = '';
         }
     });
-    
+
     // Event Pass Scanner
     document.getElementById('eventPassCaptureBtn')?.addEventListener('click', captureEventPass);
     document.getElementById('eventPassUploadBtn')?.addEventListener('click', () => {
@@ -322,7 +338,7 @@ function setupEventListeners() {
             e.target.value = '';
         }
     });
-    
+
     // Close modals on close button
     document.querySelectorAll('.modal-close').forEach(btn => {
         btn.addEventListener('click', (e) => {
@@ -350,7 +366,7 @@ function setupEventListeners() {
     document.getElementById('removeBulkTagsBtn')?.addEventListener('click', removeBulkTags);
     document.getElementById('bulkAddEventBtn')?.addEventListener('click', bulkAddEventToContacts);
     document.getElementById('bulkDeleteBtn')?.addEventListener('click', bulkDeleteContacts);
-    
+
     // Export modal
     document.getElementById('exportPDFBtn')?.addEventListener('click', () => handleExportFormat('pdf'));
     document.getElementById('exportCSVBtn')?.addEventListener('click', () => handleExportFormat('csv'));
@@ -367,48 +383,48 @@ function setupEventListeners() {
             editContact(currentViewingContactId);
         }
     });
-    
+
     document.getElementById('deleteContactBtn')?.addEventListener('click', () => {
         if (currentViewingContactId && currentViewingContact) {
             deleteContact(currentViewingContactId, currentViewingContact.name);
         }
     });
-    
+
     // AI Follow-up buttons
     document.getElementById('aiEmailBtn')?.addEventListener('click', async () => {
         if (currentViewingContact) {
             await handleAiFollowup(currentViewingContactId, currentViewingContact, 'email');
         }
     });
-    
+
     document.getElementById('aiWhatsAppBtn')?.addEventListener('click', async () => {
         if (currentViewingContact) {
             await handleAiFollowup(currentViewingContactId, currentViewingContact, 'whatsapp');
         }
     });
-    
+
     document.getElementById('aiSmsBtn')?.addEventListener('click', async () => {
         if (currentViewingContact) {
             await handleAiFollowup(currentViewingContactId, currentViewingContact, 'sms');
         }
     });
-    
+
     // Contact action buttons
     document.getElementById('saveToContactsBtn')?.addEventListener('click', saveContactToDevice);
     document.getElementById('emailContactBtn')?.addEventListener('click', emailContact);
     document.getElementById('callContactBtn')?.addEventListener('click', callContact);
     document.getElementById('messageContactBtn')?.addEventListener('click', messageContact);
     document.getElementById('whatsappContactBtn')?.addEventListener('click', whatsappContact);
-    
+
     // Chat button in contact view modal
     document.getElementById('chatContactBtn')?.addEventListener('click', () => {
         if (currentViewingContact) {
             openChatView(currentViewingContactId, currentViewingContact.name);
         }
     });
-    
+
     // Chat functionality (removed - using dedicated chat view instead)
-    
+
     // Chat View functionality
     document.getElementById('chatBackBtn')?.addEventListener('click', () => {
         // Navigate back to contacts view
@@ -460,9 +476,16 @@ function setupEventListeners() {
     });
     document.getElementById('clearAllFiltersBtn')?.addEventListener('click', clearAllFilters);
     document.getElementById('unselectEventBtn')?.addEventListener('click', unselectEvent);
+
+    // Homescreen media upload
+    document.getElementById('uploadMediaToEventBtn')?.addEventListener('click', () => {
+        document.getElementById('homeMediaInput')?.click();
+    });
+    document.getElementById('homeMediaInput')?.addEventListener('change', handleHomeMediaUpload);
+
     document.getElementById('currentEventBanner')?.addEventListener('click', (e) => {
-        // Don't navigate if clicking the unselect button
-        if (e.target.closest('#unselectEventBtn')) {
+        // Don't navigate if clicking the unselect button or upload button
+        if (e.target.closest('#unselectEventBtn') || e.target.closest('#uploadMediaToEventBtn')) {
             return;
         }
         // Always redirect to events page when clicking the banner
@@ -528,14 +551,14 @@ function showAuthScreen() {
     const loadingScreen = document.getElementById('loadingScreen');
     const authScreen = document.getElementById('authScreen');
     const appContainer = document.getElementById('appContainer');
-    
+
     if (loadingScreen) loadingScreen.classList.add('hidden');
     if (authScreen) authScreen.classList.remove('hidden');
     if (appContainer) appContainer.classList.add('hidden');
-    
+
     // Update auth button state
     updateAuthButton();
-    
+
     console.log('Auth screen shown');
 }
 
@@ -545,18 +568,18 @@ function showApp() {
     const authScreen = document.getElementById('authScreen');
     const appContainer = document.getElementById('appContainer');
     const publicProfileScreen = document.getElementById('publicProfileScreen');
-    
+
     if (loadingScreen) loadingScreen.classList.add('hidden');
     if (authScreen) authScreen.classList.add('hidden');
     if (appContainer) appContainer.classList.remove('hidden');
     if (publicProfileScreen) publicProfileScreen.classList.add('hidden');
-    
+
     // Update auth button state
     updateAuthButton();
-    
+
     // Update current event banner to ensure it's visible if there's a current event
     updateCurrentEventBanner();
-    
+
     console.log('App shown');
 }
 
@@ -565,7 +588,7 @@ function showPublicProfileScreen() {
     const authScreen = document.getElementById('authScreen');
     const appContainer = document.getElementById('appContainer');
     const publicProfileScreen = document.getElementById('publicProfileScreen');
-    
+
     if (loadingScreen) loadingScreen.classList.add('hidden');
     if (authScreen) authScreen.classList.add('hidden');
     if (appContainer) appContainer.classList.add('hidden');
@@ -574,15 +597,15 @@ function showPublicProfileScreen() {
 
 function bindPublicProfileListeners() {
     if (publicProfileListenersBound) return;
-    
+
     document.getElementById('publicProfileBackBtn')?.addEventListener('click', () => {
         window.location.href = '/';
     });
-    
+
     document.getElementById('publicProfileOpenAppBtn')?.addEventListener('click', () => {
         window.location.href = '/';
     });
-    
+
     document.getElementById('publicProfileSaveBtn')?.addEventListener('click', handlePublicProfileSave);
     publicProfileListenersBound = true;
 }
@@ -590,9 +613,9 @@ function bindPublicProfileListeners() {
 function togglePublicProfileLoading(isLoading) {
     const loadingEl = document.getElementById('publicProfileLoading');
     const contentEl = document.getElementById('publicProfileContent');
-    
+
     if (!loadingEl || !contentEl) return;
-    
+
     if (isLoading) {
         loadingEl.classList.remove('hidden');
         contentEl.classList.add('hidden');
@@ -610,7 +633,7 @@ function showPublicProfileError(message) {
     const errorEl = document.getElementById('publicProfileError');
     const contentEl = document.getElementById('publicProfileContent');
     if (!errorEl) return;
-    
+
     if (message) {
         errorEl.textContent = message;
         errorEl.classList.remove('hidden');
@@ -624,7 +647,7 @@ function setPublicProfileAction(elementId, href, labelElementId, labelText) {
     const actionEl = document.getElementById(elementId);
     const labelEl = labelElementId ? document.getElementById(labelElementId) : null;
     if (!actionEl) return false;
-    
+
     if (href) {
         actionEl.href = href;
         actionEl.style.display = 'flex';
@@ -642,9 +665,9 @@ function setPublicProfileAction(elementId, href, labelElementId, labelText) {
 
 // Wrapper function to check login and saved contact before allowing chat actions
 function createChatActionHandler(originalHandler, actionType) {
-    return function(e) {
+    return function (e) {
         e.preventDefault();
-        
+
         // Check if user is logged in
         const currentUser = getCurrentUser();
         if (!currentUser) {
@@ -656,7 +679,7 @@ function createChatActionHandler(originalHandler, actionType) {
             }, 1500);
             return;
         }
-        
+
         // Check if contact is saved (has contactId)
         // For public profiles, we need to check if the contact exists in the app
         // Since we don't have contactId on public profile, we'll prompt to save first
@@ -673,7 +696,7 @@ function createChatActionHandler(originalHandler, actionType) {
             }
             return;
         }
-        
+
         // If all checks pass, execute the original handler
         if (originalHandler) {
             originalHandler(e);
@@ -690,11 +713,11 @@ function populatePublicProfileView(profile) {
     const linkedInValueEl = document.getElementById('publicProfileLinkedInValue');
     const photoEl = document.getElementById('publicProfilePhoto');
     const photoPlaceholder = document.getElementById('publicProfilePhotoPlaceholder');
-    
+
     document.title = profile.name ? `${profile.name} | pplai.app` : 'pplai.app Profile';
-    
+
     if (nameEl) nameEl.textContent = profile.name || 'Shared profile';
-    
+
     if (roleEl) {
         if (profile.role_company) {
             roleEl.textContent = profile.role_company;
@@ -703,7 +726,7 @@ function populatePublicProfileView(profile) {
             roleEl.style.display = 'none';
         }
     }
-    
+
     if (aboutEl) {
         if (profile.about_me) {
             aboutEl.textContent = profile.about_me;
@@ -712,7 +735,7 @@ function populatePublicProfileView(profile) {
             aboutEl.style.display = 'none';
         }
     }
-    
+
     if (photoEl && photoPlaceholder) {
         if (profile.profile_photo_url) {
             photoEl.src = profile.profile_photo_url;
@@ -723,23 +746,23 @@ function populatePublicProfileView(profile) {
             photoPlaceholder.style.display = 'flex';
         }
     }
-    
+
     const emailLink = profile.email ? `mailto:${profile.email}` : null;
     const phoneLink = profile.mobile ? `tel:${formatPhoneForLink(profile.mobile)}` : null;
     const whatsappLink = profile.whatsapp || profile.mobile ? buildWhatsappLink(profile.whatsapp || profile.mobile) : null;
     const linkedinLink = profile.linkedin_url ? formatExternalUrl(profile.linkedin_url) : null;
-    
+
     const hasCall = setPublicProfileAction('publicProfileCall', phoneLink, 'publicProfileCallText', profile.mobile || 'Call');
     const hasEmail = setPublicProfileAction('publicProfileEmail', emailLink, 'publicProfileEmailText', profile.email || 'Email');
     const hasLinkedIn = setPublicProfileAction('publicProfileLinkedIn', linkedinLink);
     const hasWhatsapp = setPublicProfileAction('publicProfileWhatsapp', whatsappLink);
-    
+
     const actionsContainer = document.getElementById('publicProfileActions');
     if (actionsContainer) {
         const hasAction = hasCall || hasEmail || hasLinkedIn || hasWhatsapp;
         actionsContainer.style.display = hasAction ? 'grid' : 'none';
     }
-    
+
     if (emailValueEl) {
         emailValueEl.textContent = profile.email || 'Not shared';
     }
@@ -749,19 +772,19 @@ function populatePublicProfileView(profile) {
     if (linkedInValueEl) {
         linkedInValueEl.textContent = profile.linkedin_url || 'Not shared';
     }
-    
+
     const contentEl = document.getElementById('publicProfileContent');
     contentEl?.classList.remove('hidden');
 }
 
 async function handlePublicProfileSave() {
     if (!currentPublicProfileId || !currentPublicProfile) return;
-    
+
     try {
         // Add pplai profile URL
         const frontendUrl = window.location.origin || 'https://pplai.app';
         const pplaiProfileUrl = `${frontendUrl}/profile/${currentPublicProfileId}`;
-        
+
         // Convert profile to contact format for vCard generation
         const contactData = {
             name: currentPublicProfile.name || '',
@@ -781,7 +804,7 @@ async function handlePublicProfileSave() {
             pplai_profile_url: pplaiProfileUrl,
             id: currentPublicProfileId // Include ID so vCard generation can use it
         };
-        
+
         // Add phone numbers
         if (currentPublicProfile.mobile) {
             contactData.phone_numbers.push({
@@ -795,12 +818,12 @@ async function handlePublicProfileSave() {
                 is_whatsapp: true
             });
         }
-        
+
         // Generate vCard with embedded photo
         const vcard = await generateContactVCardWithPhoto(contactData);
         const blob = new Blob([vcard], { type: 'text/vcard' });
         const url = URL.createObjectURL(blob);
-        
+
         // Try Web Share API first (works on mobile)
         if (navigator.share && navigator.canShare) {
             const file = new File([blob], `${contactData.name.replace(/\s+/g, '_')}.vcf`, { type: 'text/vcard' });
@@ -818,7 +841,7 @@ async function handlePublicProfileSave() {
                 return;
             }
         }
-        
+
         // Fallback: Download vCard
         downloadVCard(url, contactData.name);
     } catch (error) {
@@ -852,7 +875,7 @@ function updateAuthButton() {
     const btn = document.getElementById('quickAuthBtn');
     const icon = document.getElementById('authBtnIcon');
     const user = getCurrentUser();
-    
+
     if (btn && icon) {
         if (user) {
             // User is logged in - show logout icon
@@ -893,13 +916,13 @@ async function loadImageFromFile(file) {
 async function preprocessCardImage(file) {
     try {
         const img = await loadImageFromFile(file);
-        
+
         // Check if image loaded with valid dimensions
         if (!img.width || !img.height || img.width < 10 || img.height < 10) {
             debugWarn('Image loaded but has invalid dimensions:', img.width, 'x', img.height);
             return null;
         }
-        
+
         const maxDimension = 1600;
         const scale = Math.min(1, maxDimension / Math.max(img.width, img.height));
         const targetWidth = Math.max(1, Math.round(img.width * scale));
@@ -954,7 +977,7 @@ async function populateContactForm(contactInfo, options = {}) {
     const { portraitFile = null, cardFile = null } = options;
 
     await openContactModal();
-    
+
     // Wait a bit for the modal to fully render and form to be initialized
     await new Promise(resolve => setTimeout(resolve, 100));
 
@@ -1003,11 +1026,11 @@ async function populateContactForm(contactInfo, options = {}) {
                 console.error('cardFile is not a valid File or Blob:', cardFile);
             } else {
                 console.log('Adding card file to media input:', cardFile.name, cardFile.size, 'bytes');
-                
+
                 // Use DataTransfer API if available (modern browsers), otherwise fallback
                 if (typeof DataTransfer !== 'undefined' && DataTransfer.prototype.items) {
                     try {
-            const mediaDataTransfer = new DataTransfer();
+                        const mediaDataTransfer = new DataTransfer();
                         // Preserve existing files
                         if (mediaInput.files && mediaInput.files.length > 0) {
                             Array.from(mediaInput.files).forEach(existingFile => {
@@ -1015,13 +1038,13 @@ async function populateContactForm(contactInfo, options = {}) {
                             });
                         }
                         // Add the card file
-            mediaDataTransfer.items.add(cardFile);
-            mediaInput.files = mediaDataTransfer.files;
-                        
+                        mediaDataTransfer.items.add(cardFile);
+                        mediaInput.files = mediaDataTransfer.files;
+
                         // Trigger change event - this will call handleMediaUpload which updates the preview
                         // Don't manually update preview to avoid duplicates
                         mediaInput.dispatchEvent(new Event('change', { bubbles: true }));
-                        
+
                         console.log('Card file added to media input. Total files:', mediaInput.files.length);
                     } catch (error) {
                         console.warn('DataTransfer API not fully supported, using fallback:', error);
@@ -1051,13 +1074,13 @@ async function populateContactForm(contactInfo, options = {}) {
     if (photoInput && portraitFile) {
         const preview = document.getElementById('contactPhotoPreview');
         const placeholder = document.querySelector('#contactPhotoUpload .photo-placeholder');
-        
+
         // Use DataTransfer API if available, otherwise store in pendingPhotoFile
         if (typeof DataTransfer !== 'undefined' && DataTransfer.prototype.items) {
             try {
-        const photoDataTransfer = new DataTransfer();
-        photoDataTransfer.items.add(portraitFile);
-        photoInput.files = photoDataTransfer.files;
+                const photoDataTransfer = new DataTransfer();
+                photoDataTransfer.items.add(portraitFile);
+                photoInput.files = photoDataTransfer.files;
             } catch (error) {
                 console.warn('DataTransfer API not fully supported for photo, using fallback:', error);
                 window.pendingPhotoFile = portraitFile;
@@ -1081,7 +1104,7 @@ async function populateContactForm(contactInfo, options = {}) {
 }
 
 function handleLogout() {
-        if (confirm('Are you sure you want to logout from pplai.app?')) {
+    if (confirm('Are you sure you want to logout from pplai.app?')) {
         clearAuthToken();
         currentUser = null;
         currentEvent = null;
@@ -1094,18 +1117,18 @@ function handleLogout() {
 async function switchView(viewName) {
     // Check authentication for protected views (everything except public profile)
     const protectedViews = ['contacts', 'events', 'tags', 'profile', 'admin', 'chat', 'home'];
-    
+
     if (protectedViews.includes(viewName)) {
         const currentUser = getCurrentUser();
         const token = getAuthToken();
-        
+
         if (!currentUser || !token) {
             // User not authenticated - redirect to auth screen
             showToast('🔐 Please login to access this feature', 'error');
             showAuthScreen();
             return;
         }
-        
+
         // Verify token is still valid by checking if we can access the API
         // This prevents simple DOM manipulation from bypassing auth
         try {
@@ -1118,13 +1141,13 @@ async function switchView(viewName) {
             return;
         }
     }
-    
+
     // Close any open modals first
     closeModal();
-    
+
     // Hide all views
     document.querySelectorAll('.view').forEach(view => view.classList.add('hidden'));
-    
+
     // Show selected view
     const targetView = document.getElementById(`${viewName}View`);
     if (!targetView) {
@@ -1158,20 +1181,20 @@ async function switchView(viewName) {
 function initializeGoogleSignIn() {
     // Get Client ID from window (injected from environment)
     const clientId = window.GOOGLE_CLIENT_ID || '';
-    
+
     // Skip if client ID not configured (local development without OAuth)
     if (!clientId || clientId === 'YOUR_GOOGLE_CLIENT_ID') {
         debugLog('⚠️ Google OAuth Client ID not configured - OAuth sign-in disabled');
         debugLog('💡 Use email/password login or configure GOOGLE_CLIENT_ID for OAuth');
-            return;
-        }
-        
+        return;
+    }
+
     // Check if Google OAuth SDK is loaded
     if (typeof google === 'undefined' || !google.accounts) {
         debugWarn('Google OAuth SDK not loaded');
         return;
     }
-    
+
     try {
         google.accounts.id.initialize({
             client_id: clientId,
@@ -1179,7 +1202,7 @@ function initializeGoogleSignIn() {
             auto_select: false,
             cancel_on_tap_outside: true
         });
-        
+
         // Use promptOne for one-tap sign-in, or attach to existing button
         const googleBtn = document.getElementById('googleSignIn');
         if (googleBtn) {
@@ -1193,7 +1216,7 @@ function initializeGoogleSignIn() {
                 locale: 'en'
             });
         }
-        
+
         debugLog('✅ Google OAuth initialized successfully');
     } catch (error) {
         debugError('❌ Failed to initialize Google OAuth:', error);
@@ -1206,22 +1229,22 @@ async function handleGoogleCredentialResponse(response) {
     try {
         // Decode the JWT token (basic decode, in production verify on backend)
         const payload = JSON.parse(atob(response.credential.split('.')[1]));
-        
+
         const email = payload.email;
         const name = payload.name;
         const picture = payload.picture;
         const sub = payload.sub; // Google user ID
-        
+
         // Send to backend
         await api.oauthLogin('google', email, name, picture, sub);
         currentUser = getCurrentUser();
         showApp();
         await loadInitialData();
         await checkAdminStatus();
-        
+
         // Initialize push notifications
         await initializePushNotifications();
-        
+
         // Check if there's a pending contact save action
         const pendingContactSave = sessionStorage.getItem('pendingContactSave');
         if (pendingContactSave) {
@@ -1253,26 +1276,26 @@ async function initializePushNotifications() {
         debugLog('⚠️ Push notifications not supported in this browser');
         return;
     }
-    
+
     // Check if user is authenticated
     const currentUser = getCurrentUser();
     if (!currentUser) {
         console.log('ℹ️ User not authenticated, skipping push notification setup');
         return;
     }
-    
+
     try {
         console.log('🔔 Initializing push notifications...');
-        
+
         // Register service worker
         const registration = await navigator.serviceWorker.register('/sw.js');
         console.log('✅ Service Worker registered:', registration.scope);
         debugLog('✅ Service Worker registered');
-        
+
         // Wait for service worker to be ready
         await navigator.serviceWorker.ready;
         console.log('✅ Service Worker ready');
-        
+
         // Check if already subscribed
         const existingSubscription = await registration.pushManager.getSubscription();
         if (existingSubscription) {
@@ -1285,11 +1308,11 @@ async function initializePushNotifications() {
             setupAppExitDetection();
             return;
         }
-        
+
         // Check current permission
         const currentPermission = Notification.permission;
         console.log('📋 Current notification permission:', currentPermission);
-        
+
         // Request notification permission
         let permission = currentPermission;
         if (permission === 'default') {
@@ -1297,35 +1320,35 @@ async function initializePushNotifications() {
             permission = await Notification.requestPermission();
             console.log('📋 Permission result:', permission);
         }
-        
+
         if (permission !== 'granted') {
             console.warn('⚠️ Notification permission denied:', permission);
             debugLog('⚠️ Notification permission denied');
             return;
         }
-        
+
         // Get VAPID public key from backend
         console.log('🔑 Getting VAPID public key from backend...');
         const vapidKeyResponse = await api.getVapidPublicKey();
         const vapidPublicKey = vapidKeyResponse.publicKey;
-        
+
         if (!vapidPublicKey) {
             console.error('❌ VAPID public key not available');
             debugLog('⚠️ VAPID public key not available');
             return;
         }
-        
+
         console.log('✅ Got VAPID public key');
         console.log('   Key length:', vapidPublicKey.length);
         console.log('   Key preview:', vapidPublicKey.substring(0, 20) + '...');
-        
+
         // Convert VAPID key to Uint8Array
         let applicationServerKey;
         try {
             applicationServerKey = urlBase64ToUint8Array(vapidPublicKey);
             console.log('✅ Converted VAPID key to Uint8Array');
             console.log('   Array length:', applicationServerKey.length);
-            
+
             // Validate key length (should be 65 bytes for P-256 uncompressed public key)
             if (applicationServerKey.length !== 65) {
                 console.warn('⚠️ VAPID key length is', applicationServerKey.length, 'bytes (expected 65 for P-256)');
@@ -1334,7 +1357,7 @@ async function initializePushNotifications() {
             console.error('❌ Error converting VAPID key:', error);
             throw new Error('Invalid VAPID key format: ' + error.message);
         }
-        
+
         // Subscribe to push service
         console.log('📝 Subscribing to push service...');
         let subscription;
@@ -1351,21 +1374,21 @@ async function initializePushNotifications() {
             console.error('   ApplicationServerKey length:', applicationServerKey.length);
             throw error;
         }
-        
+
         pushSubscriptionEndpoint = subscription.endpoint;
         console.log('✅ Subscribed to push notifications');
         console.log('   Endpoint:', subscription.endpoint.substring(0, 50) + '...');
-        
+
         // Send subscription to backend
         await updatePushSubscription(subscription);
         console.log('✅ Subscription saved to backend');
-        
+
         debugLog('✅ Subscribed to push notifications');
-        
+
         // Set up app exit detection
         setupAppExitDetection();
         console.log('✅ App exit detection set up');
-        
+
     } catch (error) {
         console.error('❌ Error initializing push notifications:', error);
         debugError('❌ Error initializing push notifications:', error);
@@ -1382,7 +1405,7 @@ async function updatePushSubscription(subscription) {
             },
             user_agent: navigator.userAgent
         };
-        
+
         console.log('📤 Sending subscription to backend...');
         await api.subscribePush(subscriptionData);
         console.log('✅ Subscription updated in backend');
@@ -1396,24 +1419,24 @@ function urlBase64ToUint8Array(base64String) {
     if (!base64String || typeof base64String !== 'string') {
         throw new Error('Invalid base64 string');
     }
-    
+
     // Remove any whitespace
     base64String = base64String.trim();
-    
+
     // Add padding if needed
     const padding = '='.repeat((4 - base64String.length % 4) % 4);
     const base64 = (base64String + padding)
         .replace(/\-/g, '+')
         .replace(/_/g, '/');
-    
+
     try {
         const rawData = window.atob(base64);
         const outputArray = new Uint8Array(rawData.length);
-        
+
         for (let i = 0; i < rawData.length; ++i) {
             outputArray[i] = rawData.charCodeAt(i);
         }
-        
+
         return outputArray;
     } catch (error) {
         throw new Error('Failed to decode base64: ' + error.message);
@@ -1433,7 +1456,7 @@ function setupAppExitDetection() {
     // Send notification when app is closed/exited
     let isExiting = false;
     let exitTimeout = null;
-    
+
     // Handle visibility change (tab switch, minimize, etc.)
     document.addEventListener('visibilitychange', async () => {
         if (document.hidden && !isExiting) {
@@ -1458,7 +1481,7 @@ function setupAppExitDetection() {
             isExiting = false;
         }
     });
-    
+
     // Handle beforeunload (browser close, refresh)
     window.addEventListener('beforeunload', async () => {
         // Use sendBeacon for reliability during page unload
@@ -1473,7 +1496,7 @@ async function sendProfileNotification() {
             console.warn('⚠️ Cannot send notification: User not logged in');
             return;
         }
-        
+
         if (!pushSubscriptionEndpoint) {
             console.warn('⚠️ Cannot send notification: No push subscription endpoint');
             // Try to get subscription
@@ -1492,7 +1515,7 @@ async function sendProfileNotification() {
                 return;
             }
         }
-        
+
         // Send notification request to backend
         console.log('📤 Sending profile notification...');
         const result = await api.sendProfileNotification();
@@ -1548,7 +1571,7 @@ function toggleEmailAuthMode() {
     const signInBtn = document.getElementById('emailSignIn');
     const signUpBtn = document.getElementById('emailSignUp');
     const toggleText = document.getElementById('emailAuthToggle');
-    
+
     if (isSignUpMode) {
         // Show name input for signup (optional)
         if (nameInput) {
@@ -1579,7 +1602,7 @@ function initializeEmailAuthForm() {
     const nameInput = document.getElementById('nameInput');
     const signInBtn = document.getElementById('emailSignIn');
     const signUpBtn = document.getElementById('emailSignUp');
-    
+
     // Start in sign-in mode
     isSignUpMode = false;
     if (nameInput) {
@@ -1594,40 +1617,40 @@ async function handleEmailSignIn() {
     const email = document.getElementById('emailInput')?.value?.trim();
     const password = document.getElementById('passwordInput')?.value;
     const signInBtn = document.getElementById('emailSignIn');
-    
+
     if (!email) {
         showToast('Please enter your email', 'error');
         return;
     }
-    
+
     if (!password) {
         showToast('Please enter your password', 'error');
         return;
     }
-    
+
     // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
         showToast('Please enter a valid email address', 'error');
         return;
     }
-    
+
     // Disable button and show loading state
     if (signInBtn) {
         signInBtn.disabled = true;
         const originalText = signInBtn.textContent;
         signInBtn.textContent = 'Signing in...';
-        
+
         try {
             debugLog('Attempting email login...');
             const response = await api.emailLogin(email, password);
             debugLog('Login successful');
-            
+
             // Show message if account was just created
             if (response.is_signup) {
                 showToast('Account doesn\'t exist. Created new account!', 'success');
             }
-            
+
             // Verify token was saved
             const savedToken = getAuthToken();
             if (!savedToken) {
@@ -1635,17 +1658,17 @@ async function handleEmailSignIn() {
                 showToast('Login succeeded but token was not saved. Please try again.', 'error');
                 return;
             }
-            
+
             currentUser = getCurrentUser();
             debugLog('Current user set:', currentUser?.email);
-            
+
             showApp();
             await loadInitialData();
             await checkAdminStatus();
-            
+
             // Initialize push notifications
             await initializePushNotifications();
-            
+
             // Check if there's a pending contact save action
             const pendingContactSave = sessionStorage.getItem('pendingContactSave');
             if (pendingContactSave) {
@@ -1665,16 +1688,16 @@ async function handleEmailSignIn() {
             debugError('Login error:', error);
             console.log('Error message:', error.message);
             console.log('Error object:', error);
-            
+
             // Check if account doesn't exist - redirect to sign-up
             const errorMsg = error.message || '';
-            const shouldRedirectToSignup = errorMsg.includes("doesn't exist") || 
-                                          errorMsg.includes("Please sign up") || 
-                                          errorMsg.includes("404") || 
-                                          errorMsg.includes("Account doesn't exist");
-            
+            const shouldRedirectToSignup = errorMsg.includes("doesn't exist") ||
+                errorMsg.includes("Please sign up") ||
+                errorMsg.includes("404") ||
+                errorMsg.includes("Account doesn't exist");
+
             console.log('Should redirect to signup?', shouldRedirectToSignup);
-            
+
             if (shouldRedirectToSignup) {
                 // Show message immediately
                 const pendingContactSave = sessionStorage.getItem('pendingContactSave');
@@ -1683,24 +1706,24 @@ async function handleEmailSignIn() {
                 } else {
                     showToast('Account doesn\'t exist. Please complete sign up below.', 'info');
                 }
-                
+
                 // Ensure auth screen is visible
                 const authScreen = document.getElementById('authScreen');
                 if (authScreen && authScreen.classList.contains('hidden')) {
                     showAuthScreen();
                 }
-                
+
                 // Switch to sign-up mode with pre-filled email and password
                 const emailInput = document.getElementById('emailInput');
                 const passwordInput = document.getElementById('passwordInput');
-                
+
                 // Store email and password
                 const email = emailInput?.value?.trim();
                 const password = passwordInput?.value;
-                
+
                 console.log('Switching to sign-up mode, email:', email);
                 console.log('Current isSignUpMode:', isSignUpMode);
-                
+
                 // Use setTimeout to ensure DOM is ready and auth screen is visible
                 setTimeout(() => {
                     // Switch to sign-up mode (only if not already in sign-up mode)
@@ -1715,7 +1738,7 @@ async function handleEmailSignIn() {
                         const signInBtn = document.getElementById('emailSignIn');
                         const signUpBtn = document.getElementById('emailSignUp');
                         const toggleText = document.getElementById('emailAuthToggle');
-                        
+
                         if (nameInput) nameInput.style.display = 'block';
                         if (signInBtn) signInBtn.style.display = 'none';
                         if (signUpBtn) signUpBtn.style.display = 'block';
@@ -1723,7 +1746,7 @@ async function handleEmailSignIn() {
                             toggleText.innerHTML = 'Already have an account? <span style="color: var(--primary);">Sign in</span>';
                         }
                     }
-                    
+
                     // Pre-fill email and password after mode switch
                     const emailInputAfter = document.getElementById('emailInput');
                     const passwordInputAfter = document.getElementById('passwordInput');
@@ -1733,7 +1756,7 @@ async function handleEmailSignIn() {
                     if (passwordInputAfter && password) {
                         passwordInputAfter.value = password;
                     }
-                    
+
                     console.log('After toggle, isSignUpMode:', isSignUpMode);
                     const signUpBtnAfter = document.getElementById('emailSignUp');
                     console.log('Sign up button display:', signUpBtnAfter?.style.display);
@@ -1755,31 +1778,31 @@ async function handleEmailSignIn() {
             console.log('Attempting email login...');
             const response = await api.emailLogin(email, password);
             console.log('Login successful:', response);
-            
+
             // Show message if account was just created
             if (response.is_signup) {
                 showToast('Account doesn\'t exist. Created new account!', 'success');
             }
-            
+
             currentUser = getCurrentUser();
             showApp();
             await loadInitialData();
         } catch (error) {
             console.error('Login error:', error);
-            
+
             // Check if account doesn't exist - redirect to sign-up
             const errorMsg = error.message || '';
-            const shouldRedirectToSignup = errorMsg.includes("doesn't exist") || 
-                                          errorMsg.includes("Please sign up") || 
-                                          errorMsg.includes("404") || 
-                                          errorMsg.includes("Account doesn't exist");
-            
+            const shouldRedirectToSignup = errorMsg.includes("doesn't exist") ||
+                errorMsg.includes("Please sign up") ||
+                errorMsg.includes("404") ||
+                errorMsg.includes("Account doesn't exist");
+
             console.log('Should redirect to signup?', shouldRedirectToSignup);
-            
+
             if (shouldRedirectToSignup) {
                 // IMPORTANT: Pending actions (like pendingContactSave) are preserved in sessionStorage
                 // They will be restored after successful sign-up
-                
+
                 // Show message immediately
                 const pendingContactSave = sessionStorage.getItem('pendingContactSave');
                 if (pendingContactSave) {
@@ -1787,24 +1810,24 @@ async function handleEmailSignIn() {
                 } else {
                     showToast('Account doesn\'t exist. Please complete sign up below.', 'info');
                 }
-                
+
                 // Ensure auth screen is visible
                 const authScreen = document.getElementById('authScreen');
                 if (authScreen && authScreen.classList.contains('hidden')) {
                     showAuthScreen();
                 }
-                
+
                 // Switch to sign-up mode with pre-filled email and password
                 const emailInput = document.getElementById('emailInput');
                 const passwordInput = document.getElementById('passwordInput');
-                
+
                 // Store email and password
                 const email = emailInput?.value?.trim();
                 const password = passwordInput?.value;
-                
+
                 console.log('Switching to sign-up mode, email:', email);
                 console.log('Current isSignUpMode:', isSignUpMode);
-                
+
                 // Use setTimeout to ensure DOM is ready and auth screen is visible
                 setTimeout(() => {
                     // Switch to sign-up mode (only if not already in sign-up mode)
@@ -1819,7 +1842,7 @@ async function handleEmailSignIn() {
                         const signInBtn = document.getElementById('emailSignIn');
                         const signUpBtn = document.getElementById('emailSignUp');
                         const toggleText = document.getElementById('emailAuthToggle');
-                        
+
                         if (nameInput) nameInput.style.display = 'block';
                         if (signInBtn) signInBtn.style.display = 'none';
                         if (signUpBtn) signUpBtn.style.display = 'block';
@@ -1827,7 +1850,7 @@ async function handleEmailSignIn() {
                             toggleText.innerHTML = 'Already have an account? <span style="color: var(--primary);">Sign in</span>';
                         }
                     }
-                    
+
                     // Pre-fill email and password after mode switch
                     const emailInputAfter = document.getElementById('emailInput');
                     const passwordInputAfter = document.getElementById('passwordInput');
@@ -1837,7 +1860,7 @@ async function handleEmailSignIn() {
                     if (passwordInputAfter && password) {
                         passwordInputAfter.value = password;
                     }
-                    
+
                     console.log('After toggle, isSignUpMode:', isSignUpMode);
                     const signUpBtnAfter = document.getElementById('emailSignUp');
                     console.log('Sign up button display:', signUpBtnAfter?.style.display);
@@ -1855,17 +1878,17 @@ async function handleEmailSignUp() {
     const password = document.getElementById('passwordInput')?.value;
     const name = document.getElementById('nameInput')?.value?.trim();
     const signUpBtn = document.getElementById('emailSignUp');
-    
+
     if (!email) {
         showToast('Please enter your email', 'error');
         return;
     }
-    
+
     if (!password) {
         showToast('Please enter your password', 'error');
         return;
     }
-    
+
     // Name is optional - user can update it later in profile
     // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -1873,34 +1896,34 @@ async function handleEmailSignUp() {
         showToast('Please enter a valid email address', 'error');
         return;
     }
-    
+
     // Validate password strength
     if (password.length < 6) {
         showToast('Password must be at least 6 characters long', 'error');
         return;
     }
-    
+
     // Disable button and show loading state
     if (signUpBtn) {
         signUpBtn.disabled = true;
         const originalText = signUpBtn.textContent;
         signUpBtn.textContent = 'Signing up...';
-        
+
         try {
             console.log('Attempting email signup...');
             const response = await api.emailLogin(email, password, name);
             console.log('Signup successful:', response);
-            
+
             currentUser = getCurrentUser();
             console.log('Current user set:', currentUser);
-            
+
             showApp();
             await loadInitialData();
             await checkAdminStatus();
-            
+
             // Initialize push notifications
             await initializePushNotifications();
-            
+
             // Restore any pending actions (e.g., contact save) that were interrupted by sign-up
             const pendingContactSave = sessionStorage.getItem('pendingContactSave');
             if (pendingContactSave) {
@@ -1933,15 +1956,15 @@ async function handleEmailSignUp() {
             console.log('Attempting email signup...');
             const response = await api.emailLogin(email, password, name);
             console.log('Signup successful:', response);
-            
+
             currentUser = getCurrentUser();
             showApp();
             await loadInitialData();
             await checkAdminStatus();
-            
+
             // Initialize push notifications
             await initializePushNotifications();
-            
+
             // Restore any pending actions (e.g., contact save) that were interrupted by sign-up
             const pendingContactSave = sessionStorage.getItem('pendingContactSave');
             if (pendingContactSave) {
@@ -2003,7 +2026,7 @@ function initNetworkStatus() {
 function updateNetworkStatus() {
     const indicator = document.getElementById('offlineIndicator');
     const badge = document.getElementById('networkStatusBadge');
-    
+
     if (navigator.onLine) {
         if (indicator) indicator.classList.add('hidden');
         if (badge) {
@@ -2023,7 +2046,7 @@ async function loadProfile() {
     // Check if user is authenticated before making request
     const user = getCurrentUser();
     const token = getAuthToken();
-    
+
     if (!user || !token) {
         console.warn('No user or token, cannot load profile');
         showAuthScreen();
@@ -2036,13 +2059,13 @@ async function loadProfile() {
         await loadProfileQR();
     } catch (error) {
         console.error('Error loading profile:', error);
-        
+
         // If unauthorized, let the apiRequest handle redirect
         if (error.message === 'Unauthorized') {
             // This will be handled by apiRequest
             return;
         }
-        
+
         // For other errors, show error message but stay on profile view
         const profileView = document.getElementById('profileView');
         if (profileView) {
@@ -2086,17 +2109,17 @@ function getCachedQR(userId, mode) {
         const cacheKey = getQRCacheKey(userId, mode);
         const cached = localStorage.getItem(cacheKey);
         if (!cached) return null;
-        
+
         const cacheData = JSON.parse(cached);
         const profileHash = getUserProfileHash(currentUser);
-        
+
         // Check if profile has changed
         if (cacheData.profileHash !== profileHash) {
             console.log('Profile changed, invalidating QR cache');
             clearQRCache(userId, mode);
             return null;
         }
-        
+
         // Check if cache is expired (24 hours)
         const cacheAge = Date.now() - cacheData.timestamp;
         const maxAge = 24 * 60 * 60 * 1000; // 24 hours
@@ -2105,7 +2128,7 @@ function getCachedQR(userId, mode) {
             clearQRCache(userId, mode);
             return null;
         }
-        
+
         return cacheData;
     } catch (error) {
         console.warn('Error reading QR cache:', error);
@@ -2164,17 +2187,17 @@ async function loadProfileQR() {
         console.error('QR canvas not found');
         return;
     }
-    
+
     if (!currentUser) {
         console.warn('No current user for QR');
         return;
     }
-    
+
     try {
         // Get QR code from backend
         const mode = qrMode || 'url';
         const response = await api.getProfileQR(currentUser.id, mode);
-        
+
         if (response.qr_code) {
             // Display the QR code image
             const img = new Image();
@@ -2191,7 +2214,7 @@ async function loadProfileQR() {
                 showQRGenerationError(canvas, 'Failed to load QR code image');
             };
             img.src = response.qr_code;
-            
+
             // Cache the response
             if (mode === 'vcard' && response.vcard) {
                 setCachedQR(currentUser.id, 'vcard', {
@@ -2210,16 +2233,16 @@ async function loadProfileQR() {
 
 function showQRGenerationError(canvas, message) {
     if (!canvas) return;
-                const ctx = canvas.getContext('2d');
-        canvas.width = 300;
-        canvas.height = 300;
-        ctx.fillStyle = '#f0f0f0';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+    const ctx = canvas.getContext('2d');
+    canvas.width = 300;
+    canvas.height = 300;
+    ctx.fillStyle = '#f0f0f0';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.fillStyle = '#ef4444';
-        ctx.font = '14px Arial';
-        ctx.textAlign = 'center';
+    ctx.font = '14px Arial';
+    ctx.textAlign = 'center';
     ctx.fillText(message, canvas.width / 2, canvas.height / 2 - 10);
-        ctx.fillText('Please refresh the page', canvas.width / 2, canvas.height / 2 + 10);
+    ctx.fillText('Please refresh the page', canvas.width / 2, canvas.height / 2 + 10);
 }
 
 // Client-side QR generation removed - using backend QR generation only
@@ -2230,24 +2253,24 @@ function generateVCard(user) {
     vcard += 'VERSION:3.0\n';
     vcard += `FN:${escapeVCardValue(user.name || '')}\n`;
     vcard += `N:${escapeVCardValue(user.name || '')};;;;\n`;
-    
+
     if (user.email) {
         vcard += `EMAIL:${escapeVCardValue(user.email)}\n`;
     }
-    
+
     if (user.mobile) {
         vcard += `TEL;TYPE=CELL:${escapeVCardValue(user.mobile)}\n`;
     }
-    
+
     if (user.whatsapp) {
         vcard += `TEL;TYPE=CELL,WA:${escapeVCardValue(user.whatsapp)}\n`;
     }
-    
+
     // Role/Title
     if (user.role_company) {
         vcard += `TITLE:${escapeVCardValue(user.role_company)}\n`;
     }
-    
+
     // Website (if user has website field)
     if (user.website) {
         let websiteUrl = user.website;
@@ -2256,7 +2279,7 @@ function generateVCard(user) {
         }
         vcard += `URL:${escapeVCardValue(websiteUrl)}\n`;
     }
-    
+
     // LinkedIn
     if (user.linkedin_url) {
         let linkedInUrl = user.linkedin_url;
@@ -2265,44 +2288,44 @@ function generateVCard(user) {
         }
         vcard += `URL;TYPE=LinkedIn:${escapeVCardValue(linkedInUrl)}\n`;
     }
-    
+
     if (user.about_me) {
         vcard += `NOTE:${escapeVCardValue(user.about_me)}\n`;
     }
-    
+
     if (user.profile_photo_url) {
         vcard += `PHOTO;VALUE=URI:${escapeVCardValue(user.profile_photo_url)}\n`;
     }
-    
+
     // Add pplai.app profile URL
     const frontendUrl = window.location.origin || 'http://localhost:8080';
     const pplaiProfileUrl = `${frontendUrl}/profile/${user.id}`;
     vcard += `URL;TYPE=PPLAI:${escapeVCardValue(pplaiProfileUrl)}\n`;
-    
+
     // Add pplai.app custom fields
     const now = new Date();
     const dateConnected = now.toISOString().split('T')[0]; // YYYY-MM-DD format
     vcard += `X-PPLAI-DATE-CONNECTED:${escapeVCardValue(dateConnected)}\n`;
-    
+
     // Add readable date format for "Date Connected on pplai.app"
     const dateConnectedReadable = now.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
     vcard += `X-PPLAI-DATE-CONNECTED-READABLE:${escapeVCardValue(dateConnectedReadable)}\n`;
-    
+
     // Add current event name if selected
     if (currentEvent && currentEvent.name) {
         vcard += `X-PPLAI-EVENT:${escapeVCardValue(currentEvent.name)}\n`;
     }
-    
+
     // Add notes with date and event name
     let notes = `Connected via pplai.app on ${now.toLocaleDateString()}`;
     if (currentEvent && currentEvent.name) {
         notes += ` at ${currentEvent.name}`;
     }
     vcard += `X-PPLAI-NOTES:${escapeVCardValue(notes)}\n`;
-    
+
     // Note: Tags would need to be passed separately or retrieved from user's profile
     // For now, we'll leave tags empty in the vCard
-    
+
     vcard += 'END:VCARD';
     return vcard;
 }
@@ -2322,8 +2345,8 @@ function handleQRModeToggle(e) {
     console.log('QR Mode changed to:', qrMode);
     const description = document.getElementById('qrModeDescription');
     if (description) {
-        description.textContent = qrMode === 'vcard' 
-            ? 'Contains contact data (works offline)' 
+        description.textContent = qrMode === 'vcard'
+            ? 'Contains contact data (works offline)'
             : 'Contains profile link (requires network)';
     }
     // Force reload QR with new mode
@@ -2364,25 +2387,25 @@ let currentViewingContact = null;
 
 function updateContactActionButtons(contact) {
     currentViewingContact = contact;
-    
+
     // Email button (now inline with email field, handled by displayContactProfile)
     const emailBtn = document.getElementById('emailContactBtn');
     if (emailBtn) {
         emailBtn.style.display = contact.email ? 'inline-flex' : 'none';
     }
-    
+
     // Call button (now inline with mobile field, handled by displayContactProfile)
     const callBtn = document.getElementById('callContactBtn');
     if (callBtn) {
         callBtn.style.display = contact.mobile ? 'inline-flex' : 'none';
     }
-    
+
     // Message button (now inline with mobile field, handled by displayContactProfile)
     const messageBtn = document.getElementById('messageContactBtn');
     if (messageBtn) {
         messageBtn.style.display = contact.mobile ? 'inline-flex' : 'none';
     }
-    
+
     // WhatsApp button (now inline with mobile field, handled by displayContactProfile)
     const whatsappBtn = document.getElementById('whatsappContactBtn');
     if (whatsappBtn) {
@@ -2392,12 +2415,12 @@ function updateContactActionButtons(contact) {
 
 async function saveContactToDevice() {
     if (!currentViewingContact) return;
-    
+
     // Generate vCard with embedded photo
     const vcard = await generateContactVCardWithPhoto(currentViewingContact);
     const blob = new Blob([vcard], { type: 'text/vcard' });
     const url = URL.createObjectURL(blob);
-    
+
     // Try Web Share API first (works on mobile)
     if (navigator.share && navigator.canShare) {
         const file = new File([blob], `${currentViewingContact.name.replace(/\s+/g, '_')}.vcf`, { type: 'text/vcard' });
@@ -2415,7 +2438,7 @@ async function saveContactToDevice() {
             return;
         }
     }
-    
+
     // Fallback to download
     downloadVCard(url, currentViewingContact.name);
 }
@@ -2435,7 +2458,7 @@ function generateContactVCard(contact) {
     vcard += 'VERSION:3.0\n';
     vcard += `FN:${escapeVCardValue(contact.name || '')}\n`;
     vcard += `N:${escapeVCardValue(contact.name || '')};;;;\n`;
-    
+
     // Handle multiple email addresses - merge single and multiple
     const emailAddresses = [];
     if (contact.email_addresses && Array.isArray(contact.email_addresses) && contact.email_addresses.length > 0) {
@@ -2454,7 +2477,7 @@ function generateContactVCard(contact) {
     emailAddresses.forEach(email => {
         vcard += `EMAIL:${escapeVCardValue(email)}\n`;
     });
-    
+
     // Handle multiple phone numbers - merge single and multiple
     const phoneNumbers = [];
     if (contact.phone_numbers && Array.isArray(contact.phone_numbers) && contact.phone_numbers.length > 0) {
@@ -2494,19 +2517,19 @@ function generateContactVCard(contact) {
             vcard += `TEL;TYPE=CELL,WA:${escapeVCardValue(phone.number)}\n`;
         } else {
             vcard += `TEL;TYPE=CELL:${escapeVCardValue(phone.number)}\n`;
-    }
+        }
     });
-    
+
     // Company
     if (contact.company) {
         vcard += `ORG:${escapeVCardValue(contact.company)}\n`;
     }
-    
+
     // Role/Title
     if (contact.role_company) {
         vcard += `TITLE:${escapeVCardValue(contact.role_company)}\n`;
     }
-    
+
     // Website
     if (contact.website) {
         let websiteUrl = contact.website;
@@ -2515,7 +2538,7 @@ function generateContactVCard(contact) {
         }
         vcard += `URL:${escapeVCardValue(websiteUrl)}\n`;
     }
-    
+
     // LinkedIn
     if (contact.linkedin_url) {
         let linkedInUrl = contact.linkedin_url;
@@ -2524,7 +2547,7 @@ function generateContactVCard(contact) {
         }
         vcard += `URL;TYPE=LinkedIn:${escapeVCardValue(linkedInUrl)}\n`;
     }
-    
+
     // Custom pplai.app fields
     // Tags as custom field - always include if tags exist
     if (contact.tags && Array.isArray(contact.tags) && contact.tags.length > 0) {
@@ -2537,7 +2560,7 @@ function generateContactVCard(contact) {
             vcard += `X-PPLAI-TAGS:${escapeVCardValue(tagNames)}\n`;
         }
     }
-    
+
     // Date met on pplai.app as custom field (ISO format: YYYY-MM-DD) - always include if meeting_date exists
     if (contact.meeting_date) {
         try {
@@ -2550,19 +2573,19 @@ function generateContactVCard(contact) {
             console.warn('Error formatting meeting_date for vCard:', e);
         }
     }
-    
+
     // Event as custom field
     if (contact.event && contact.event.name) {
         vcard += `X-PPLAI-EVENT:${escapeVCardValue(contact.event.name)}\n`;
     }
-    
+
     // Location as custom field
     if (contact.meeting_location_name) {
         vcard += `X-PPLAI-LOCATION:${escapeVCardValue(contact.meeting_location_name)}\n`;
     } else if (contact.meeting_latitude && contact.meeting_longitude) {
         vcard += `X-PPLAI-LOCATION:${escapeVCardValue(`${contact.meeting_latitude}, ${contact.meeting_longitude}`)}\n`;
     }
-    
+
     // Add pplai.app profile URL if available (for contacts from shared profiles or user's own profile)
     if (contact.pplai_profile_url) {
         vcard += `URL;TYPE=PPLAI:${escapeVCardValue(contact.pplai_profile_url)}\n`;
@@ -2574,40 +2597,40 @@ function generateContactVCard(contact) {
         const pplaiProfileUrl = `${frontendUrl}/profile/${contact.id}`;
         vcard += `URL;TYPE=PPLAI:${escapeVCardValue(pplaiProfileUrl)}\n`;
     }
-    
+
     // Notes - combine all contact information
     let notes = [];
-    
+
     // Add tags if available (also in notes for compatibility)
     if (contact.tags && contact.tags.length > 0) {
         const tagNames = contact.tags.map(t => t.name || t).join(', ');
         notes.push(`Tags: ${tagNames}`);
     }
-    
+
     // Add event if available (also in notes for compatibility)
     if (contact.event && contact.event.name) {
         notes.push(`Event: ${contact.event.name}`);
     }
-    
+
     // Add location if available (also in notes for compatibility)
     if (contact.meeting_location_name) {
         notes.push(`Location: ${contact.meeting_location_name}`);
     } else if (contact.meeting_latitude && contact.meeting_longitude) {
         notes.push(`Location: ${contact.meeting_latitude}, ${contact.meeting_longitude}`);
     }
-    
+
     // Add meeting date if available (also in notes for compatibility)
     if (contact.meeting_date) {
         const meetingDate = new Date(contact.meeting_date);
         const dateStr = meetingDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
         notes.push(`Met on: ${dateStr}`);
     }
-    
+
     // Add AI summary if available
     if (contact.ai_summary) {
         notes.push(`\nAI Summary:\n${contact.ai_summary}`);
     }
-    
+
     // Add meeting context (chat messages/notes)
     if (contact.meeting_context) {
         if (notes.length > 0) {
@@ -2616,15 +2639,15 @@ function generateContactVCard(contact) {
             notes.push(contact.meeting_context);
         }
     }
-    
+
     // Add combined notes to vCard
     if (notes.length > 0) {
         vcard += `NOTE:${escapeVCardValue(notes.join('\n'))}\n`;
     }
-    
+
     // Photo - will be added asynchronously if available
     // (Photo is handled separately to embed as base64)
-    
+
     vcard += 'END:VCARD';
     return vcard;
 }
@@ -2632,7 +2655,7 @@ function generateContactVCard(contact) {
 async function generateContactVCardWithPhoto(contact) {
     // Generate base vCard without photo
     let vcard = generateContactVCard(contact);
-    
+
     // Try to embed photo as base64 if available
     if (contact.contact_photo_url) {
         try {
@@ -2647,7 +2670,7 @@ async function generateContactVCardWithPhoto(contact) {
             // Don't include photo URL if we can't embed it
         }
     }
-    
+
     return vcard;
 }
 
@@ -2658,9 +2681,9 @@ async function fetchPhotoAsBase64(imageUrl) {
         if (!response.ok) {
             throw new Error(`Failed to fetch image: ${response.status}`);
         }
-        
+
         const blob = await response.blob();
-        
+
         // Convert blob to base64 and return both base64 and content type
         return new Promise((resolve, reject) => {
             const reader = new FileReader();
@@ -2688,7 +2711,7 @@ async function fetchPhotoAsBase64(imageUrl) {
 
 function emailContact() {
     if (!currentViewingContact || !currentViewingContact.email) return;
-    
+
     const subject = encodeURIComponent(`Contact from pplai.app`);
     const body = encodeURIComponent(`Hello ${currentViewingContact.name},\n\n`);
     window.location.href = `mailto:${currentViewingContact.email}?subject=${subject}&body=${body}`;
@@ -2696,7 +2719,7 @@ function emailContact() {
 
 function callContact() {
     if (!currentViewingContact || !currentViewingContact.mobile) return;
-    
+
     // Clean phone number (remove spaces, dashes, etc.)
     const phone = currentViewingContact.mobile.replace(/[\s\-\(\)]/g, '');
     window.location.href = `tel:${phone}`;
@@ -2704,7 +2727,7 @@ function callContact() {
 
 function messageContact() {
     if (!currentViewingContact || !currentViewingContact.mobile) return;
-    
+
     // Clean phone number
     const phone = currentViewingContact.mobile.replace(/[\s\-\(\)]/g, '');
     const body = encodeURIComponent(`Hello ${currentViewingContact.name},`);
@@ -2713,14 +2736,14 @@ function messageContact() {
 
 function whatsappContact() {
     if (!currentViewingContact) return;
-    
+
     // Use WhatsApp number if available, otherwise use mobile
     const phone = (currentViewingContact.whatsapp || currentViewingContact.mobile || '').replace(/[\s\-\(\)\+]/g, '');
     if (!phone) return;
-    
+
     // Remove leading country code if it starts with + or 00
     let cleanPhone = phone.replace(/^\+/, '').replace(/^00/, '');
-    
+
     // WhatsApp Web URL format: https://wa.me/[country code][phone number]
     const message = encodeURIComponent(`Hello ${currentViewingContact.name},`);
     window.open(`https://wa.me/${cleanPhone}?text=${message}`, '_blank');
@@ -2728,10 +2751,10 @@ function whatsappContact() {
 
 function retryFailedRequests() {
     if (failedRequests.length === 0) return;
-    
+
     const requests = [...failedRequests];
     failedRequests.length = 0;
-    
+
     requests.forEach(request => {
         request().catch(err => {
             console.warn('Retry failed:', err);
@@ -2743,7 +2766,7 @@ function retryFailedRequests() {
 function displayProfile(profile) {
     // Use the unified contact/profile view modal
     displayContactProfile(profile, true);
-    
+
     // Also update the profile view display for backward compatibility
     const photoEl = document.getElementById('profilePhotoDisplay');
     const photoContainer = photoEl?.parentElement; // Get the profile-photo-large container
@@ -2752,17 +2775,17 @@ function displayProfile(profile) {
 
     if (photoEl && photoContainer) {
         if (profile.profile_photo_url) {
-        photoEl.src = profile.profile_photo_url;
-        photoEl.style.display = 'block';
+            photoEl.src = profile.profile_photo_url;
+            photoEl.style.display = 'block';
             photoContainer.style.display = 'block'; // Show container when photo exists
         } else {
             photoEl.style.display = 'none';
             photoContainer.style.display = 'none'; // Hide container when no photo
-    }
+        }
     }
     if (nameEl) nameEl.textContent = profile.name || 'No name set';
     if (roleEl) roleEl.textContent = profile.role_company || '';
-    
+
     // Update profile completeness
     updateProfileCompleteness(profile);
 }
@@ -2770,7 +2793,7 @@ function displayProfile(profile) {
 function openProfileModal() {
     const modal = document.getElementById('profileModal');
     const profile = getCurrentUser();
-    
+
     if (profile) {
         const nameEl = document.getElementById('profileName');
         const emailEl = document.getElementById('profileEmail');
@@ -2779,7 +2802,7 @@ function openProfileModal() {
         const whatsappEl = document.getElementById('profileWhatsApp');
         const linkedinEl = document.getElementById('profileLinkedIn');
         const aboutEl = document.getElementById('profileAbout');
-        
+
         if (nameEl) nameEl.value = profile.name || '';
         if (emailEl) emailEl.value = profile.email || '';
         if (roleEl) roleEl.value = profile.role_company || '';
@@ -2787,14 +2810,14 @@ function openProfileModal() {
         if (whatsappEl) whatsappEl.value = profile.whatsapp || '';
         if (linkedinEl) linkedinEl.value = profile.linkedin_url || '';
         if (aboutEl) aboutEl.value = profile.about_me || '';
-        
+
         const preview = document.getElementById('profilePhotoPreview');
         if (preview && profile.profile_photo_url) {
             preview.src = profile.profile_photo_url;
             preview.classList.remove('hidden');
         }
     }
-    
+
     if (modal) modal.classList.remove('hidden');
 }
 
@@ -2808,7 +2831,7 @@ async function saveProfile() {
     const about = document.getElementById('profileAbout')?.value;
     const photoInput = document.getElementById('profilePhotoInput');
     let photoFile = photoInput?.files[0];
-    
+
     // Compress profile photo if provided
     if (photoFile && photoFile.type.startsWith('image/')) {
         try {
@@ -2823,7 +2846,7 @@ async function saveProfile() {
         showToast('Email is required', 'error');
         return;
     }
-    
+
     // Name is optional - user can add it later
 
     try {
@@ -2840,14 +2863,14 @@ async function saveProfile() {
         const updated = await api.updateProfile(profileData, photoFile);
         setCurrentUser(updated);
         currentUser = updated;
-        
+
         // Cache invalidation is handled in api.updateProfile()
         // Clear QR cache when profile is updated (additional cleanup)
         if (typeof clearQRCache === 'function') {
-        clearQRCache(updated.id, 'url');
-        clearQRCache(updated.id, 'vcard');
+            clearQRCache(updated.id, 'url');
+            clearQRCache(updated.id, 'vcard');
         }
-        
+
         displayProfile(updated);
         await loadProfileQR(); // Reload QR with new data
         closeModal();
@@ -2863,7 +2886,7 @@ async function saveProfileToContacts() {
         showToast('Unable to load profile', 'error');
         return;
     }
-    
+
     // Convert profile to contact data format
     // Handle phone numbers - use phone_numbers array if available, otherwise create from mobile
     let phoneNumbers = [];
@@ -2875,7 +2898,7 @@ async function saveProfileToContacts() {
             is_whatsapp: profile.whatsapp ? true : false
         }];
     }
-    
+
     // Handle email addresses - use email_addresses array if available, otherwise create from email
     let emailAddresses = [];
     if (profile.email_addresses && Array.isArray(profile.email_addresses) && profile.email_addresses.length > 0) {
@@ -2885,11 +2908,11 @@ async function saveProfileToContacts() {
             address: profile.email
         }];
     }
-    
+
     // Add pplai profile URL
     const frontendUrl = window.location.origin || 'https://pplai.app';
     const pplaiProfileUrl = `${frontendUrl}/profile/${profile.id}`;
-    
+
     // Map about_me to meeting_context for the contact form
     const contactData = {
         name: profile.name || '',
@@ -2904,20 +2927,20 @@ async function saveProfileToContacts() {
         pplai_profile_url: pplaiProfileUrl,
         id: profile.id // Include ID so vCard generation can use it
     };
-    
+
     // Open contact modal with profile data
     await openContactModal(contactData);
 }
 
 async function shareProfile() {
     if (!currentUser) return;
-    
+
     if (qrMode === 'vcard') {
         // Share vCard directly
         const vcard = generateVCard(currentUser);
         const blob = new Blob([vcard], { type: 'text/vcard' });
         const url = URL.createObjectURL(blob);
-        
+
         if (navigator.share) {
             try {
                 const userName = currentUser.name || 'Contact';
@@ -2933,7 +2956,7 @@ async function shareProfile() {
                 // Fallback to download
             }
         }
-        
+
         // Download vCard
         const a = document.createElement('a');
         a.href = url;
@@ -2945,7 +2968,7 @@ async function shareProfile() {
         try {
             const qrData = await api.getProfileQR(currentUser.id);
             const profileUrl = qrData.profile_url || `${window.location.origin}/profile/${currentUser.id}`;
-            
+
             if (navigator.share) {
                 try {
                     const userName = currentUser.name || 'User';
@@ -2983,19 +3006,19 @@ let allEvents = []; // Store all events for search filtering
 async function importLumaEventFromUrl() {
     const urlInput = document.getElementById('lumaUrlInput');
     const url = urlInput?.value?.trim();
-    
+
     if (!url || (!url.includes('lu.ma') && !url.includes('luma.com'))) {
         showToast('Please enter a valid Luma event URL (lu.ma or luma.com)', 'error');
         return;
     }
-    
+
     const btn = document.getElementById('importLumaUrlBtn');
     const originalText = btn?.textContent;
     if (btn) {
         btn.disabled = true;
         btn.textContent = 'Importing...';
     }
-    
+
     try {
         const event = await api.importLumaEventFromUrl(url);
         showToast(`✅ Successfully imported "${event.name}"`, 'success');
@@ -3024,19 +3047,19 @@ async function importLumaEventsFromApi() {
     const calendarIdInput = document.getElementById('lumaCalendarIdInput');
     const apiKey = apiKeyInput?.value?.trim();
     const calendarId = calendarIdInput?.value?.trim() || null;
-    
+
     if (!apiKey) {
         showToast('Please enter your Luma API key', 'error');
         return;
     }
-    
+
     const btn = document.getElementById('importLumaApiBtn');
     const originalText = btn?.textContent;
     if (btn) {
         btn.disabled = true;
         btn.textContent = 'Importing...';
     }
-    
+
     try {
         const events = await api.importLumaEventsFromApi(apiKey, calendarId);
         showToast(`✅ Successfully imported ${events.length} event(s)`, 'success');
@@ -3069,7 +3092,7 @@ async function loadEvents() {
         showAuthScreen();
         return;
     }
-    
+
     try {
         allEvents = await api.getEvents();
         displayEvents(allEvents);
@@ -3085,11 +3108,11 @@ function filterEvents() {
     const dateFilter = document.getElementById('eventsDateFilter');
     const dateFrom = document.getElementById('eventsDateFrom');
     const dateTo = document.getElementById('eventsDateTo');
-    
+
     if (!searchInput) return;
-    
+
     const searchTerm = searchInput.value.toLowerCase().trim();
-    
+
     // Show/hide clear button
     if (clearBtn) {
         if (searchTerm.length > 0) {
@@ -3098,31 +3121,31 @@ function filterEvents() {
             clearBtn.classList.add('hidden');
         }
     }
-    
+
     let filteredEvents = [...allEvents];
-    
+
     // Apply search filter
     if (searchTerm !== '') {
         filteredEvents = filteredEvents.filter(event => {
             const name = (event.name || '').toLowerCase();
             const location = (event.location || '').toLowerCase();
             const description = (event.description || '').toLowerCase();
-            
-            return name.includes(searchTerm) || 
-                   location.includes(searchTerm) || 
-                   description.includes(searchTerm);
+
+            return name.includes(searchTerm) ||
+                location.includes(searchTerm) ||
+                description.includes(searchTerm);
         });
     }
-    
+
     // Apply date filter
     if (dateFilter && dateFilter.value !== 'all') {
         const now = new Date();
         const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        
+
         filteredEvents = filteredEvents.filter(event => {
             const startDate = new Date(event.start_date);
             const endDate = new Date(event.end_date);
-            
+
             if (dateFilter.value === 'today') {
                 return startDate <= today && endDate >= today;
             } else if (dateFilter.value === 'week') {
@@ -3130,15 +3153,15 @@ function filterEvents() {
                 weekStart.setDate(today.getDate() - today.getDay());
                 const weekEnd = new Date(weekStart);
                 weekEnd.setDate(weekStart.getDate() + 6);
-                return (startDate >= weekStart && startDate <= weekEnd) || 
-                       (endDate >= weekStart && endDate <= weekEnd) ||
-                       (startDate <= weekStart && endDate >= weekEnd);
+                return (startDate >= weekStart && startDate <= weekEnd) ||
+                    (endDate >= weekStart && endDate <= weekEnd) ||
+                    (startDate <= weekStart && endDate >= weekEnd);
             } else if (dateFilter.value === 'month') {
                 const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
                 const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-                return (startDate >= monthStart && startDate <= monthEnd) || 
-                       (endDate >= monthStart && endDate <= monthEnd) ||
-                       (startDate <= monthStart && endDate >= monthEnd);
+                return (startDate >= monthStart && startDate <= monthEnd) ||
+                    (endDate >= monthStart && endDate <= monthEnd) ||
+                    (startDate <= monthStart && endDate >= monthEnd);
             } else if (dateFilter.value === 'upcoming') {
                 return startDate > today;
             } else if (dateFilter.value === 'past') {
@@ -3158,21 +3181,21 @@ function filterEvents() {
             return true;
         });
     }
-    
+
     displayEvents(filteredEvents);
 }
 
 function clearEventsSearch() {
     const searchInput = document.getElementById('eventsSearchInput');
     const clearBtn = document.getElementById('clearEventsSearch');
-    
+
     if (searchInput) {
         searchInput.value = '';
     }
     if (clearBtn) {
         clearBtn.classList.add('hidden');
     }
-    
+
     // Show all events
     filterEvents();
 }
@@ -3183,13 +3206,13 @@ function clearEventsFilters() {
     const customRange = document.getElementById('eventsCustomDateRange');
     const dateFrom = document.getElementById('eventsDateFrom');
     const dateTo = document.getElementById('eventsDateTo');
-    
+
     if (searchInput) searchInput.value = '';
     if (dateFilter) dateFilter.value = 'all';
     if (customRange) customRange.classList.add('hidden');
     if (dateFrom) dateFrom.value = '';
     if (dateTo) dateTo.value = '';
-    
+
     filterEvents();
     updateEventsClearFiltersButton();
 }
@@ -3200,13 +3223,13 @@ function updateEventsClearFiltersButton() {
     const dateFilter = document.getElementById('eventsDateFilter');
     const dateFrom = document.getElementById('eventsDateFrom');
     const dateTo = document.getElementById('eventsDateTo');
-    
+
     if (!clearBtn) return;
-    
+
     const hasSearch = searchInput && searchInput.value.trim().length > 0;
     const hasDateFilter = dateFilter && dateFilter.value !== 'all';
     const hasCustomDates = dateFrom && dateFrom.value || dateTo && dateTo.value;
-    
+
     if (hasSearch || hasDateFilter || hasCustomDates) {
         clearBtn.style.display = 'flex';
         clearBtn.style.alignItems = 'center';
@@ -3221,10 +3244,10 @@ async function loadEventsForContactForm() {
         const events = await api.getEvents();
         const eventSelect = document.getElementById('contactEvent');
         if (!eventSelect) return;
-        
+
         // Clear existing options except the first one
         eventSelect.innerHTML = '<option value="">Select an event (optional)</option>';
-        
+
         // Add events to dropdown
         events.forEach(event => {
             const option = document.createElement('option');
@@ -3232,7 +3255,7 @@ async function loadEventsForContactForm() {
             option.textContent = `${event.name}${event.location ? ` - ${event.location}` : ''}${event.start_date ? ` (${formatDate(event.start_date)})` : ''}`;
             eventSelect.appendChild(option);
         });
-        
+
         // Pre-select current event if one is selected
         if (currentEvent) {
             eventSelect.value = currentEvent.id;
@@ -3249,7 +3272,7 @@ function displayEvents(events) {
     if (events.length === 0) {
         const searchInput = document.getElementById('eventsSearchInput');
         const hasSearchTerm = searchInput && searchInput.value.trim().length > 0;
-        const message = hasSearchTerm 
+        const message = hasSearchTerm
             ? '<p class="empty-state">No events match your search. Try a different term.</p>'
             : '<p class="empty-state">No events yet. Create your first event!</p>';
         container.innerHTML = message;
@@ -3281,21 +3304,29 @@ function displayEvents(events) {
             <p class="event-dates">${formatDateRange(event.start_date, event.end_date)}</p>
             ${event.description ? `<p class="event-description">${event.description}</p>` : ''}
             <div class="event-actions">
-                ${isSelected 
-                    ? `<button class="btn-small btn-secondary unselect-event" data-event-id="${event.id}" title="Unselect" style="display: flex; align-items: center; justify-content: center; padding: 6px 8px;">
+                ${isSelected
+                ? `<button class="btn-small btn-secondary unselect-event" data-event-id="${event.id}" title="Unselect" style="display: flex; align-items: center; justify-content: center; padding: 6px 8px;">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <line x1="18" y1="6" x2="6" y2="18"></line>
                             <line x1="6" y1="6" x2="18" y2="18"></line>
                         </svg>
                     </button>`
-                    : `<button class="btn-small btn-secondary select-event" data-event-id="${event.id}" title="Select" style="display: flex; align-items: center; gap: 6px; padding: 6px 10px;">
+                : `<button class="btn-small btn-secondary select-event" data-event-id="${event.id}" title="Select" style="display: flex; align-items: center; gap: 6px; padding: 6px 10px;">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <polyline points="20 6 9 17 4 12"></polyline>
                         </svg>
                         <span>Select</span>
                     </button>`
-                }
+            }
                 <div style="display: flex; gap: 4px; flex-shrink: 0;">
+                    <button class="btn-small btn-secondary view-media" data-event-id="${event.id}" data-event-name="${event.name}" title="Media Library" style="display: flex; align-items: center; gap: 6px; padding: 6px 10px;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="3" width="18" height="14" rx="2"></rect>
+                            <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                            <path d="M21 13l-5.5-5.5L8 16l-3-3L3 15"></path>
+                        </svg>
+                        <span>Media</span>
+                    </button>
                     <button class="btn-small btn-secondary view-contacts" data-event-id="${event.id}" data-event-name="${event.name}" title="View Contacts" style="display: flex; align-items: center; gap: 6px; padding: 6px 10px;">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
@@ -3352,13 +3383,13 @@ function displayEvents(events) {
         // Get event contacts count
         const eventCard = container.querySelector(`[data-event-id="${eventId}"]`)?.closest('.event-card');
         const contactCount = eventCard?.querySelector('.event-contact-count')?.textContent?.match(/\d+/)?.[0] || '0';
-        
+
         exportModalData.eventId = eventId;
         exportModalData.type = 'event';
         exportModalData.ids = [];
         showExportModal(contactCount, `Event: ${eventName}`);
     };
-    
+
     container.querySelectorAll('.export-pdf, .export-csv').forEach(btn => {
         btn.addEventListener('click', (e) => {
             e.preventDefault();
@@ -3385,6 +3416,19 @@ function displayEvents(events) {
                 return;
             }
             viewEventContacts(eventId, eventName);
+        });
+    });
+
+    container.querySelectorAll('.view-media').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const button = e.currentTarget || e.target.closest('.view-media');
+            const eventId = button?.dataset.eventId;
+            const eventName = button?.dataset.eventName || 'Event';
+            if (!eventId) {
+                console.error('Event ID not found for view media');
+                return;
+            }
+            openEventMediaModal(eventId, eventName);
         });
     });
 
@@ -3425,13 +3469,519 @@ function displayEvents(events) {
     });
 }
 
+const eventMediaState = {
+    eventId: null,
+    eventName: '',
+    items: [],
+    selectedIds: new Set(),
+    filterUntagged: false,
+    isLoading: false,
+};
+
+const contactPickerState = {
+    contacts: [],
+    searchTerm: '',
+    onSelect: null,
+    isLoading: false,
+};
+
+async function openEventMediaModal(eventId, eventName = 'Event Media') {
+    if (!eventId) return;
+    eventMediaState.eventId = eventId;
+    eventMediaState.eventName = eventName;
+    eventMediaState.selectedIds = new Set();
+    eventMediaState.filterUntagged = false;
+
+    const modal = document.getElementById('eventMediaModal');
+    const title = document.getElementById('eventMediaTitle');
+    const filterBtn = document.getElementById('eventMediaFilterBtn');
+    if (title) {
+        title.textContent = `Media • ${eventName}`;
+    }
+    if (filterBtn) {
+        filterBtn.classList.remove('active');
+    }
+    if (modal) {
+        modal.classList.remove('hidden');
+    }
+    await loadEventMedia();
+}
+
+function closeEventMediaModal() {
+    const modal = document.getElementById('eventMediaModal');
+    if (modal) {
+        modal.classList.add('hidden');
+    }
+    const input = document.getElementById('eventMediaInput');
+    if (input) {
+        input.value = '';
+    }
+    eventMediaState.eventId = null;
+    eventMediaState.items = [];
+    eventMediaState.selectedIds = new Set();
+    renderEventMediaGrid();
+    updateEventMediaSelectionUI();
+}
+
+async function loadEventMedia() {
+    if (!eventMediaState.eventId) return;
+    eventMediaState.isLoading = true;
+    renderEventMediaGrid();
+    try {
+        const items = await api.getEventMedia(eventMediaState.eventId, {
+            untaggedOnly: eventMediaState.filterUntagged,
+        });
+        eventMediaState.items = Array.isArray(items) ? items : [];
+    } catch (error) {
+        console.error('Failed to load event media:', error);
+        showToast(error.message || 'Failed to load event media', 'error');
+        eventMediaState.items = [];
+    } finally {
+        eventMediaState.isLoading = false;
+        renderEventMediaGrid();
+    }
+}
+
+function getEventMediaPreviewContent(media) {
+    if (media.file_type === 'image') {
+        return `<img src="${media.file_url}" alt="${media.file_name || 'Media'}">`;
+    }
+    if (media.file_type === 'audio') {
+        return `<div class="event-media-file">
+            <span>🎧</span>
+            <div>${media.file_name || 'Audio file'}</div>
+        </div>`;
+    }
+    if (media.file_type === 'video') {
+        return `<div class="event-media-file">
+            <span>🎬</span>
+            <div>${media.file_name || 'Video file'}</div>
+        </div>`;
+    }
+    return `<div class="event-media-file">
+        <span>📄</span>
+        <div>${media.file_name || 'Document'}</div>
+    </div>`;
+}
+
+function renderEventMediaGrid() {
+    const grid = document.getElementById('eventMediaGrid');
+    const emptyState = document.getElementById('eventMediaEmptyState');
+    if (!grid || !emptyState) return;
+
+    if (eventMediaState.isLoading) {
+        emptyState.classList.remove('hidden');
+        emptyState.innerHTML = '<p class="empty-state">Loading media...</p>';
+        grid.innerHTML = '';
+        return;
+    }
+
+    if (!eventMediaState.items.length) {
+        emptyState.classList.remove('hidden');
+        emptyState.innerHTML = '<p class="empty-state">No media yet. Upload files to start building your event library.</p>';
+        grid.innerHTML = '';
+        updateEventMediaSelectionUI();
+        return;
+    }
+
+    emptyState.classList.add('hidden');
+    grid.innerHTML = eventMediaState.items.map(media => {
+        const isSelected = eventMediaState.selectedIds.has(media.id);
+        const contact = media.contact_preview;
+        const contactOverlay = contact ? `
+            <div class="event-media-contact" data-contact-id="${contact.id}" title="Click to view contact">
+                <div class="event-media-contact-avatar" style="${contact.contact_photo_url ? `background-image: url('${contact.contact_photo_url}'); background-size: cover; background-position: center;` : ''}">
+                    ${contact.contact_photo_url ? '' : (contact.name || '?').charAt(0)}
+                </div>
+                <div class="event-media-contact-info">
+                    <div class="event-media-contact-name">${contact.name}</div>
+                    ${contact.role_company ? `<div class="event-media-contact-role">${contact.role_company}</div>` : ''}
+                </div>
+                <div class="event-media-contact-arrow">→</div>
+            </div>
+        ` : '';
+        return `
+            <div class="event-media-card ${isSelected ? 'selected' : ''}" data-media-id="${media.id}">
+                <div class="event-media-thumb">
+                    ${getEventMediaPreviewContent(media)}
+                </div>
+                ${contactOverlay}
+                <div class="event-media-select-indicator"></div>
+            </div>
+        `;
+    }).join('');
+
+    grid.querySelectorAll('.event-media-card').forEach(card => {
+        card.addEventListener('click', (e) => {
+            // Don't toggle selection if clicking on contact overlay
+            if (e.target.closest('.event-media-contact')) {
+                return;
+            }
+            const mediaId = card.dataset.mediaId;
+            toggleEventMediaSelection(mediaId);
+        });
+    });
+
+    // Add click handlers for contact overlays
+    grid.querySelectorAll('.event-media-contact').forEach(overlay => {
+        overlay.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            const contactId = overlay.dataset.contactId;
+            if (contactId) {
+                closeEventMediaModal();
+                await viewContact(contactId);
+            }
+        });
+    });
+
+    updateEventMediaSelectionUI();
+}
+
+function toggleEventMediaSelection(mediaId) {
+    if (!mediaId) return;
+    if (eventMediaState.selectedIds.has(mediaId)) {
+        eventMediaState.selectedIds.delete(mediaId);
+    } else {
+        eventMediaState.selectedIds.add(mediaId);
+    }
+    renderEventMediaGrid();
+    updateEventMediaSelectionUI();
+}
+
+function clearEventMediaSelection() {
+    eventMediaState.selectedIds = new Set();
+    renderEventMediaGrid();
+    updateEventMediaSelectionUI();
+}
+
+function updateEventMediaSelectionUI() {
+    const bar = document.getElementById('eventMediaSelectionBar');
+    const countEl = document.getElementById('eventMediaSelectedCount');
+    if (!bar || !countEl) return;
+    const count = eventMediaState.selectedIds.size;
+    if (count > 0) {
+        bar.classList.remove('hidden');
+        countEl.textContent = `${count} selected`;
+    } else {
+        bar.classList.add('hidden');
+        countEl.textContent = '0 selected';
+    }
+}
+
+async function handleEventMediaUpload(files) {
+    if (!eventMediaState.eventId || !files || files.length === 0) return;
+    let uploadFiles = Array.from(files);
+    try {
+        uploadFiles = await compressImages(uploadFiles);
+    } catch (error) {
+        console.warn('Failed to compress media files:', error);
+    }
+
+    try {
+        await api.uploadEventMedia(eventMediaState.eventId, uploadFiles);
+        showToast('Media uploaded successfully', 'success');
+        const input = document.getElementById('eventMediaInput');
+        if (input) input.value = '';
+        await loadEventMedia();
+    } catch (error) {
+        console.error('Failed to upload media:', error);
+        showToast(error.message || 'Failed to upload media', 'error');
+    }
+}
+
+function toggleEventMediaFilter() {
+    eventMediaState.filterUntagged = !eventMediaState.filterUntagged;
+    const filterBtn = document.getElementById('eventMediaFilterBtn');
+    if (filterBtn) {
+        filterBtn.classList.toggle('active', eventMediaState.filterUntagged);
+        const label = filterBtn.querySelector('span');
+        if (label) {
+            label.textContent = eventMediaState.filterUntagged ? 'Showing untagged' : 'Show untagged only';
+        }
+    }
+    loadEventMedia();
+}
+
+function applyEventMediaUpdates(updatedMedia = []) {
+    if (!Array.isArray(updatedMedia) || !updatedMedia.length) return;
+    const updatedMap = new Map(updatedMedia.map(item => [item.id, item]));
+    eventMediaState.items = eventMediaState.items.map(item => {
+        if (updatedMap.has(item.id)) {
+            return {
+                ...item,
+                ...updatedMap.get(item.id),
+            };
+        }
+        return item;
+    });
+    renderEventMediaGrid();
+}
+
+function refreshEventMediaIfOpen(eventId = null) {
+    const modal = document.getElementById('eventMediaModal');
+    if (!modal || modal.classList.contains('hidden')) return;
+    if (eventId && eventId !== eventMediaState.eventId) return;
+    loadEventMedia();
+}
+
+function handleEventMediaInputChange(e) {
+    const files = e.target.files;
+    if (files && files.length > 0) {
+        handleEventMediaUpload(files);
+    }
+}
+
+async function handleHomeMediaUpload(e) {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    if (!currentEvent) {
+        showToast('Please select an event first', 'warning');
+        return;
+    }
+
+    let uploadFiles = Array.from(files);
+    try {
+        uploadFiles = await compressImages(uploadFiles);
+    } catch (error) {
+        console.warn('Failed to compress media files:', error);
+    }
+
+    try {
+        await api.uploadEventMedia(currentEvent.id, uploadFiles);
+        showToast(`${uploadFiles.length} file(s) uploaded successfully`, 'success');
+
+        // Clear the input
+        const input = document.getElementById('homeMediaInput');
+        if (input) input.value = '';
+    } catch (error) {
+        console.error('Failed to upload media:', error);
+        showToast(error.message || 'Failed to upload media', 'error');
+    }
+}
+
+async function handleCreateContactFromMediaSelection() {
+    if (!eventMediaState.selectedIds.size) {
+        showToast('Select a media file to create a contact', 'warning');
+        return;
+    }
+
+    const selectedMedia = eventMediaState.items.filter(item => eventMediaState.selectedIds.has(item.id));
+    if (!selectedMedia.length) {
+        showToast('Select a media file to create a contact', 'warning');
+        return;
+    }
+
+    // Only allow creating contact from single media file
+    if (selectedMedia.length > 1) {
+        showToast('Please select only one media file to create a contact', 'warning');
+        return;
+    }
+
+    const media = selectedMedia[0];
+    selectedEventMediaIdsForContact = [media.id];
+    selectedEventMediaDetailsForContact = selectedMedia;
+
+    // Show loading toast
+    showToast('Analyzing image...', 'info', 10000);
+
+    try {
+        // Fetch the media file as a blob
+        const blob = await fetchMediaFileBlob(media.file_url);
+
+        // Create a File object from the blob
+        const file = new File([blob], media.file_name || 'media.jpg', {
+            type: blob.type || 'image/jpeg'
+        });
+
+        // Analyze with OCR
+        const ocrResult = await api.analyzeBusinessCard(file);
+
+        // Clear loading toast
+        const toastContainer = document.querySelector('.toast-container');
+        if (toastContainer) {
+            toastContainer.innerHTML = '';
+        }
+
+        // Pre-fill contact data if OCR succeeded
+        if (ocrResult && ocrResult.fields) {
+            clearEventMediaSelection();
+            closeEventMediaModal();
+            // Add event_id to OCR fields so the event is pre-selected
+            const contactDataWithEvent = {
+                ...ocrResult.fields,
+                event_id: eventMediaState.eventId
+            };
+            openContactModal(contactDataWithEvent, ocrResult.portrait_image);
+            showToast('Business card detected! Review and save.', 'success');
+        } else {
+            // No data extracted, open empty form with event pre-selected
+            clearEventMediaSelection();
+            closeEventMediaModal();
+            openContactModal({ event_id: eventMediaState.eventId });
+            showToast('No contact info detected. Fill manually.', 'info');
+        }
+    } catch (error) {
+        console.error('OCR analysis failed:', error);
+
+        // Clear loading toast
+        const toastContainer = document.querySelector('.toast-container');
+        if (toastContainer) {
+            toastContainer.innerHTML = '';
+        }
+
+        // Still open the contact form with event pre-selected
+        clearEventMediaSelection();
+        closeEventMediaModal();
+        openContactModal({ event_id: eventMediaState.eventId });
+        showToast('Could not analyze image. Fill contact info manually.', 'warning');
+    }
+}
+
+// Helper function to fetch media file as blob
+async function fetchMediaFileBlob(url) {
+    // Fix port if media URL points to 8000 but backend is on 8002
+    let correctedUrl = url;
+    if (url.includes('localhost:8000')) {
+        correctedUrl = url.replace('localhost:8000', 'localhost:8002');
+        console.log(`Corrected media URL from ${url} to ${correctedUrl}`);
+    }
+
+    const response = await fetch(correctedUrl);
+    if (!response.ok) {
+        throw new Error(`Failed to fetch media file: ${response.statusText}`);
+    }
+    return await response.blob();
+}
+
+async function handleLinkMediaToContact() {
+    if (!eventMediaState.selectedIds.size) {
+        showToast('Select media to link to a contact', 'warning');
+        return;
+    }
+    await openContactPicker(async (contactId) => {
+        try {
+            const mediaIds = Array.from(eventMediaState.selectedIds);
+            const updated = await api.linkEventMediaToContact(eventMediaState.eventId, contactId, mediaIds);
+            applyEventMediaUpdates(updated);
+            clearEventMediaSelection();
+            showToast('Media linked to contact', 'success');
+            closeContactPicker();
+        } catch (error) {
+            console.error('Failed to link media:', error);
+            showToast(error.message || 'Failed to link media', 'error');
+        }
+    });
+}
+
+async function openContactPicker(onSelect) {
+    const modal = document.getElementById('contactPickerModal');
+    const searchInput = document.getElementById('contactPickerSearch');
+    if (!modal) return;
+    contactPickerState.onSelect = onSelect;
+    contactPickerState.searchTerm = '';
+    contactPickerState.contacts = [];
+    contactPickerState.isLoading = true;
+    modal.classList.remove('hidden');
+    renderContactPickerList();
+    if (searchInput) {
+        searchInput.value = '';
+        setTimeout(() => searchInput.focus(), 50);
+    }
+
+    try {
+        const contacts = await api.getContacts(eventMediaState.eventId ? { event_id: eventMediaState.eventId } : {});
+        contactPickerState.contacts = Array.isArray(contacts) ? contacts : [];
+    } catch (error) {
+        console.error('Failed to load contacts for picker:', error);
+        showToast('Failed to load contacts', 'error');
+        contactPickerState.contacts = [];
+    } finally {
+        contactPickerState.isLoading = false;
+        renderContactPickerList();
+    }
+}
+
+function closeContactPicker() {
+    const modal = document.getElementById('contactPickerModal');
+    if (modal) {
+        modal.classList.add('hidden');
+    }
+    contactPickerState.onSelect = null;
+}
+
+function renderContactPickerList() {
+    const list = document.getElementById('contactPickerList');
+    const emptyState = document.getElementById('contactPickerEmptyState');
+    if (!list || !emptyState) return;
+
+    if (contactPickerState.isLoading) {
+        list.innerHTML = '<p class="empty-state">Loading contacts...</p>';
+        emptyState.classList.add('hidden');
+        return;
+    }
+
+    let filtered = contactPickerState.contacts;
+    if (contactPickerState.searchTerm) {
+        const term = contactPickerState.searchTerm.toLowerCase();
+        filtered = filtered.filter(contact => {
+            const name = (contact.name || '').toLowerCase();
+            const company = (contact.company || '').toLowerCase();
+            const role = (contact.role_company || '').toLowerCase();
+            return name.includes(term) || company.includes(term) || role.includes(term);
+        });
+    }
+
+    if (!filtered.length) {
+        list.innerHTML = '';
+        emptyState.classList.remove('hidden');
+        emptyState.textContent = contactPickerState.contacts.length
+            ? 'No contacts match your search.'
+            : 'No contacts yet. Create a contact first.';
+        return;
+    }
+
+    emptyState.classList.add('hidden');
+    list.innerHTML = filtered.map(contact => `
+        <button class="contact-picker-item" data-contact-id="${contact.id}">
+            <div class="contact-picker-avatar">${(contact.name || '?').charAt(0)}</div>
+            <div class="contact-picker-details">
+                <div class="contact-picker-name">${contact.name || 'Unnamed contact'}</div>
+                ${(contact.role_company || contact.company) ? `<div class="contact-picker-meta">${contact.role_company || contact.company}</div>` : ''}
+            </div>
+        </button>
+    `).join('');
+
+    list.querySelectorAll('.contact-picker-item').forEach(item => {
+        item.addEventListener('click', () => {
+            const contactId = item.dataset.contactId;
+            if (contactId && typeof contactPickerState.onSelect === 'function') {
+                try {
+                    const result = contactPickerState.onSelect(contactId);
+                    if (result && typeof result.then === 'function') {
+                        result.catch(err => console.error('Contact picker handler error:', err));
+                    }
+                } catch (error) {
+                    console.error('Contact picker handler error:', error);
+                }
+            }
+        });
+    });
+}
+
+function filterContactPicker(term) {
+    contactPickerState.searchTerm = term.toLowerCase();
+    renderContactPickerList();
+}
+
+
 function updateEventFilter(events) {
     const filter = document.getElementById('eventFilter');
     if (!filter) return;
 
     // Clear existing options except "All Events"
     filter.innerHTML = '<option value="all">All Events</option>';
-    
+
     events.forEach(event => {
         const option = document.createElement('option');
         option.value = event.id;
@@ -3443,21 +3993,21 @@ function updateEventFilter(events) {
 async function openEventModal(eventData = null) {
     const modal = document.getElementById('eventModal');
     if (!modal) return;
-    
+
     editingEventId = eventData ? eventData.id : null;
-    
+
     // Update modal title
     const modalTitle = document.getElementById('eventModalTitle');
     if (modalTitle) {
         modalTitle.textContent = editingEventId ? 'Edit Event' : 'Create Event';
     }
-    
+
     // Clear or fill form
     if (eventData) {
         // Fill form with event data
         document.getElementById('eventName').value = eventData.name || '';
         document.getElementById('eventLocation').value = eventData.location || '';
-        
+
         // Format dates for input (YYYY-MM-DD)
         if (eventData.start_date) {
             const startDate = new Date(eventData.start_date);
@@ -3467,7 +4017,7 @@ async function openEventModal(eventData = null) {
             const endDate = new Date(eventData.end_date);
             document.getElementById('eventEndDate').value = endDate.toISOString().split('T')[0];
         }
-        
+
         document.getElementById('eventDescription').value = eventData.description || '';
     } else {
         // Clear form
@@ -3477,35 +4027,35 @@ async function openEventModal(eventData = null) {
         document.getElementById('eventEndDate').value = '';
         document.getElementById('eventDescription').value = '';
     }
-    
+
     // Hide location suggestions
     const suggestions = document.getElementById('locationSuggestions');
     if (suggestions) {
         suggestions.classList.add('hidden');
         suggestions.innerHTML = '';
     }
-    
+
     // Setup location autocomplete when modal opens
     setupLocationAutocomplete();
-    
+
     // Add date validation listeners
     const startDateInput = document.getElementById('eventStartDate');
     const endDateInput = document.getElementById('eventEndDate');
-    
+
     if (startDateInput && endDateInput) {
         // Auto-populate end date when start date is selected
         startDateInput.addEventListener('change', () => {
             if (startDateInput.value) {
                 // Set minimum end date to start date
                 endDateInput.min = startDateInput.value;
-                
+
                 // Auto-populate end date if it's empty or before start date
                 if (!endDateInput.value || new Date(endDateInput.value) < new Date(startDateInput.value)) {
                     endDateInput.value = startDateInput.value;
                 }
             }
         });
-        
+
         // Set maximum start date to end date
         endDateInput.addEventListener('change', () => {
             if (endDateInput.value) {
@@ -3517,9 +4067,10 @@ async function openEventModal(eventData = null) {
             }
         });
     }
-    
+
     // Show modal
     modal.classList.remove('hidden');
+    updateContactLibraryMediaPreview();
 }
 
 async function editEvent(eventId) {
@@ -3549,14 +4100,14 @@ async function saveEvent() {
         return;
     }
 
-        const eventData = {
-            name,
-            location,
-            start_date: startDate,
-            end_date: endDate,
-            description: description || null,
-        };
-        
+    const eventData = {
+        name,
+        location,
+        start_date: startDate,
+        end_date: endDate,
+        description: description || null,
+    };
+
     try {
         if (editingEventId) {
             // Update existing event
@@ -3585,7 +4136,7 @@ async function saveEvent() {
             await api.createEvent(eventData);
             showToast('Event created successfully', 'success');
         }
-        
+
         closeModal();
         editingEventId = null;
         await loadEvents();
@@ -3626,22 +4177,29 @@ function updateCurrentEventBanner() {
     const banner = document.getElementById('currentEventBanner');
     const nameEl = document.getElementById('currentEventName');
     const unselectBtn = document.getElementById('unselectEventBtn');
-    
+    const uploadBtn = document.getElementById('uploadMediaToEventBtn');
+
     if (banner && nameEl) {
         // Always show the banner
         banner.style.display = 'block';
-        
+
         if (currentEvent) {
             // Event is selected
             nameEl.textContent = currentEvent.name;
-        if (unselectBtn) {
-            unselectBtn.style.display = 'block';
-        }
+            if (unselectBtn) {
+                unselectBtn.style.display = 'flex';
+            }
+            if (uploadBtn) {
+                uploadBtn.style.display = 'flex';
+            }
         } else {
             // No event selected
             nameEl.textContent = 'No event selected';
-        if (unselectBtn) {
-            unselectBtn.style.display = 'none';
+            if (unselectBtn) {
+                unselectBtn.style.display = 'none';
+            }
+            if (uploadBtn) {
+                uploadBtn.style.display = 'none';
             }
         }
     }
@@ -3660,17 +4218,17 @@ async function unselectEvent() {
 function viewEventContacts(eventId, eventName) {
     // Switch to contacts view
     switchView('contacts');
-    
+
     // Set the event filter
     const eventFilter = document.getElementById('eventFilter');
     if (eventFilter) {
         eventFilter.value = eventId;
         updateClearFiltersButton();
     }
-    
+
     // Load contacts with the filter applied
     loadContacts();
-    
+
     // Show a toast notification
     showToast(`Showing contacts for "${eventName}"`, 'info', 3000);
 }
@@ -3702,23 +4260,23 @@ async function loadContacts() {
         showAuthScreen();
         return;
     }
-    
+
     try {
         const eventId = document.getElementById('eventFilter')?.value || 'all';
         const tagId = document.getElementById('tagFilter')?.value || 'all';
         const dateFilter = document.getElementById('dateFilter')?.value || 'all';
         const favoriteFilter = document.getElementById('favoriteFilter')?.checked || false;
-        
+
         // Build filter params
         const filters = {};
         if (eventId !== 'all') filters.event_id = eventId;
         if (tagId !== 'all') filters.tag_id = tagId;
-        
+
         // Handle favorite filter
         if (favoriteFilter) {
             filters.is_favorite = true;
         }
-        
+
         // Handle date filters
         if (dateFilter === 'custom') {
             const dateFrom = document.getElementById('dateFrom')?.value;
@@ -3728,7 +4286,7 @@ async function loadContacts() {
         } else if (dateFilter !== 'all') {
             filters.date_range = dateFilter; // 'today', 'week', 'month'
         }
-        
+
         allContacts = await api.getContacts(filters);
         filterContactsBySearch(); // Apply search filter if any
     } catch (error) {
@@ -3744,9 +4302,9 @@ function filterContactsBySearch() {
         displayContacts(allContacts);
         return;
     }
-    
+
     const searchTerm = searchInput.value.toLowerCase().trim();
-    
+
     // Show/hide clear button
     if (clearBtn) {
         if (searchTerm.length > 0) {
@@ -3755,7 +4313,7 @@ function filterContactsBySearch() {
             clearBtn.classList.add('hidden');
         }
     }
-    
+
     // Filter contacts by search term
     let filteredContacts = allContacts;
     if (searchTerm.length > 0) {
@@ -3765,29 +4323,29 @@ function filterContactsBySearch() {
             const mobile = (contact.mobile || '').toLowerCase();
             const roleCompany = (contact.role_company || '').toLowerCase();
             const tags = (contact.tags || []).map(t => (t.name || t).toLowerCase()).join(' ');
-            
+
             return name.includes(searchTerm) ||
-                   email.includes(searchTerm) ||
-                   mobile.includes(searchTerm) ||
-                   roleCompany.includes(searchTerm) ||
-                   tags.includes(searchTerm);
+                email.includes(searchTerm) ||
+                mobile.includes(searchTerm) ||
+                roleCompany.includes(searchTerm) ||
+                tags.includes(searchTerm);
         });
     }
-    
+
     displayContacts(filteredContacts);
 }
 
 function clearContactsSearch() {
     const searchInput = document.getElementById('contactsSearchInput');
     const clearBtn = document.getElementById('clearContactsSearch');
-    
+
     if (searchInput) {
         searchInput.value = '';
     }
     if (clearBtn) {
         clearBtn.classList.add('hidden');
     }
-    
+
     // Show all contacts
     displayContacts(allContacts);
 }
@@ -3810,10 +4368,10 @@ async function loadTagFilter() {
         const tags = await api.getTags(false);
         const tagFilter = document.getElementById('tagFilter');
         if (!tagFilter) return;
-        
+
         // Clear existing options except "All Tags"
         tagFilter.innerHTML = '<option value="all">All Tags</option>';
-        
+
         tags.forEach(tag => {
             const option = document.createElement('option');
             option.value = tag.id;
@@ -3832,7 +4390,7 @@ function displayContacts(contacts) {
     if (contacts.length === 0) {
         const searchInput = document.getElementById('contactsSearchInput');
         const hasSearchTerm = searchInput && searchInput.value.trim().length > 0;
-        const message = hasSearchTerm 
+        const message = hasSearchTerm
             ? '<p class="empty-state">No contacts match your search. Try a different term.</p>'
             : '<p class="empty-state">No contacts yet. Start scanning!</p>';
         container.innerHTML = message;
@@ -3847,15 +4405,15 @@ function displayContacts(contacts) {
     });
 
     container.innerHTML = sortedContacts.map(contact => {
-        const tagsHtml = contact.tags && contact.tags.length > 0 
+        const tagsHtml = contact.tags && contact.tags.length > 0
             ? `<div class="contact-tags">${contact.tags.map(t => {
                 const color = getTagColor(t.name || t);
                 return `<span class="tag" style="background-color: ${color.bg}; color: ${color.text}; border-color: ${color.border};">
                     ${t.name || t}
                 </span>`;
-            }).join('')}</div>` 
+            }).join('')}</div>`
             : '';
-        
+
         return `
         <div class="contact-card ${selectionMode ? 'selectable' : ''}" data-contact-id="${contact.id}" style="position: relative; cursor: pointer;">
             <input type="checkbox" class="contact-checkbox" data-contact-id="${contact.id}" style="position: absolute; top: 12px; left: 12px; width: 20px; height: 20px; z-index: 10; ${selectionMode ? 'display: block;' : 'display: none;'}">
@@ -3897,7 +4455,7 @@ function displayContacts(contacts) {
             if (e.target.closest('button')) {
                 return;
             }
-            
+
             // In selection mode, toggle checkbox instead of viewing
             if (selectionMode) {
                 const checkbox = card.querySelector('.contact-checkbox');
@@ -3907,18 +4465,18 @@ function displayContacts(contacts) {
                     return;
                 }
             }
-            
+
             // Don't trigger view if clicking on checkbox
             if (e.target.closest('input[type="checkbox"]')) {
                 return;
             }
-            
+
             // Normal mode: view contact
             const contactId = card.dataset.contactId;
             await viewContact(contactId);
         });
     });
-    
+
     container.querySelectorAll('.chat-contact-btn').forEach(btn => {
         btn.addEventListener('click', async (e) => {
             e.stopPropagation();
@@ -3929,13 +4487,13 @@ function displayContacts(contacts) {
             await openChatView(contactId, contactName);
         });
     });
-    
+
     container.querySelectorAll('.favorite-contact-btn').forEach(btn => {
         btn.addEventListener('click', async (e) => {
             e.stopPropagation();
             const button = e.currentTarget;
             const contactId = button.dataset.contactId;
-            
+
             try {
                 const updatedContact = await api.toggleContactFavorite(contactId);
                 // Update the button state
@@ -3956,7 +4514,7 @@ function displayContacts(contacts) {
             }
         });
     });
-    
+
     container.querySelectorAll('.delete-contact-btn').forEach(btn => {
         btn.addEventListener('click', async (e) => {
             e.stopPropagation();
@@ -3967,7 +4525,7 @@ function displayContacts(contacts) {
             await deleteContact(contactId, contactName);
         });
     });
-    
+
     // Checkbox change handlers
     container.querySelectorAll('.contact-checkbox').forEach(checkbox => {
         checkbox.addEventListener('change', updateBulkActionsBar);
@@ -3987,7 +4545,7 @@ function clearAllFilters() {
     const customDateRange = document.getElementById('customDateRange');
     const dateFrom = document.getElementById('dateFrom');
     const dateTo = document.getElementById('dateTo');
-    
+
     if (eventFilter) eventFilter.value = 'all';
     if (tagFilter) tagFilter.value = 'all';
     if (dateFilter) dateFilter.value = 'all';
@@ -3995,10 +4553,10 @@ function clearAllFilters() {
     if (customDateRange) customDateRange.classList.add('hidden');
     if (dateFrom) dateFrom.value = '';
     if (dateTo) dateTo.value = '';
-    
+
     // Hide the clear button
     updateClearFiltersButton();
-    
+
     // Reload contacts with no filters
     loadContacts();
 }
@@ -4006,19 +4564,19 @@ function clearAllFilters() {
 function updateClearFiltersButton() {
     const clearBtn = document.getElementById('clearAllFiltersBtn');
     if (!clearBtn) return;
-    
+
     const eventFilter = document.getElementById('eventFilter');
     const tagFilter = document.getElementById('tagFilter');
     const dateFilter = document.getElementById('dateFilter');
     const favoriteFilter = document.getElementById('favoriteFilter');
-    
+
     // Show button if any filter is not set to 'all' or favorite is checked
-    const hasFilters = 
+    const hasFilters =
         (eventFilter && eventFilter.value !== 'all') ||
         (tagFilter && tagFilter.value !== 'all') ||
         (dateFilter && dateFilter.value !== 'all') ||
         (favoriteFilter && favoriteFilter.checked);
-    
+
     clearBtn.style.display = hasFilters ? 'block' : 'none';
 }
 
@@ -4028,11 +4586,11 @@ function toggleSelectionMode() {
     const container = document.getElementById('contactsList');
     const bulkBar = document.getElementById('bulkActionsBar');
     const selectBtn = document.getElementById('selectContactsBtn');
-    
+
     if (!container) return;
-    
+
     const selectionBar = document.getElementById('bulkSelectionBar');
-    
+
     if (selectionMode) {
         // Show checkboxes
         container.querySelectorAll('.contact-checkbox').forEach(checkbox => {
@@ -4099,11 +4657,11 @@ async function bulkSaveContacts() {
         alert('Please select contacts to save');
         return;
     }
-    
+
     try {
         const contacts = allContacts.filter(c => selectedIds.includes(c.id));
         let savedCount = 0;
-        
+
         for (const contact of contacts) {
             try {
                 const vcard = await generateContactVCardWithPhoto(contact);
@@ -4121,7 +4679,7 @@ async function bulkSaveContacts() {
                 console.error(`Failed to save ${contact.name}:`, error);
             }
         }
-        
+
         alert(`Saved ${savedCount} of ${selectedIds.length} contacts to device`);
     } catch (error) {
         alert('Failed to save contacts: ' + error.message);
@@ -4141,7 +4699,7 @@ async function bulkExportContacts() {
         showToast('Please select contacts to export', 'warning');
         return;
     }
-    
+
     // Show export modal
     exportModalData.ids = selectedIds;
     exportModalData.type = 'contacts';
@@ -4156,7 +4714,7 @@ function showExportModal(count, type) {
     const progressDiv = document.getElementById('exportProgress');
     const successDiv = document.getElementById('exportSuccess');
     const errorDiv = document.getElementById('exportError');
-    
+
     // Reset state
     exportCount.textContent = count;
     exportType.textContent = type;
@@ -4164,7 +4722,7 @@ function showExportModal(count, type) {
     progressDiv.classList.add('hidden');
     successDiv.classList.add('hidden');
     errorDiv.classList.add('hidden');
-    
+
     modal.classList.remove('hidden');
 }
 
@@ -4174,11 +4732,11 @@ async function handleExportFormat(format) {
     const successDiv = document.getElementById('exportSuccess');
     const errorDiv = document.getElementById('exportError');
     const errorMessage = document.getElementById('exportErrorMessage');
-    
+
     // Show progress
     selectionDiv.classList.add('hidden');
     progressDiv.classList.remove('hidden');
-    
+
     try {
         if (exportModalData.type === 'contacts') {
             // Export contacts
@@ -4195,11 +4753,11 @@ async function handleExportFormat(format) {
                 await api.exportEventCSV(exportModalData.eventId);
             }
         }
-        
+
         // Show success
         progressDiv.classList.add('hidden');
         successDiv.classList.remove('hidden');
-        
+
     } catch (error) {
         console.error('Export error:', error);
         // Show error
@@ -4215,34 +4773,34 @@ async function bulkAddTagToContacts() {
         showToast('Please select contacts to tag', 'warning');
         return;
     }
-    
+
     try {
         // Load available tags
         const tags = await api.getTags(false);
-        
+
         // Show bulk tag modal
         const modal = document.getElementById('bulkTagModal');
         const countEl = document.getElementById('bulkTagCount');
         const tagsList = document.getElementById('bulkTagsList');
         const newTagInput = document.getElementById('bulkNewTagInput');
-        
+
         if (!modal || !countEl || !tagsList || !newTagInput) return;
-        
+
         countEl.textContent = selectedIds.length;
         newTagInput.value = '';
-        
+
         // Populate tags as clickable badges (inline, wrapping across lines)
         tagsList.innerHTML = '';
-        
+
         if (tags.length > 0) {
             // Create a flex container for inline tags that wrap
             const flexContainer = document.createElement('div');
             flexContainer.className = 'bulk-tags-flex';
             flexContainer.style.cssText = 'display: flex; flex-wrap: wrap; gap: 6px; align-items: center;';
-            
+
             for (const tag of tags) {
                 const color = getTagColor(tag.name);
-                
+
                 // Create clickable tag badge
                 const tagBadge = document.createElement('button');
                 tagBadge.type = 'button';
@@ -4263,15 +4821,15 @@ async function bulkAddTagToContacts() {
                     white-space: nowrap;
                     position: relative;
                 `;
-                
+
                 // Track selected state
                 tagBadge.dataset.selected = 'false';
-                
+
                 // Click handler to toggle selection
                 tagBadge.addEventListener('click', () => {
                     const isSelected = tagBadge.dataset.selected === 'true';
                     tagBadge.dataset.selected = isSelected ? 'false' : 'true';
-                    
+
                     if (isSelected) {
                         // Deselect - restore original styling
                         tagBadge.style.background = color.bg;
@@ -4289,7 +4847,7 @@ async function bulkAddTagToContacts() {
                         tagBadge.style.boxShadow = `0 2px 6px ${color.text}40`;
                     }
                 });
-                
+
                 // Hover effects
                 tagBadge.addEventListener('mouseenter', () => {
                     if (tagBadge.dataset.selected !== 'true') {
@@ -4297,22 +4855,22 @@ async function bulkAddTagToContacts() {
                         tagBadge.style.boxShadow = '0 2px 6px rgba(0,0,0,0.1)';
                     }
                 });
-                
+
                 tagBadge.addEventListener('mouseleave', () => {
                     if (tagBadge.dataset.selected !== 'true') {
                         tagBadge.style.transform = 'scale(1)';
                         tagBadge.style.boxShadow = 'none';
                     }
                 });
-                
+
                 flexContainer.appendChild(tagBadge);
             }
-            
+
             tagsList.appendChild(flexContainer);
         } else {
             tagsList.innerHTML = '<p style="color: #666; font-size: 14px; padding: 12px; text-align: center;">No tags available. Create a new tag below.</p>';
         }
-        
+
         modal.classList.remove('hidden');
     } catch (error) {
         showToast('Failed to load tags: ' + error.message, 'error');
@@ -4323,22 +4881,22 @@ async function addBulkTags() {
     const selectedIds = getSelectedContactIds();
     const tagsList = document.getElementById('bulkTagsList');
     const newTagInput = document.getElementById('bulkNewTagInput');
-    
+
     if (!tagsList || !newTagInput) {
         showToast('Error: Tag management elements not found', 'error');
         return;
     }
-    
+
     if (selectedIds.length === 0) {
         showToast('Please select contacts first', 'warning');
         return;
     }
-    
+
     try {
         // Get selected tags from clickable badges
         const selectedBadges = tagsList.querySelectorAll('.bulk-tag-badge-clickable[data-selected="true"]');
         const selectedTagNames = Array.from(selectedBadges).map(badge => badge.dataset.tagName);
-        
+
         // Add new tag if provided
         const newTagName = newTagInput.value.trim();
         if (newTagName) {
@@ -4350,12 +4908,12 @@ async function addBulkTags() {
                 return;
             }
         }
-        
+
         if (selectedTagNames.length === 0) {
             showToast('Please select or create at least one tag', 'warning');
             return;
         }
-        
+
         // Disable button and show loading
         const addBtn = document.getElementById('addBulkTagsBtn');
         const originalText = addBtn?.textContent || 'Add Tags';
@@ -4363,46 +4921,46 @@ async function addBulkTags() {
             addBtn.disabled = true;
             addBtn.textContent = 'Adding...';
         }
-        
+
         // Add tags to all selected contacts
         let successCount = 0;
         let errorCount = 0;
-        
+
         for (const contactId of selectedIds) {
             try {
                 const contact = await api.getContact(contactId);
                 const currentTags = contact.tags?.map(t => t.name || t) || [];
-                
+
                 // Merge selected tags with existing tags (no duplicates)
                 const mergedTags = [...new Set([...currentTags, ...selectedTagNames])];
-                
+
                 await api.updateContact(contactId, { tags: mergedTags }, null, []);
-                        successCount++;
+                successCount++;
             } catch (error) {
                 console.error(`Failed to add tags to contact ${contactId}:`, error);
                 errorCount++;
             }
         }
-        
+
         // Re-enable button
         if (addBtn) {
             addBtn.disabled = false;
             addBtn.textContent = originalText;
         }
-        
+
         if (errorCount > 0) {
             showToast(`Added tags to ${successCount} of ${selectedIds.length} contacts. ${errorCount} failed.`, 'warning');
         } else {
             showToast(`Successfully added tags to ${successCount} contact${successCount !== 1 ? 's' : ''}`, 'success');
         }
-        
+
         // Close modal and reload contacts
         document.getElementById('bulkTagModal')?.classList.add('hidden');
         await loadContacts();
     } catch (error) {
         console.error('Error adding bulk tags:', error);
         showToast('Failed to add tags: ' + (error.message || 'Unknown error'), 'error');
-        
+
         // Re-enable button on error
         const addBtn = document.getElementById('addBulkTagsBtn');
         if (addBtn) {
@@ -4415,27 +4973,27 @@ async function addBulkTags() {
 async function removeBulkTags() {
     const selectedIds = getSelectedContactIds();
     const tagsList = document.getElementById('bulkTagsList');
-    
+
     if (!tagsList) {
         showToast('Error: Tag management elements not found', 'error');
         return;
     }
-    
+
     if (selectedIds.length === 0) {
         showToast('Please select contacts first', 'warning');
         return;
     }
-    
+
     try {
         // Get selected tags from clickable badges
         const selectedBadges = tagsList.querySelectorAll('.bulk-tag-badge-clickable[data-selected="true"]');
         const selectedTagNames = Array.from(selectedBadges).map(badge => badge.dataset.tagName);
-        
+
         if (selectedTagNames.length === 0) {
             showToast('Please select at least one tag to remove', 'warning');
             return;
         }
-        
+
         // Disable button and show loading
         const removeBtn = document.getElementById('removeBulkTagsBtn');
         const originalText = removeBtn?.textContent || 'Remove Tags';
@@ -4443,19 +5001,19 @@ async function removeBulkTags() {
             removeBtn.disabled = true;
             removeBtn.textContent = 'Removing...';
         }
-        
+
         // Remove tags from all selected contacts
         let successCount = 0;
         let errorCount = 0;
-        
+
         for (const contactId of selectedIds) {
             try {
                 const contact = await api.getContact(contactId);
                 const currentTags = contact.tags?.map(t => t.name || t) || [];
-                
+
                 // Remove selected tags from existing tags
                 const remainingTags = currentTags.filter(tag => !selectedTagNames.includes(tag));
-                
+
                 await api.updateContact(contactId, { tags: remainingTags }, null, []);
                 successCount++;
             } catch (error) {
@@ -4463,26 +5021,26 @@ async function removeBulkTags() {
                 errorCount++;
             }
         }
-        
+
         // Re-enable button
         if (removeBtn) {
             removeBtn.disabled = false;
             removeBtn.textContent = originalText;
         }
-        
+
         if (errorCount > 0) {
             showToast(`Removed tags from ${successCount} of ${selectedIds.length} contacts. ${errorCount} failed.`, 'warning');
         } else {
             showToast(`Successfully removed tags from ${successCount} contact${successCount !== 1 ? 's' : ''}`, 'success');
         }
-        
+
         // Close modal and reload contacts
         document.getElementById('bulkTagModal')?.classList.add('hidden');
         await loadContacts();
     } catch (error) {
         console.error('Error removing bulk tags:', error);
         showToast('Failed to remove tags: ' + (error.message || 'Unknown error'), 'error');
-        
+
         // Re-enable button on error
         const removeBtn = document.getElementById('removeBulkTagsBtn');
         if (removeBtn) {
@@ -4498,7 +5056,7 @@ async function bulkAddEventToContacts() {
         showToast('Please select contacts first', 'warning');
         return;
     }
-    
+
     try {
         // Load available events
         const events = await api.getEvents();
@@ -4506,23 +5064,23 @@ async function bulkAddEventToContacts() {
             showToast('No events available. Please create an event first.', 'warning');
             return;
         }
-        
+
         // Show event selection dialog
         const eventNames = events.map(e => `${e.name} (${e.location})`).join('\n');
         const eventName = prompt(
             `Select an event to assign to ${selectedIds.length} contact(s):\n\nAvailable events:\n${eventNames}\n\nEnter event name:`
         );
-        
+
         if (!eventName || !eventName.trim()) return;
-        
+
         const trimmedName = eventName.trim();
         const selectedEvent = events.find(e => e.name.toLowerCase() === trimmedName.toLowerCase());
-        
+
         if (!selectedEvent) {
             showToast(`Event "${trimmedName}" not found.`, 'error');
             return;
         }
-        
+
         // Update all selected contacts
         let successCount = 0;
         for (const contactId of selectedIds) {
@@ -4533,9 +5091,9 @@ async function bulkAddEventToContacts() {
                 console.error(`Failed to add event to contact ${contactId}:`, error);
             }
         }
-        
+
         showToast(`Added event "${selectedEvent.name}" to ${successCount} of ${selectedIds.length} contacts`, 'success');
-        
+
         // Reload contacts
         await loadContacts();
     } catch (error) {
@@ -4549,19 +5107,19 @@ async function bulkDeleteContacts() {
         alert('Please select contacts to delete');
         return;
     }
-    
+
     const confirmed = confirm(
         `⚠️ WARNING: Are you sure you want to delete ${selectedIds.length} contact(s)?\n\n` +
         `This action cannot be undone. All contact information, notes, media, and chat history will be permanently deleted.`
     );
-    
+
     if (!confirmed) return;
-    
+
     if (!navigator.onLine) {
         alert('Cannot delete contacts while offline. Please connect to the internet.');
         return;
     }
-    
+
     try {
         let deletedCount = 0;
         for (const contactId of selectedIds) {
@@ -4572,9 +5130,9 @@ async function bulkDeleteContacts() {
                 console.error(`Failed to delete contact ${contactId}:`, error);
             }
         }
-        
+
         alert(`Deleted ${deletedCount} of ${selectedIds.length} contacts`);
-        
+
         // Exit selection mode and reload
         selectionMode = false;
         toggleSelectionMode();
@@ -4604,7 +5162,7 @@ function getTagColor(tagName) {
         { bg: 'rgba(0, 188, 212, 0.15)', text: '#00bcd4', border: 'rgba(0, 188, 212, 0.3)' }, // Cyan
         { bg: 'rgba(121, 85, 72, 0.15)', text: '#795548', border: 'rgba(121, 85, 72, 0.3)' }, // Brown
     ];
-    
+
     // Hash the tag name to get a consistent index
     let hash = 0;
     for (let i = 0; i < tagName.length; i++) {
@@ -4634,7 +5192,7 @@ async function loadAvailableTags() {
         availableTags = tags;
         systemTags = tags.filter(t => t.is_system_tag && !t.is_hidden);
         customTags = tags.filter(t => !t.is_system_tag && !t.is_hidden);
-        
+
         // Update suggested tags display
         updateSuggestedTags();
     } catch (error) {
@@ -4654,10 +5212,10 @@ async function loadAvailableTags() {
 function updateSuggestedTags() {
     const container = document.querySelector('.suggested-tags');
     if (!container) return;
-    
+
     // Clear existing
     container.innerHTML = '';
-    
+
     // Add system tags section
     if (systemTags.length > 0) {
         const systemHeader = document.createElement('div');
@@ -4665,7 +5223,7 @@ function updateSuggestedTags() {
         systemHeader.textContent = 'System Tags';
         systemHeader.style.cssText = 'font-size: 12px; font-weight: 600; color: #666; margin-bottom: 8px; margin-top: 8px;';
         container.appendChild(systemHeader);
-        
+
         systemTags.forEach(tag => {
             const tagEl = document.createElement('span');
             tagEl.className = 'tag-suggestion';
@@ -4679,7 +5237,7 @@ function updateSuggestedTags() {
             container.appendChild(tagEl);
         });
     }
-    
+
     // Add custom tags section (recently used)
     if (customTags.length > 0) {
         const customHeader = document.createElement('div');
@@ -4687,7 +5245,7 @@ function updateSuggestedTags() {
         customHeader.textContent = 'Your Tags';
         customHeader.style.cssText = 'font-size: 12px; font-weight: 600; color: #666; margin-bottom: 8px; margin-top: 16px;';
         container.appendChild(customHeader);
-        
+
         // Show up to 10 most recent custom tags
         customTags.slice(0, 10).forEach(tag => {
             const tagEl = document.createElement('span');
@@ -4710,32 +5268,32 @@ let editingEventId = null;
 // Helper function to get country code select HTML
 function getCountryCodeSelectHTML(selectedCode = '+91', index = 0) {
     const countryCodes = [
-        {value: '+1', flag: '🇺🇸', name: 'US'}, {value: '+44', flag: '🇬🇧', name: 'UK'},
-        {value: '+91', flag: '🇮🇳', name: 'IN'}, {value: '+86', flag: '🇨🇳', name: 'CN'},
-        {value: '+81', flag: '🇯🇵', name: 'JP'}, {value: '+49', flag: '🇩🇪', name: 'DE'},
-        {value: '+33', flag: '🇫🇷', name: 'FR'}, {value: '+39', flag: '🇮🇹', name: 'IT'},
-        {value: '+34', flag: '🇪🇸', name: 'ES'}, {value: '+61', flag: '🇦🇺', name: 'AU'},
-        {value: '+55', flag: '🇧🇷', name: 'BR'}, {value: '+52', flag: '🇲🇽', name: 'MX'},
-        {value: '+971', flag: '🇦🇪', name: 'AE'}, {value: '+966', flag: '🇸🇦', name: 'SA'},
-        {value: '+65', flag: '🇸🇬', name: 'SG'}, {value: '+60', flag: '🇲🇾', name: 'MY'},
-        {value: '+62', flag: '🇮🇩', name: 'ID'}, {value: '+66', flag: '🇹🇭', name: 'TH'},
-        {value: '+84', flag: '🇻🇳', name: 'VN'}, {value: '+82', flag: '🇰🇷', name: 'KR'},
-        {value: '+27', flag: '🇿🇦', name: 'ZA'}, {value: '+20', flag: '🇪🇬', name: 'EG'},
-        {value: '+234', flag: '🇳🇬', name: 'NG'}, {value: '+254', flag: '🇰🇪', name: 'KE'},
-        {value: '+212', flag: '🇲🇦', name: 'MA'}, {value: '+7', flag: '🇷🇺', name: 'RU'},
-        {value: '+90', flag: '🇹🇷', name: 'TR'}, {value: '+92', flag: '🇵🇰', name: 'PK'},
-        {value: '+880', flag: '🇧🇩', name: 'BD'}, {value: '+94', flag: '🇱🇰', name: 'LK'},
-        {value: '+977', flag: '🇳🇵', name: 'NP'}, {value: '+95', flag: '🇲🇲', name: 'MM'},
-        {value: '+855', flag: '🇰🇭', name: 'KH'}, {value: '+856', flag: '🇱🇦', name: 'LA'},
-        {value: '+673', flag: '🇧🇳', name: 'BN'}, {value: '+670', flag: '🇹🇱', name: 'TL'},
-        {value: '+64', flag: '🇳🇿', name: 'NZ'}, {value: '+886', flag: '🇹🇼', name: 'TW'},
-        {value: '+852', flag: '🇭🇰', name: 'HK'}, {value: '+853', flag: '🇲🇴', name: 'MO'}
+        { value: '+1', flag: '🇺🇸', name: 'US' }, { value: '+44', flag: '🇬🇧', name: 'UK' },
+        { value: '+91', flag: '🇮🇳', name: 'IN' }, { value: '+86', flag: '🇨🇳', name: 'CN' },
+        { value: '+81', flag: '🇯🇵', name: 'JP' }, { value: '+49', flag: '🇩🇪', name: 'DE' },
+        { value: '+33', flag: '🇫🇷', name: 'FR' }, { value: '+39', flag: '🇮🇹', name: 'IT' },
+        { value: '+34', flag: '🇪🇸', name: 'ES' }, { value: '+61', flag: '🇦🇺', name: 'AU' },
+        { value: '+55', flag: '🇧🇷', name: 'BR' }, { value: '+52', flag: '🇲🇽', name: 'MX' },
+        { value: '+971', flag: '🇦🇪', name: 'AE' }, { value: '+966', flag: '🇸🇦', name: 'SA' },
+        { value: '+65', flag: '🇸🇬', name: 'SG' }, { value: '+60', flag: '🇲🇾', name: 'MY' },
+        { value: '+62', flag: '🇮🇩', name: 'ID' }, { value: '+66', flag: '🇹🇭', name: 'TH' },
+        { value: '+84', flag: '🇻🇳', name: 'VN' }, { value: '+82', flag: '🇰🇷', name: 'KR' },
+        { value: '+27', flag: '🇿🇦', name: 'ZA' }, { value: '+20', flag: '🇪🇬', name: 'EG' },
+        { value: '+234', flag: '🇳🇬', name: 'NG' }, { value: '+254', flag: '🇰🇪', name: 'KE' },
+        { value: '+212', flag: '🇲🇦', name: 'MA' }, { value: '+7', flag: '🇷🇺', name: 'RU' },
+        { value: '+90', flag: '🇹🇷', name: 'TR' }, { value: '+92', flag: '🇵🇰', name: 'PK' },
+        { value: '+880', flag: '🇧🇩', name: 'BD' }, { value: '+94', flag: '🇱🇰', name: 'LK' },
+        { value: '+977', flag: '🇳🇵', name: 'NP' }, { value: '+95', flag: '🇲🇲', name: 'MM' },
+        { value: '+855', flag: '🇰🇭', name: 'KH' }, { value: '+856', flag: '🇱🇦', name: 'LA' },
+        { value: '+673', flag: '🇧🇳', name: 'BN' }, { value: '+670', flag: '🇹🇱', name: 'TL' },
+        { value: '+64', flag: '🇳🇿', name: 'NZ' }, { value: '+886', flag: '🇹🇼', name: 'TW' },
+        { value: '+852', flag: '🇭🇰', name: 'HK' }, { value: '+853', flag: '🇲🇴', name: 'MO' }
     ];
-    
-    let optionsHTML = countryCodes.map(cc => 
+
+    let optionsHTML = countryCodes.map(cc =>
         `<option value="${cc.value}" ${cc.value === selectedCode ? 'selected' : ''}>${cc.flag} ${cc.value}</option>`
     ).join('');
-    
+
     return `<select class="contact-country-code input-field" style="width: 120px; flex-shrink: 0;" data-index="${index}">${optionsHTML}</select>`;
 }
 
@@ -4743,18 +5301,18 @@ function getCountryCodeSelectHTML(selectedCode = '+91', index = 0) {
 function addPhoneNumberField(number = '', isWhatsapp = true, index = null) {
     const container = document.getElementById('phoneNumbersContainer');
     if (!container) return;
-    
+
     const currentCount = container.querySelectorAll('.phone-number-row').length;
     if (currentCount >= 3) {
         showToast('Maximum 3 phone numbers allowed', 'error');
         return;
     }
-    
+
     const idx = index !== null ? index : currentCount;
     const row = document.createElement('div');
     row.className = 'phone-number-row';
     row.style.cssText = 'display: flex; gap: 8px; align-items: center; margin-bottom: 8px;';
-    
+
     // Parse number to extract country code if it starts with +
     let countryCode = '+91';
     let phoneNumber = number;
@@ -4768,7 +5326,7 @@ function addPhoneNumberField(number = '', isWhatsapp = true, index = null) {
             }
         }
     }
-    
+
     row.innerHTML = `
         ${getCountryCodeSelectHTML(countryCode, idx)}
         <input type="tel" class="contact-phone-number input-field" style="flex: 1;" placeholder="Phone number" data-index="${idx}" value="${phoneNumber}">
@@ -4783,10 +5341,10 @@ function addPhoneNumberField(number = '', isWhatsapp = true, index = null) {
             </svg>
         </button>
     `;
-    
+
     container.appendChild(row);
     updateAddPhoneButton();
-    
+
     // Add remove button handler
     row.querySelector('.remove-phone-btn')?.addEventListener('click', () => {
         row.remove();
@@ -4798,18 +5356,18 @@ function addPhoneNumberField(number = '', isWhatsapp = true, index = null) {
 function addEmailField(address = '', index = null) {
     const container = document.getElementById('emailAddressesContainer');
     if (!container) return;
-    
+
     const currentCount = container.querySelectorAll('.email-address-row').length;
     if (currentCount >= 3) {
         showToast('Maximum 3 email addresses allowed', 'error');
         return;
     }
-    
+
     const idx = index !== null ? index : currentCount;
     const row = document.createElement('div');
     row.className = 'email-address-row';
     row.style.cssText = 'display: flex; gap: 8px; align-items: center; margin-bottom: 8px;';
-    
+
     row.innerHTML = `
         <input type="email" class="contact-email-address input-field" style="flex: 1;" placeholder="Email address" data-index="${idx}" value="${address}">
         <button type="button" class="remove-email-btn icon-btn-action" data-index="${idx}" style="flex-shrink: 0;" title="Remove">
@@ -4819,10 +5377,10 @@ function addEmailField(address = '', index = null) {
             </svg>
         </button>
     `;
-    
+
     container.appendChild(row);
     updateAddEmailButton();
-    
+
     // Add remove button handler
     row.querySelector('.remove-email-btn')?.addEventListener('click', () => {
         row.remove();
@@ -4861,6 +5419,42 @@ function clearPhoneNumbersAndEmails() {
 }
 
 // Initialize form with empty phone/email fields
+let selectedEventMediaIdsForContact = [];
+let selectedEventMediaDetailsForContact = [];
+
+function updateContactLibraryMediaPreview() {
+    const notice = document.getElementById('contactLibraryMediaNotice');
+    const preview = document.getElementById('contactLibraryMediaPreview');
+    const clearBtn = document.getElementById('clearLibraryMediaSelectionBtn');
+    if (!notice || !preview) return;
+
+    const hasSelection = Array.isArray(selectedEventMediaDetailsForContact) && selectedEventMediaDetailsForContact.length > 0;
+    if (!hasSelection) {
+        notice.style.display = 'none';
+        preview.innerHTML = '';
+        if (clearBtn) clearBtn.style.display = 'none';
+        return;
+    }
+
+    notice.style.display = 'block';
+    if (clearBtn) clearBtn.style.display = 'inline-flex';
+    preview.innerHTML = selectedEventMediaDetailsForContact.map(media => `
+        <div class="library-media-chip">
+            <span class="library-media-chip-icon">${media.file_type === 'image' ? '🖼️' : '📄'}</span>
+            <span class="library-media-chip-text">${media.file_name || media.file_type}</span>
+        </div>
+    `).join('');
+}
+
+function clearPendingLibraryMediaSelection(refreshEventMedia = false) {
+    selectedEventMediaIdsForContact = [];
+    selectedEventMediaDetailsForContact = [];
+    updateContactLibraryMediaPreview();
+    if (refreshEventMedia) {
+        refreshEventMediaIfOpen();
+    }
+}
+
 function initializeContactForm() {
     clearPhoneNumbersAndEmails();
     // Clear media input and preview
@@ -4889,30 +5483,30 @@ function clearContactMedia() {
         const dataTransfer = new DataTransfer();
         mediaInput.files = dataTransfer.files;
     }
-    
+
     const mediaPreview = document.getElementById('mediaPreview');
     if (mediaPreview) {
         mediaPreview.innerHTML = '';
     }
-    
+
     // Also clear any compressed media files stored in window
     if (window.compressedMediaFiles) {
         window.compressedMediaFiles = [];
     }
 }
 
-async function openContactModal(contactData = null) {
+async function openContactModal(contactData = null, ocrPortraitImage = null) {
     const modal = document.getElementById('contactModal');
     if (!modal) {
         console.error('Contact modal not found');
         return;
     }
-    
+
     editingContactId = contactData ? contactData.id : null;
-    
+
     // Show modal first
     modal.classList.remove('hidden');
-    
+
     // Wait for modal to be fully rendered
     await new Promise(resolve => {
         // Use requestAnimationFrame to ensure DOM is ready
@@ -4920,7 +5514,7 @@ async function openContactModal(contactData = null) {
             setTimeout(resolve, 50);
         });
     });
-    
+
     // Verify required elements exist
     const emailContainer = document.getElementById('emailAddressesContainer');
     const phoneContainer = document.getElementById('phoneNumbersContainer');
@@ -4931,25 +5525,25 @@ async function openContactModal(contactData = null) {
         });
         // Still try to continue, but log the error
     }
-    
+
     // Update modal title
     const modalTitle = modal.querySelector('.modal-header h3');
     if (modalTitle) {
         modalTitle.textContent = editingContactId ? 'Edit Contact' : 'Add Contact';
     }
-    
+
     // Initialize form
     initializeContactForm();
-    
+
     // Clear or fill form
     if (contactData) {
         // Fill form with contact data
         const nameEl = document.getElementById('contactName');
         if (nameEl) nameEl.value = contactData.name || '';
-        
+
         const roleEl = document.getElementById('contactRole');
         if (roleEl) roleEl.value = contactData.role_company || '';
-        
+
         // Fill phone numbers
         clearPhoneNumbersAndEmails();
         const phoneNumbers = contactData.phone_numbers || [];
@@ -4963,7 +5557,7 @@ async function openContactModal(contactData = null) {
         } else {
             addPhoneNumberField('', true, 0);
         }
-        
+
         // Fill email addresses
         const emailAddresses = contactData.email_addresses || [];
         if (emailAddresses.length > 0) {
@@ -4976,32 +5570,32 @@ async function openContactModal(contactData = null) {
         } else {
             addEmailField('', 0);
         }
-        
+
         const linkedinEl = document.getElementById('contactLinkedIn');
         if (linkedinEl) linkedinEl.value = contactData.linkedin_url || '';
-        
+
         const websiteEl = document.getElementById('contactWebsite');
         if (websiteEl) websiteEl.value = contactData.website || '';
-        
+
         const companyEl = document.getElementById('contactCompany');
         if (companyEl) companyEl.value = contactData.company || '';
-        
+
         // roleEl already declared above, just update if needed
         if (roleEl && contactData.role_company) roleEl.value = contactData.role_company || '';
-        
+
         // Handle meeting context - add pplai.app metadata if from QR/shared profile
         let meetingContext = contactData.meeting_context || contactData.about_me || '';
-        
+
         // Check if this contact is from a QR scan or shared profile
         if (contactData.fromPplaiProfile && contactData.pplaiProfileUrl) {
             // Format current date
             const now = new Date();
             const dateMet = now.toISOString().split('T')[0]; // YYYY-MM-DD
             const dateMetReadable = now.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
-            
+
             // Build pplai.app metadata
             const pplaiMetadata = `Met on pplai.app: ${dateMetReadable} (${dateMet})\npplai.app Profile: ${contactData.pplaiProfileUrl}`;
-            
+
             // Add to meeting context if not already present
             if (!meetingContext.includes('Met on pplai.app') && !meetingContext.includes('pplai.app Profile:')) {
                 if (meetingContext) {
@@ -5027,16 +5621,16 @@ async function openContactModal(contactData = null) {
                 }
             }
         }
-        
+
         const contextEl = document.getElementById('contactContext');
         if (contextEl) contextEl.value = meetingContext;
-        
+
         // Set event
         const eventSelect = document.getElementById('contactEvent');
         if (eventSelect && contactData.event_id) {
             eventSelect.value = contactData.event_id;
         }
-        
+
         // Set meeting date/time
         const meetingDateInput = document.getElementById('contactMeetingDate');
         if (meetingDateInput && contactData.meeting_date) {
@@ -5058,7 +5652,7 @@ async function openContactModal(contactData = null) {
             const minutes = String(now.getMinutes()).padStart(2, '0');
             meetingDateInput.value = `${year}-${month}-${day}T${hours}:${minutes}`;
         }
-        
+
         // Load tags
         const tagsContainer = document.getElementById('contactTags');
         if (tagsContainer && contactData.tags) {
@@ -5068,55 +5662,61 @@ async function openContactModal(contactData = null) {
                 addTag(tagName);
             });
         }
-        
+
         // Load photo preview if exists
         const photoPreview = document.getElementById('contactPhotoPreview');
         const photoPlaceholder = document.querySelector('#contactPhotoUpload .photo-placeholder');
-        if (contactData.contact_photo_url && photoPreview && photoPlaceholder) {
+
+        // Check for OCR portrait image first (from business card detection)
+        if (ocrPortraitImage && photoPreview && photoPlaceholder) {
+            photoPreview.src = `data:image/jpeg;base64,${ocrPortraitImage}`;
+            photoPreview.classList.remove('hidden');
+            photoPlaceholder.style.display = 'none';
+        } else if (contactData.contact_photo_url && photoPreview && photoPlaceholder) {
             photoPreview.src = contactData.contact_photo_url;
             photoPreview.classList.remove('hidden');
             photoPlaceholder.style.display = 'none';
         }
-        
+
         // Note: Media attachments are read-only in edit mode for now
         // Clear media preview (but don't clear input files in edit mode to preserve existing media)
         const mediaPreviewEl = document.getElementById('mediaPreview');
         if (mediaPreviewEl) {
             mediaPreviewEl.innerHTML = '';
         }
-        } else {
+    } else {
         // Clear form - use null-safe checks for all fields
         const nameEl = document.getElementById('contactName');
         if (nameEl) nameEl.value = '';
-        
+
         // Email is now handled by emailAddressesContainer (cleared in initializeContactForm)
         // No need to clear contactEmail as it doesn't exist anymore
-        
+
         const roleEl = document.getElementById('contactRole');
         if (roleEl) roleEl.value = '';
-        
+
         // Mobile is now handled by phoneNumbersContainer (cleared in initializeContactForm)
         // No need to clear contactMobile as it doesn't exist anymore
-        
+
         const linkedinEl = document.getElementById('contactLinkedIn');
         if (linkedinEl) linkedinEl.value = '';
-        
+
         const websiteEl = document.getElementById('contactWebsite');
         if (websiteEl) websiteEl.value = '';
-        
+
         const contextEl = document.getElementById('contactContext');
         if (contextEl) contextEl.value = '';
-        
+
         const tagsEl = document.getElementById('contactTags');
         if (tagsEl) tagsEl.innerHTML = '';
-        
+
         const mediaPreviewEl = document.getElementById('mediaPreview');
         if (mediaPreviewEl) mediaPreviewEl.innerHTML = '';
         const eventSelect = document.getElementById('contactEvent');
         if (eventSelect) {
             eventSelect.value = '';
         }
-        
+
         // Set default meeting date/time to now for new contacts (always set if empty)
         const meetingDateInput = document.getElementById('contactMeetingDate');
         if (meetingDateInput && !editingContactId) {
@@ -5138,7 +5738,7 @@ async function openContactModal(contactData = null) {
             const minutes = String(now.getMinutes()).padStart(2, '0');
             meetingDateInput.value = `${year}-${month}-${day}T${hours}:${minutes}`;
         }
-        
+
         // Clear photo preview
         const photoPreview = document.getElementById('contactPhotoPreview');
         const photoPlaceholder = document.querySelector('#contactPhotoUpload .photo-placeholder');
@@ -5149,27 +5749,30 @@ async function openContactModal(contactData = null) {
     }
 
     updateCharCount();
-    
+
     // Load available tags
     await loadAvailableTags();
-    
+
     // Load events for dropdown
     await loadEventsForContactForm();
-    
+
     // Show modal
     modal.classList.remove('hidden');
+
+    // Update library media preview if any media was selected from event library
+    updateContactLibraryMediaPreview();
 }
 
 async function editContact() {
     if (!currentViewingContactId) return;
-    
+
     try {
         // Close view modal
         document.getElementById('contactViewModal')?.classList.add('hidden');
-        
+
         // Fetch full contact data
         const contact = await api.getContact(currentViewingContactId);
-        
+
         // Open edit modal with contact data
         await openContactModal(contact);
     } catch (error) {
@@ -5179,35 +5782,35 @@ async function editContact() {
 
 async function deleteContact(contactId, contactName) {
     if (!contactId) return;
-    
+
     // Show confirmation dialog
     const confirmed = confirm(
         `⚠️ WARNING: Are you sure you want to delete "${contactName}"?\n\n` +
         `This action cannot be undone. All contact information, notes, media, and chat history will be permanently deleted.`
     );
-    
+
     if (!confirmed) return;
-    
+
     try {
         // Check if offline
         if (!navigator.onLine) {
             alert('Cannot delete contact while offline. Please connect to the internet.');
             return;
         }
-        
+
         // Delete contact via API
         await api.deleteContact(contactId);
-        
+
         // Close the view modal
         document.getElementById('contactViewModal')?.classList.add('hidden');
-        
+
         // Clear current viewing contact
         currentViewingContactId = null;
         currentViewingContact = null;
-        
+
         // Reload contacts list
         await loadContacts();
-        
+
         // Show success message
         alert(`Contact "${contactName}" has been deleted successfully.`);
     } catch (error) {
@@ -5221,12 +5824,12 @@ async function getCurrentLocation() {
             resolve(null);
             return;
         }
-        
+
         navigator.geolocation.getCurrentPosition(
             async (position) => {
                 const lat = position.coords.latitude;
                 const lng = position.coords.longitude;
-                
+
                 // Try to get location name using reverse geocoding
                 let locationName = null;
                 try {
@@ -5252,7 +5855,7 @@ async function getCurrentLocation() {
                 } catch (error) {
                     console.log('Could not get location name:', error);
                 }
-                
+
                 resolve({
                     latitude: lat,
                     longitude: lng,
@@ -5274,7 +5877,7 @@ async function getCurrentLocation() {
 
 async function checkExistingContact(email, mobile) {
     if (!email && !mobile) return null;
-    
+
     try {
         const existingContact = await api.findContact(email, mobile);
         return existingContact;
@@ -5301,7 +5904,7 @@ async function handleAiFollowup(contactId, contact, type) {
                 }, 1500);
                 return;
             }
-            
+
             // User is logged in but contact not saved
             showToast('💾 Please save this contact first to use AI follow-up', 'error');
             // Show save button if available
@@ -5313,12 +5916,12 @@ async function handleAiFollowup(contactId, contact, type) {
             }
             return;
         }
-        
+
         showToast('✨ Generating AI follow-up...', 'info');
-        
+
         // Fetch AI-generated follow-ups (also invalidates contact cache)
         const followupData = await api.getContactFollowups(contactId);
-        
+
         if (!followupData || !followupData.followups) {
             showToast('❌ No AI suggestions available', 'error');
             return;
@@ -5327,7 +5930,7 @@ async function handleAiFollowup(contactId, contact, type) {
         // Update current contact summary in UI/cache if new summary provided
         if (followupData.summary) {
             currentViewingContact.ai_summary = followupData.summary;
-            
+
             // Update contacts array so list reflects fresh summary
             if (Array.isArray(allContacts) && allContacts.length) {
                 const idx = allContacts.findIndex(c => c.id === contactId);
@@ -5340,7 +5943,7 @@ async function handleAiFollowup(contactId, contact, type) {
                     filterContactsBySearch();
                 }
             }
-            
+
             const aiSummaryItem = document.getElementById('contactViewAiSummaryItem');
             const aiSummaryEl = document.getElementById('contactViewAiSummary');
             if (aiSummaryItem && aiSummaryEl) {
@@ -5348,16 +5951,16 @@ async function handleAiFollowup(contactId, contact, type) {
                 aiSummaryItem.style.display = 'block';
             }
         }
-        
+
         const followup = followupData.followups[type];
-        
+
         if (!followup) {
             showToast(`❌ No ${type} template available`, 'error');
             return;
         }
-        
+
         // Handle different follow-up types
-        switch(type) {
+        switch (type) {
             case 'email':
                 handleAiEmail(contact, followup);
                 break;
@@ -5368,12 +5971,12 @@ async function handleAiFollowup(contactId, contact, type) {
                 handleAiSms(contact, followup);
                 break;
         }
-        
+
         showToast(`✨ AI ${type} ready!`, 'success');
-        
+
     } catch (error) {
         console.error('Error getting AI follow-up:', error);
-        
+
         // Handle 404 error - contact not found
         if (error.message && (error.message.includes('404') || error.message.includes('Not Found') || error.message.includes('not found'))) {
             const currentUser = getCurrentUser();
@@ -5393,7 +5996,7 @@ async function handleAiFollowup(contactId, contact, type) {
                 }
             }
         } else {
-        showToast(`❌ Failed to generate ${type}`, 'error');
+            showToast(`❌ Failed to generate ${type}`, 'error');
         }
     }
 }
@@ -5403,20 +6006,20 @@ function handleAiEmail(contact, emailTemplate) {
     // Extract subject and body from template
     let subject = 'Follow-up';
     let body = emailTemplate;
-    
+
     // Parse subject if present
     const subjectMatch = emailTemplate.match(/Subject:\s*(.+?)(\n|$)/i);
     if (subjectMatch) {
         subject = subjectMatch[1].trim();
         body = emailTemplate.replace(/Subject:\s*(.+?)(\n|$)/i, '').trim();
     }
-    
+
     // Add signature with pplai profile link and LinkedIn link
     const currentUser = getCurrentUser();
     if (currentUser) {
         const frontendUrl = window.location.origin || 'https://pplai.app';
         const pplaiProfileUrl = `${frontendUrl}/profile/${currentUser.id}`;
-        
+
         let signature = '\n\n--\n';
         if (currentUser.name) {
             signature += currentUser.name;
@@ -5427,18 +6030,18 @@ function handleAiEmail(contact, emailTemplate) {
         }
         signature += `View my profile: ${pplaiProfileUrl}`;
         if (currentUser.linkedin_url) {
-            const linkedinUrl = currentUser.linkedin_url.startsWith('http') 
-                ? currentUser.linkedin_url 
+            const linkedinUrl = currentUser.linkedin_url.startsWith('http')
+                ? currentUser.linkedin_url
                 : `https://${currentUser.linkedin_url}`;
             signature += `\nLinkedIn: ${linkedinUrl}`;
         }
-        
+
         body += signature;
     }
-    
+
     // Create mailto link
     const mailtoUrl = `mailto:${contact.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-    
+
     // Open email client
     window.open(mailtoUrl, '_blank');
 }
@@ -5450,7 +6053,7 @@ function handleAiWhatsApp(contact, message) {
     if (currentUser) {
         const frontendUrl = window.location.origin || 'https://pplai.app';
         const pplaiProfileUrl = `${frontendUrl}/profile/${currentUser.id}`;
-        
+
         let signature = '\n\n';
         if (currentUser.name) {
             signature += `- ${currentUser.name}`;
@@ -5461,21 +6064,21 @@ function handleAiWhatsApp(contact, message) {
         }
         signature += `Profile: ${pplaiProfileUrl}`;
         if (currentUser.linkedin_url) {
-            const linkedinUrl = currentUser.linkedin_url.startsWith('http') 
-                ? currentUser.linkedin_url 
+            const linkedinUrl = currentUser.linkedin_url.startsWith('http')
+                ? currentUser.linkedin_url
                 : `https://${currentUser.linkedin_url}`;
             signature += `\nLinkedIn: ${linkedinUrl}`;
         }
-        
+
         message += signature;
     }
-    
+
     // Format phone number (remove spaces, dashes, etc.)
     const phone = contact.mobile.replace(/[^\d+]/g, '');
-    
+
     // Create WhatsApp URL
     const whatsappUrl = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
-    
+
     // Open WhatsApp
     window.open(whatsappUrl, '_blank');
 }
@@ -5484,10 +6087,10 @@ function handleAiWhatsApp(contact, message) {
 function handleAiSms(contact, message) {
     // Format phone number
     const phone = contact.mobile.replace(/[^\d+]/g, '');
-    
+
     // Create SMS URL (works on mobile devices)
     const smsUrl = `sms:${phone}?body=${encodeURIComponent(message)}`;
-    
+
     // Open SMS app
     window.open(smsUrl, '_blank');
 }
@@ -5497,7 +6100,7 @@ async function saveContactFromView() {
         alert('No contact to save');
         return;
     }
-    
+
     // Check if user is logged in
     const currentUser = getCurrentUser();
     if (!currentUser) {
@@ -5511,10 +6114,10 @@ async function saveContactFromView() {
         }, 1500);
         return;
     }
-    
+
     // Close the view modal
     document.getElementById('contactViewModal')?.classList.add('hidden');
-    
+
     // Open the contact form with the current contact data
     await openContactModal(currentViewingContact);
 }
@@ -5526,7 +6129,7 @@ async function saveContact() {
     const website = document.getElementById('contactWebsite')?.value;
     const linkedin = document.getElementById('contactLinkedIn')?.value;
     const context = document.getElementById('contactContext')?.value;
-    
+
     // Collect phone numbers from form
     const phoneNumberRows = document.querySelectorAll('.phone-number-row');
     const phoneNumbers = [];
@@ -5534,7 +6137,7 @@ async function saveContact() {
         const countryCodeSelect = row.querySelector('.contact-country-code');
         const phoneInput = row.querySelector('.contact-phone-number');
         const whatsappCheckbox = row.querySelector('.contact-phone-whatsapp');
-        
+
         if (phoneInput && phoneInput.value.trim()) {
             const countryCode = countryCodeSelect?.value || '+91';
             const phoneNumber = phoneInput.value.trim();
@@ -5545,7 +6148,7 @@ async function saveContact() {
             });
         }
     });
-    
+
     // Collect email addresses from form
     const emailRows = document.querySelectorAll('.email-address-row');
     const emailAddresses = [];
@@ -5557,7 +6160,7 @@ async function saveContact() {
             });
         }
     });
-    
+
     // For backward compatibility and duplicate checking, keep first phone/email
     const mobile = phoneNumbers.length > 0 ? phoneNumbers[0].number : null;
     const email = emailAddresses.length > 0 ? emailAddresses[0].address : null;
@@ -5567,20 +6170,21 @@ async function saveContact() {
     const mediaInput = document.getElementById('mediaInput');
     let photoFile = photoInput?.files[0];
     let mediaFiles = mediaInput?.files ? Array.from(mediaInput.files) : [];
-    
+    const linkedLibraryMediaIds = Array.isArray(selectedEventMediaIdsForContact) ? [...new Set(selectedEventMediaIdsForContact)] : [];
+
     // Include pending photo file from fallback (for browsers without DataTransfer support)
     if (!photoFile && window.pendingPhotoFile) {
         photoFile = window.pendingPhotoFile;
         window.pendingPhotoFile = null; // Clear after use
     }
-    
+
     // Include pending media files from fallback (for browsers without DataTransfer support)
     if (window.pendingMediaFiles && window.pendingMediaFiles.length > 0) {
         mediaFiles = [...mediaFiles, ...window.pendingMediaFiles];
         // Clear pending files after use
         window.pendingMediaFiles = [];
     }
-    
+
     // Compress contact photo if provided
     if (photoFile && photoFile.type.startsWith('image/')) {
         try {
@@ -5590,7 +6194,7 @@ async function saveContact() {
             // Continue with original file
         }
     }
-    
+
     // Compress media files if provided
     if (mediaFiles.length > 0) {
         try {
@@ -5600,7 +6204,7 @@ async function saveContact() {
             // Continue with original files
         }
     }
-    
+
     const tags = Array.from(document.querySelectorAll('#contactTags .tag')).map(t => t.textContent.replace('×', '').trim());
 
     if (!name) {
@@ -5619,7 +6223,7 @@ async function saveContact() {
                 `Mobile: ${existingContact.mobile || 'N/A'}\n\n` +
                 `Would you like to update the existing contact instead?`
             );
-            
+
             if (confirmUpdate) {
                 // Switch to edit mode
                 editingContactId = existingContact.id;
@@ -5642,7 +6246,7 @@ async function saveContact() {
                 if (modalTitle) modalTitle.textContent = 'Edit Contact';
                 // Continue with save (which will update)
                 // Don't return, let it proceed to update
-    } else {
+            } else {
                 return; // User cancelled
             }
         }
@@ -5651,10 +6255,15 @@ async function saveContact() {
     try {
         // Check if we're online
         const isOnline = navigator.onLine;
-        
+
+        if (!isOnline && linkedLibraryMediaIds.length > 0) {
+            alert('Linking event media requires an internet connection. Please try again when you\'re online.');
+            return;
+        }
+
         // Get current location
         const location = await getCurrentLocation();
-        
+
         // Get meeting date/time - use vCard date if available, otherwise use current time if not set
         const meetingDateInput = document.getElementById('contactMeetingDate');
         let meetingDate = null;
@@ -5669,7 +6278,7 @@ async function saveContact() {
             // Default to current time if not set
             meetingDate = new Date().toISOString();
         }
-        
+
         // Use vCard tags if available
         let finalTags = tags;
         if (window.tempVCardTags && window.tempVCardTags.length > 0) {
@@ -5677,7 +6286,7 @@ async function saveContact() {
             finalTags = [...new Set([...tags, ...window.tempVCardTags])];
             delete window.tempVCardTags;
         }
-        
+
         // Ensure pplai.app profile URL is included in context if it was scanned from QR
         let finalContext = context || '';
         if (window.tempVCardProfileUrl) {
@@ -5692,7 +6301,7 @@ async function saveContact() {
             }
             delete window.tempVCardProfileUrl;
         }
-        
+
         const contactData = {
             name,
             email: email || null,  // Deprecated field for backward compatibility
@@ -5710,11 +6319,12 @@ async function saveContact() {
             meeting_latitude: location?.latitude || null,
             meeting_longitude: location?.longitude || null,
             meeting_location_name: location?.locationName || null,
+            media_ids: linkedLibraryMediaIds,
         };
 
         const photoFile = photoInput?.files[0] || null;
         const mediaFiles = Array.from(mediaInput?.files || []);
-        
+
         console.log('Saving contact with media files:', mediaFiles.length, mediaFiles.map(f => ({ name: f.name, size: f.size, type: f.type })));
 
         let savedContact;
@@ -5726,6 +6336,10 @@ async function saveContact() {
                 editingContactId = null;
                 await loadContacts();
                 displayContactProfile(savedContact, false);
+                if (linkedLibraryMediaIds.length > 0) {
+                    clearPendingLibraryMediaSelection(true);
+                    refreshEventMediaIfOpen(savedContact?.event_id || contactData.event_id || null);
+                }
             } catch (error) {
                 if (!isOnline) {
                     alert('Cannot update contact while offline. Please connect to the internet.');
@@ -5740,10 +6354,10 @@ async function saveContact() {
                 const queueItem = await offlineQueue.addContact(contactData, photoFile, mediaFiles);
                 closeModal();
                 editingContactId = null;
-                
+
                 // Show success message
                 showToast(`Contact "${contactData.name}" saved offline. It will be synced when you're back online. (pplai.app)`, 'info');
-                
+
                 // Reload contacts to show the offline contact (if we display them)
                 await loadContacts();
             } else {
@@ -5753,6 +6367,10 @@ async function saveContact() {
                     editingContactId = null;
                     await loadContacts();
                     displayContactProfile(savedContact, false);
+                    if (linkedLibraryMediaIds.length > 0) {
+                        clearPendingLibraryMediaSelection(true);
+                        refreshEventMediaIfOpen(savedContact?.event_id || contactData.event_id || currentEvent?.id || null);
+                    }
                 } catch (error) {
                     // If API fails, try to save offline as fallback
                     if (error.message.includes('Failed to fetch') || error.message.includes('Network')) {
@@ -5788,18 +6406,18 @@ function calculateProfileCompleteness(profile) {
         { key: 'linkedin_url', label: 'LinkedIn', required: false, weight: 0.8 },
         { key: 'about_me', label: 'About Me', required: false, weight: 1 },
     ];
-    
+
     let totalWeight = 0;
     let filledWeight = 0;
     const missingFields = [];
     const filledFields = [];
-    
+
     fields.forEach(field => {
         const value = profile[field.key];
         const isFilled = value && value.toString().trim() !== '';
-        
+
         totalWeight += field.weight;
-        
+
         if (isFilled) {
             filledWeight += field.weight;
             filledFields.push(field.label);
@@ -5807,9 +6425,9 @@ function calculateProfileCompleteness(profile) {
             missingFields.push(field.label);
         }
     });
-    
+
     const percentage = totalWeight > 0 ? Math.round((filledWeight / totalWeight) * 100) : 0;
-    
+
     return {
         percentage,
         filledWeight,
@@ -5826,17 +6444,17 @@ function updateProfileCompleteness(profile) {
     if (card) {
         card.style.display = isHidden ? 'none' : 'block';
     }
-    
+
     // If hidden, don't update the content
     if (isHidden) return;
-    
+
     const completeness = calculateProfileCompleteness(profile);
-    
+
     // Update percentage
     const percentageEl = document.getElementById('completenessPercentage');
     if (percentageEl) {
         percentageEl.textContent = `${completeness.percentage}%`;
-        
+
         // Color code based on completeness
         if (completeness.percentage >= 80) {
             percentageEl.style.color = 'var(--success)';
@@ -5846,12 +6464,12 @@ function updateProfileCompleteness(profile) {
             percentageEl.style.color = 'var(--danger)';
         }
     }
-    
+
     // Update progress bar
     const progressEl = document.getElementById('completenessProgress');
     if (progressEl) {
         progressEl.style.width = `${completeness.percentage}%`;
-        
+
         // Color code progress bar
         if (completeness.percentage >= 80) {
             progressEl.style.backgroundColor = 'var(--success)';
@@ -5861,7 +6479,7 @@ function updateProfileCompleteness(profile) {
             progressEl.style.backgroundColor = 'var(--danger)';
         }
     }
-    
+
     // Update details
     const detailsEl = document.getElementById('completenessDetails');
     if (detailsEl) {
@@ -5871,7 +6489,7 @@ function updateProfileCompleteness(profile) {
             const missingCount = completeness.missingFields.length;
             const missingText = completeness.missingFields.slice(0, 3).join(', ');
             const moreText = missingCount > 3 ? ` and ${missingCount - 3} more` : '';
-            
+
             detailsEl.innerHTML = `
                 <p class="completeness-message">
                     <strong>Missing:</strong> ${missingText}${moreText}
@@ -5898,42 +6516,42 @@ let currentViewingContactId = null;
 function displayContactProfile(data, isOwnProfile = false) {
     const modal = document.getElementById('contactViewModal');
     if (!modal) return;
-    
+
     // Store contact ID and data for editing
     currentViewingContactId = isOwnProfile ? null : (data.id || null);
     currentViewingContact = data;
-    
+
     // Set title
     const titleEl = document.getElementById('contactViewTitle');
     if (titleEl) {
         titleEl.textContent = isOwnProfile ? 'My Profile' : 'Contact Details';
     }
-    
+
     // Show/hide action buttons
     const editBtn = document.getElementById('editContactBtn');
     if (editBtn) {
         editBtn.style.display = isOwnProfile ? 'none' : 'block';
     }
-    
+
     const deleteBtn = document.getElementById('deleteContactBtn');
     if (deleteBtn) {
         deleteBtn.style.display = isOwnProfile ? 'none' : 'block';
     }
-    
+
     // Show AI follow-up buttons only for contacts (not own profile)
     const emailActionsItem = document.getElementById('contactViewEmailActionsItem');
     const aiEmailBtn = document.getElementById('aiEmailBtn');
     const aiWhatsAppBtn = document.getElementById('aiWhatsAppBtn');
     const aiSmsBtn = document.getElementById('aiSmsBtn');
-    
+
     if (emailActionsItem && aiEmailBtn && aiWhatsAppBtn && aiSmsBtn) {
         // Check for email and phone in both old and new formats
         const hasEmail = data.email || (data.email_addresses && data.email_addresses.length > 0);
         const hasPhone = data.mobile || (data.phone_numbers && data.phone_numbers.length > 0);
-        
+
         // Show container if contact has email or phone (and not own profile)
         const showAiButtons = !isOwnProfile && (hasEmail || hasPhone);
-        
+
         if (showAiButtons) {
             emailActionsItem.style.display = 'block';
             // Show AI Email only if contact has email
@@ -5948,7 +6566,7 @@ function displayContactProfile(data, isOwnProfile = false) {
             aiSmsBtn.style.display = 'none';
         }
     }
-    
+
     // Photo
     const photoEl = document.getElementById('contactViewPhoto');
     const photoPlaceholder = document.getElementById('contactViewPhotoPlaceholder');
@@ -5966,19 +6584,19 @@ function displayContactProfile(data, isOwnProfile = false) {
     // Name
     const nameEl = document.getElementById('contactViewName');
     if (nameEl) nameEl.textContent = data.name || '';
-    
+
     // Role
     const roleEl = document.getElementById('contactViewRole');
     if (roleEl) {
         roleEl.textContent = data.role_company || '';
         roleEl.style.display = data.role_company ? 'block' : 'none';
     }
-    
+
     // Email Addresses (multiple)
     const emailsItem = document.getElementById('contactViewEmailsItem');
     const emailAddresses = data.email_addresses || [];
     const hasEmails = emailAddresses.length > 0 || data.email;
-    
+
     if (emailsItem) {
         const emailsContainer = document.getElementById('contactViewEmailsList');
         if (!emailsContainer) {
@@ -5986,7 +6604,7 @@ function displayContactProfile(data, isOwnProfile = false) {
         }
         if (emailsContainer) {
             emailsContainer.innerHTML = '';
-            
+
             if (emailAddresses.length > 0) {
                 emailAddresses.forEach((email) => {
                     const emailAddr = email.address || email;
@@ -6005,7 +6623,7 @@ function displayContactProfile(data, isOwnProfile = false) {
                             ` : ''}
                         `;
                         emailsContainer.appendChild(emailRow);
-                        
+
                         const emailBtn = emailRow.querySelector('.email-action-btn');
                         if (emailBtn) {
                             emailBtn.addEventListener('click', () => {
@@ -6030,7 +6648,7 @@ function displayContactProfile(data, isOwnProfile = false) {
                     ` : ''}
                 `;
                 emailsContainer.appendChild(emailRow);
-                
+
                 const emailBtn = emailRow.querySelector('.email-action-btn');
                 if (emailBtn) {
                     emailBtn.addEventListener('click', () => {
@@ -6038,30 +6656,30 @@ function displayContactProfile(data, isOwnProfile = false) {
                     });
                 }
             }
-            
+
             emailsItem.style.display = hasEmails ? 'flex' : 'none';
         }
     }
-    
+
     // Phone Numbers (multiple)
     const phonesItem = document.getElementById('contactViewPhonesItem');
     const phoneNumbers = data.phone_numbers || [];
     const hasPhones = phoneNumbers.length > 0 || data.mobile;
-    
+
     if (phonesItem) {
         const phonesContainer = document.getElementById('contactViewPhonesList');
         if (phonesContainer) {
             phonesContainer.innerHTML = '';
-            
+
             if (phoneNumbers.length > 0) {
                 phoneNumbers.forEach((phone) => {
                     const phoneNumber = phone.number || phone;
                     if (phoneNumber) {
                         const phoneRow = document.createElement('div');
                         phoneRow.style.cssText = 'display: flex; align-items: center; gap: 8px; justify-content: space-between;';
-                        
+
                         const isWhatsapp = phone.is_whatsapp !== false;
-                        
+
                         phoneRow.innerHTML = `
                             <span class="detail-value">${phoneNumber}</span>
                             ${!isOwnProfile ? `
@@ -6087,11 +6705,11 @@ function displayContactProfile(data, isOwnProfile = false) {
                             ` : ''}
                         `;
                         phonesContainer.appendChild(phoneRow);
-                        
+
                         const callBtn = phoneRow.querySelector('.call-action-btn');
                         const messageBtn = phoneRow.querySelector('.message-action-btn');
                         const whatsappBtn = phoneRow.querySelector('.whatsapp-action-btn');
-                        
+
                         if (callBtn) {
                             callBtn.addEventListener('click', () => {
                                 window.location.href = `tel:${phoneNumber}`;
@@ -6138,11 +6756,11 @@ function displayContactProfile(data, isOwnProfile = false) {
                     ` : ''}
                 `;
                 phonesContainer.appendChild(phoneRow);
-                
+
                 const callBtn = phoneRow.querySelector('.call-action-btn');
                 const messageBtn = phoneRow.querySelector('.message-action-btn');
                 const whatsappBtn = phoneRow.querySelector('.whatsapp-action-btn');
-                
+
                 if (callBtn) callBtn.addEventListener('click', () => window.location.href = `tel:${data.mobile}`);
                 if (messageBtn) messageBtn.addEventListener('click', () => window.location.href = `sms:${data.mobile}`);
                 if (whatsappBtn) {
@@ -6151,11 +6769,11 @@ function displayContactProfile(data, isOwnProfile = false) {
                     whatsappBtn.addEventListener('click', () => window.open(`https://wa.me/${cleanPhone}`, '_blank'));
                 }
             }
-            
+
             phonesItem.style.display = hasPhones ? 'flex' : 'none';
         }
     }
-    
+
     // LinkedIn
     const linkedInItem = document.getElementById('contactViewLinkedInItem');
     const linkedInEl = document.getElementById('contactViewLinkedIn');
@@ -6176,7 +6794,7 @@ function displayContactProfile(data, isOwnProfile = false) {
             linkedInItem.style.display = 'none';
         }
     }
-    
+
     // Website
     const websiteItem = document.getElementById('contactViewWebsiteItem');
     const websiteEl = document.getElementById('contactViewWebsite');
@@ -6197,7 +6815,7 @@ function displayContactProfile(data, isOwnProfile = false) {
             websiteItem.style.display = 'none';
         }
     }
-    
+
     // Event (only for contacts)
     const eventItem = document.getElementById('contactViewEventItem');
     const eventEl = document.getElementById('contactViewEvent');
@@ -6207,7 +6825,7 @@ function displayContactProfile(data, isOwnProfile = false) {
     } else if (eventItem) {
         eventItem.style.display = 'none';
     }
-    
+
     // Meeting Date (only for contacts)
     const dateItem = document.getElementById('contactViewDateItem');
     const dateEl = document.getElementById('contactViewDate');
@@ -6217,7 +6835,7 @@ function displayContactProfile(data, isOwnProfile = false) {
     } else if (dateItem) {
         dateItem.style.display = 'none';
     }
-    
+
     // Location (only for contacts)
     const locationItem = document.getElementById('contactViewLocationItem');
     const locationEl = document.getElementById('contactViewLocation');
@@ -6239,7 +6857,7 @@ function displayContactProfile(data, isOwnProfile = false) {
     } else if (locationItem) {
         locationItem.style.display = 'none';
     }
-    
+
     // AI Summary (only for contacts) - displayed prominently
     const aiSummaryItem = document.getElementById('contactViewAiSummaryItem');
     const aiSummaryEl = document.getElementById('contactViewAiSummary');
@@ -6253,7 +6871,7 @@ function displayContactProfile(data, isOwnProfile = false) {
     } else if (aiSummaryItem) {
         aiSummaryItem.style.display = 'none';
     }
-    
+
     // Context (only for contacts) - original notes
     const contextItem = document.getElementById('contactViewContextItem');
     const contextEl = document.getElementById('contactViewContext');
@@ -6267,7 +6885,7 @@ function displayContactProfile(data, isOwnProfile = false) {
     } else if (contextItem) {
         contextItem.style.display = 'none';
     }
-    
+
     // Tags
     const tagsItem = document.getElementById('contactViewTagsItem');
     const tagsEl = document.getElementById('contactViewTags');
@@ -6285,7 +6903,7 @@ function displayContactProfile(data, isOwnProfile = false) {
             tagsItem.style.display = 'none';
         }
     }
-    
+
     // Media (only for contacts)
     const mediaItem = document.getElementById('contactViewMediaItem');
     const mediaEl = document.getElementById('contactViewMedia');
@@ -6307,16 +6925,16 @@ function displayContactProfile(data, isOwnProfile = false) {
     } else if (mediaItem) {
         mediaItem.style.display = 'none';
     }
-    
+
     // Update contact action buttons visibility
     updateContactActionButtons(data);
-    
+
     // Show/hide chat button (only for contacts, not own profile)
     const chatBtn = document.getElementById('chatContactBtn');
     if (chatBtn) {
         chatBtn.style.display = isOwnProfile ? 'none' : 'block';
     }
-    
+
     // Show modal
     modal.classList.remove('hidden');
 }
@@ -6325,13 +6943,13 @@ function displayContactProfile(data, isOwnProfile = false) {
 function loadChatMessages(contact) {
     const chatContainer = document.getElementById('contactChatMessages');
     if (!chatContainer) return;
-    
+
     // Parse meeting_context to extract messages
     if (contact.meeting_context) {
         // Split by timestamp pattern [YYYY-MM-DD HH:MM]
         const messages = contact.meeting_context.split(/(\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}\])/);
         chatContainer.innerHTML = '';
-        
+
         let currentMessage = '';
         for (let i = 0; i < messages.length; i++) {
             if (messages[i].match(/\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}\]/)) {
@@ -6353,12 +6971,12 @@ function loadChatMessages(contact) {
                 currentMessage += messages[i];
             }
         }
-        
+
         // Add any remaining message
         if (currentMessage.trim()) {
             addMessageToChat(currentMessage.trim(), null);
         }
-        
+
         // Scroll to bottom
         chatContainer.scrollTop = chatContainer.scrollHeight;
     } else {
@@ -6369,14 +6987,14 @@ function loadChatMessages(contact) {
 function addMessageToChat(message, timestamp) {
     const chatContainer = document.getElementById('contactChatMessages');
     if (!chatContainer) return;
-    
+
     // Remove empty state if exists
     const emptyState = chatContainer.querySelector('.chat-empty-state');
     if (emptyState) emptyState.remove();
-    
+
     const messageDiv = document.createElement('div');
     messageDiv.className = 'chat-message';
-    
+
     if (timestamp) {
         const timeText = timestamp.replace('[', '').replace(']', '');
         messageDiv.innerHTML = `
@@ -6388,7 +7006,7 @@ function addMessageToChat(message, timestamp) {
             <div class="chat-message-text">${escapeHtml(message)}</div>
         `;
     }
-    
+
     chatContainer.appendChild(messageDiv);
     chatContainer.scrollTop = chatContainer.scrollHeight;
 }
@@ -6401,28 +7019,28 @@ function escapeHtml(text) {
 
 async function sendChatMessage() {
     if (!currentViewingContactId || !currentViewingContact) return;
-    
+
     const input = document.getElementById('chatMessageInput');
     const message = input?.value.trim();
-    
+
     if (!message) return;
-    
+
     try {
         // Disable input while sending
         input.disabled = true;
         const sendBtn = document.getElementById('chatSendBtn');
         if (sendBtn) sendBtn.disabled = true;
-        
+
         await api.addMessageToContact(currentViewingContactId, message);
-        
+
         // Clear input
         input.value = '';
-        
+
         // Reload contact to get updated context
         const updatedContact = await api.getContact(currentViewingContactId);
         currentViewingContact = updatedContact;
         loadChatMessages(updatedContact);
-        
+
         // Re-enable input
         input.disabled = false;
         if (sendBtn) sendBtn.disabled = false;
@@ -6440,19 +7058,19 @@ async function sendChatMessage() {
 function handleChatPhotoSelect(e) {
     const files = e.target.files;
     if (!files || files.length === 0) return;
-    
+
     const preview = document.getElementById('chatPhotoPreview');
     if (!preview) return;
-    
+
     preview.innerHTML = '';
     preview.style.display = 'block';
-    
+
     Array.from(files).forEach((file, index) => {
         if (!file.type.startsWith('image/')) {
             alert('Please select image files only');
             return;
         }
-        
+
         const reader = new FileReader();
         reader.onload = (event) => {
             const img = document.createElement('img');
@@ -6463,11 +7081,11 @@ function handleChatPhotoSelect(e) {
             img.style.borderRadius = '8px';
             img.style.marginRight = '8px';
             img.style.marginBottom = '8px';
-            
+
             const container = document.createElement('div');
             container.style.position = 'relative';
             container.style.display = 'inline-block';
-            
+
             const removeBtn = document.createElement('button');
             removeBtn.innerHTML = '×';
             removeBtn.style.position = 'absolute';
@@ -6488,36 +7106,36 @@ function handleChatPhotoSelect(e) {
                     preview.style.display = 'none';
                 }
             };
-            
+
             container.appendChild(img);
             container.appendChild(removeBtn);
             preview.appendChild(container);
         };
         reader.readAsDataURL(file);
     });
-    
+
     // Upload photos
     uploadChatPhotos(files);
 }
 
 async function uploadChatPhotos(files) {
     if (!currentViewingContactId || !files || files.length === 0) return;
-    
+
     try {
         // Compress images before uploading
         const fileArray = Array.from(files);
         const compressedFiles = await compressImages(fileArray);
-        
+
         for (const file of compressedFiles) {
             if (!file.type.startsWith('image/')) continue;
-            
+
             await api.addMediaToContact(currentViewingContactId, file);
         }
-        
+
         // Reload contact to get updated media
         const updatedContact = await api.getContact(currentViewingContactId);
         currentViewingContact = updatedContact;
-        
+
         // Update media display
         const mediaItem = document.getElementById('contactViewMediaItem');
         const mediaEl = document.getElementById('contactViewMedia');
@@ -6533,18 +7151,18 @@ async function uploadChatPhotos(files) {
             }).join('');
             mediaItem.style.display = 'block';
         }
-        
+
         // Clear preview
         const preview = document.getElementById('chatPhotoPreview');
         if (preview) {
             preview.innerHTML = '';
             preview.style.display = 'none';
         }
-        
+
         // Clear file input
         const fileInput = document.getElementById('chatPhotoInput');
         if (fileInput) fileInput.value = '';
-        
+
     } catch (error) {
         console.error('Error uploading photos:', error);
         alert('Failed to upload photos: ' + error.message);
@@ -6572,7 +7190,7 @@ async function openChatView(contactId, contactName) {
             }, 1500);
             return;
         }
-        
+
         // User is logged in but contact not saved
         showToast('💾 Please save this contact first to use chat features', 'error');
         const saveBtn = document.getElementById('saveContactFromViewBtn');
@@ -6582,28 +7200,28 @@ async function openChatView(contactId, contactName) {
         }
         return;
     }
-    
+
     chatViewContactId = contactId;
-    
+
     // Close any modals
     closeModal();
-    
+
     // Switch to chat view
     switchView('chat');
-    
+
     // Update header
     const nameEl = document.getElementById('chatContactName');
     if (nameEl) {
         nameEl.textContent = contactName || 'Chat';
     }
-    
+
     // Load contact data
     try {
         chatViewContact = await api.getContact(contactId);
         loadChatViewMessages(chatViewContact);
     } catch (error) {
         console.error('Error loading contact for chat:', error);
-        
+
         // Handle 404 error - contact not found
         if (error.message && (error.message.includes('404') || error.message.includes('Not Found') || error.message.includes('not found'))) {
             const currentUser = getCurrentUser();
@@ -6625,7 +7243,7 @@ async function openChatView(contactId, contactName) {
             // Switch back to contacts view
             switchView('contacts');
         } else {
-        alert('Failed to load contact: ' + error.message);
+            alert('Failed to load contact: ' + error.message);
         }
     }
 }
@@ -6633,13 +7251,13 @@ async function openChatView(contactId, contactName) {
 function loadChatViewMessages(contact) {
     const chatContainer = document.getElementById('chatViewMessages');
     if (!chatContainer) return;
-    
+
     chatContainer.innerHTML = '';
-    
+
     // Parse meeting_context to extract messages
     if (contact.meeting_context) {
         const messages = contact.meeting_context.split(/(\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}\])/);
-        
+
         let currentMessage = '';
         for (let i = 0; i < messages.length; i++) {
             if (messages[i].match(/\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}\]/)) {
@@ -6651,16 +7269,16 @@ function loadChatViewMessages(contact) {
                 currentMessage += messages[i];
             }
         }
-        
+
         if (currentMessage.trim()) {
             addMessageToChatView(currentMessage.trim(), null);
         }
-        
+
         chatContainer.scrollTop = chatContainer.scrollHeight;
     } else {
         chatContainer.innerHTML = '<div class="chat-empty-state" style="text-align: center; color: var(--text-secondary); padding: 40px 20px;">No messages yet. Start a conversation!</div>';
     }
-    
+
     // Load media attachments as messages
     if (contact.media && contact.media.length > 0) {
         contact.media.forEach(media => {
@@ -6676,13 +7294,13 @@ function loadChatViewMessages(contact) {
 function addMessageToChatView(message, timestamp) {
     const chatContainer = document.getElementById('chatViewMessages');
     if (!chatContainer) return;
-    
+
     const emptyState = chatContainer.querySelector('.chat-empty-state');
     if (emptyState) emptyState.remove();
-    
+
     const messageDiv = document.createElement('div');
     messageDiv.className = 'chat-message';
-    
+
     if (timestamp) {
         const timeText = timestamp.replace('[', '').replace(']', '');
         messageDiv.innerHTML = `
@@ -6694,7 +7312,7 @@ function addMessageToChatView(message, timestamp) {
             <div class="chat-message-text">${escapeHtml(message)}</div>
         `;
     }
-    
+
     chatContainer.appendChild(messageDiv);
     chatContainer.scrollTop = chatContainer.scrollHeight;
 }
@@ -6702,44 +7320,44 @@ function addMessageToChatView(message, timestamp) {
 function addMediaToChatView(type, url) {
     const chatContainer = document.getElementById('chatViewMessages');
     if (!chatContainer) return;
-    
+
     const emptyState = chatContainer.querySelector('.chat-empty-state');
     if (emptyState) emptyState.remove();
-    
+
     const messageDiv = document.createElement('div');
     messageDiv.className = 'chat-message';
-    
+
     if (type === 'image') {
         messageDiv.innerHTML = `<img src="${url}" alt="Photo" style="max-width: 100%; border-radius: 8px; margin-top: 8px;">`;
     } else if (type === 'audio') {
         messageDiv.innerHTML = `<audio controls style="width: 100%; margin-top: 8px;"><source src="${url}"></audio>`;
     }
-    
+
     chatContainer.appendChild(messageDiv);
     chatContainer.scrollTop = chatContainer.scrollHeight;
 }
 
 async function sendChatViewMessage() {
     if (!chatViewContactId) return;
-    
+
     const input = document.getElementById('chatViewMessageInput');
     const message = input?.value.trim();
-    
+
     if (!message) return;
-    
+
     try {
         input.disabled = true;
         const sendBtn = document.getElementById('chatViewSendBtn');
         if (sendBtn) sendBtn.disabled = true;
-        
+
         await api.addMessageToContact(chatViewContactId, message);
-        
+
         input.value = '';
-        
+
         // Reload contact
         chatViewContact = await api.getContact(chatViewContactId);
         loadChatViewMessages(chatViewContact);
-        
+
         input.disabled = false;
         if (sendBtn) sendBtn.disabled = false;
         input.focus();
@@ -6756,20 +7374,20 @@ async function sendChatViewMessage() {
 async function handleChatViewPhotoSelect(e) {
     const files = e.target.files;
     if (!files || files.length === 0 || !chatViewContactId) return;
-    
+
     try {
         const fileArray = Array.from(files);
         const compressedFiles = await compressImages(fileArray);
-        
+
         for (const file of compressedFiles) {
             if (!file.type.startsWith('image/')) continue;
             await api.addMediaToContact(chatViewContactId, file);
         }
-        
+
         // Reload contact
         chatViewContact = await api.getContact(chatViewContactId);
         loadChatViewMessages(chatViewContact);
-        
+
         // Clear input
         const fileInput = document.getElementById('chatViewPhotoInput');
         if (fileInput) fileInput.value = '';
@@ -6782,15 +7400,15 @@ async function handleChatViewPhotoSelect(e) {
 // Voice Recording Functions
 async function startVoiceRecording() {
     if (mediaRecorder && mediaRecorder.state === 'recording') return;
-    
+
     try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        
+
         // Detect supported MIME types for MediaRecorder (varies by browser/device)
         // iPhone/Safari uses audio/mp4 or audio/m4a, Chrome uses audio/webm
         let mimeType = 'audio/webm'; // Default fallback
         let fileExtension = '.webm';
-        
+
         // Check what MediaRecorder actually supports
         if (MediaRecorder.isTypeSupported('audio/mp4')) {
             mimeType = 'audio/mp4';
@@ -6805,23 +7423,23 @@ async function startVoiceRecording() {
             mimeType = 'audio/webm;codecs=opus';
             fileExtension = '.webm';
         }
-        
+
         // Create MediaRecorder with detected MIME type
         const options = { mimeType: mimeType };
         mediaRecorder = new MediaRecorder(stream, options);
         const audioChunks = [];
-        
+
         mediaRecorder.ondataavailable = (event) => {
             if (event.data.size > 0) {
                 audioChunks.push(event.data);
             }
         };
-        
+
         mediaRecorder.onstop = async () => {
             // Use the detected MIME type for the blob
             const audioBlob = new Blob(audioChunks, { type: mimeType });
             const audioFile = new File([audioBlob], `voice_note_${Date.now()}${fileExtension}`, { type: mimeType });
-            
+
             // Upload voice note
             if (chatViewContactId) {
                 try {
@@ -6833,20 +7451,20 @@ async function startVoiceRecording() {
                     alert('Failed to upload voice note: ' + error.message);
                 }
             }
-            
+
             // Stop all tracks
             stream.getTracks().forEach(track => track.stop());
         };
-        
+
         mediaRecorder.start();
         recordingStartTime = Date.now();
-        
+
         // Show recording UI
         const recordingEl = document.getElementById('chatViewVoiceRecording');
         if (recordingEl) {
             recordingEl.style.display = 'block';
         }
-        
+
         // Start timer
         recordingTimer = setInterval(() => {
             const elapsed = Math.floor((Date.now() - recordingStartTime) / 1000);
@@ -6857,7 +7475,7 @@ async function startVoiceRecording() {
                 timeEl.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
             }
         }, 1000);
-        
+
     } catch (error) {
         console.error('Error starting recording:', error);
         alert('Failed to start recording. Please allow microphone access.');
@@ -6866,21 +7484,21 @@ async function startVoiceRecording() {
 
 function stopVoiceRecording() {
     if (!mediaRecorder || mediaRecorder.state !== 'recording') return;
-    
+
     mediaRecorder.stop();
-    
+
     // Hide recording UI
     const recordingEl = document.getElementById('chatViewVoiceRecording');
     if (recordingEl) {
         recordingEl.style.display = 'none';
     }
-    
+
     // Clear timer
     if (recordingTimer) {
         clearInterval(recordingTimer);
         recordingTimer = null;
     }
-    
+
     const timeEl = document.getElementById('chatViewRecordingTime');
     if (timeEl) {
         timeEl.textContent = '00:00';
@@ -6897,59 +7515,59 @@ function openQRScanner() {
     const modal = document.getElementById('qrScannerModal');
     const video = document.getElementById('qrVideo');
     const canvas = document.getElementById('qrCanvas');
-    
+
     if (!modal || !video || !canvas) {
         alert('QR Scanner elements not found');
         return;
     }
-    
+
     modal.classList.remove('hidden');
-    
+
     // Request camera access
-    navigator.mediaDevices.getUserMedia({ 
-        video: { 
+    navigator.mediaDevices.getUserMedia({
+        video: {
             facingMode: 'environment', // Use back camera on mobile
             width: { ideal: 1280 },
             height: { ideal: 720 }
-        } 
+        }
     })
-    .then(stream => {
-        qrScannerStream = stream;
-        video.srcObject = stream;
-        video.play();
-        
-        // Start scanning
-        qrScannerInterval = setInterval(() => {
-            scanQRCode(video, canvas);
-        }, 500); // Scan every 500ms
-    })
-    .catch(error => {
-        console.error('Error accessing camera:', error);
-        alert('Unable to access camera. Please allow camera permissions.');
-        closeQRScanner();
-    });
+        .then(stream => {
+            qrScannerStream = stream;
+            video.srcObject = stream;
+            video.play();
+
+            // Start scanning
+            qrScannerInterval = setInterval(() => {
+                scanQRCode(video, canvas);
+            }, 500); // Scan every 500ms
+        })
+        .catch(error => {
+            console.error('Error accessing camera:', error);
+            alert('Unable to access camera. Please allow camera permissions.');
+            closeQRScanner();
+        });
 }
 
 function closeQRScanner() {
     const modal = document.getElementById('qrScannerModal');
     const video = document.getElementById('qrVideo');
-    
+
     // Stop scanning
     if (qrScannerInterval) {
         clearInterval(qrScannerInterval);
         qrScannerInterval = null;
     }
-    
+
     // Stop camera stream
     if (qrScannerStream) {
         qrScannerStream.getTracks().forEach(track => track.stop());
         qrScannerStream = null;
     }
-    
+
     if (video) {
         video.srcObject = null;
     }
-    
+
     if (modal) {
         modal.classList.add('hidden');
     }
@@ -6959,15 +7577,15 @@ function scanQRCode(video, canvas) {
     if (!video || video.readyState !== video.HAVE_ENOUGH_DATA || typeof jsQR === 'undefined') {
         return;
     }
-    
+
     const ctx = canvas.getContext('2d');
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-    
+
     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
     const code = jsQR(imageData.data, imageData.width, imageData.height);
-    
+
     if (code) {
         // Found a QR code
         console.log('QR Code detected:', code.data);
@@ -6978,7 +7596,7 @@ function scanQRCode(video, canvas) {
 async function handleQRCodeScanned(data) {
     // Close scanner
     closeQRScanner();
-    
+
     // Check if it's a vCard
     if (data.startsWith('BEGIN:VCARD')) {
         try {
@@ -7014,30 +7632,30 @@ async function renderStandalonePublicProfile(userId) {
     const authScreen = document.getElementById('authScreen');
     const appContainer = document.getElementById('appContainer');
     const publicScreen = document.getElementById('publicProfileScreen');
-    
+
     // Hide all other screens
     if (loadingScreen) loadingScreen.classList.add('hidden');
     if (authScreen) authScreen.classList.add('hidden');
     if (appContainer) appContainer.classList.add('hidden');
-    
+
     // Show public profile screen
     if (publicScreen) {
         publicScreen.classList.remove('hidden');
-        
+
         // Show loading state
         togglePublicProfileLoading(true);
-        
+
         try {
             // Fetch public profile without auth
             const profile = await api.getPublicProfile(userId);
-            
+
             // Populate the standalone view
             const photoEl = document.getElementById('publicProfilePhoto');
             const photoPlaceholderEl = document.getElementById('publicProfilePhotoPlaceholder');
             const nameEl = document.getElementById('publicProfileName');
             const roleEl = document.getElementById('publicProfileRole');
             const aboutEl = document.getElementById('publicProfileAbout');
-            
+
             if (photoEl) {
                 photoEl.src = profile.profile_photo_url || '';
                 photoEl.style.display = profile.profile_photo_url ? 'block' : 'none';
@@ -7045,18 +7663,18 @@ async function renderStandalonePublicProfile(userId) {
             if (photoPlaceholderEl) {
                 photoPlaceholderEl.style.display = profile.profile_photo_url ? 'none' : 'flex';
             }
-            
+
             if (nameEl) nameEl.textContent = profile.name || '';
             if (roleEl) {
                 roleEl.textContent = profile.role_company || '';
                 roleEl.style.display = profile.role_company ? 'block' : 'none';
             }
             if (aboutEl) aboutEl.textContent = profile.about_me || 'No bio available';
-            
+
             // Contact actions (using correct IDs from HTML)
             // Call action - no restrictions
             setPublicProfileAction('publicProfileCall', profile.mobile, () => window.location.href = `tel:${profile.mobile}`);
-            
+
             // Email action - requires login and saved contact
             const emailAction = document.getElementById('publicProfileEmail');
             if (emailAction && profile.email) {
@@ -7065,10 +7683,10 @@ async function renderStandalonePublicProfile(userId) {
                     window.location.href = `mailto:${profile.email}`;
                 }, 'email');
             }
-            
+
             // LinkedIn - no restrictions (external link)
             setPublicProfileAction('publicProfileLinkedIn', profile.linkedin_url, () => window.open(ensureHttps(profile.linkedin_url), '_blank'));
-            
+
             // WhatsApp action - requires login and saved contact
             const whatsappAction = document.getElementById('publicProfileWhatsapp');
             if (whatsappAction && (profile.whatsapp || profile.mobile)) {
@@ -7077,16 +7695,16 @@ async function renderStandalonePublicProfile(userId) {
                     window.open(`https://wa.me/${(profile.whatsapp || profile.mobile).replace(/\D/g, '')}`, '_blank');
                 }, 'whatsapp');
             }
-            
+
             // Meta info (using correct IDs from HTML)
             const emailValueEl = document.getElementById('publicProfileEmailValue');
             const mobileValueEl = document.getElementById('publicProfileMobileValue');
             const linkedinValueEl = document.getElementById('publicProfileLinkedInValue');
-            
+
             if (emailValueEl) emailValueEl.textContent = profile.email || 'Not shared';
             if (mobileValueEl) mobileValueEl.textContent = profile.mobile || 'Not shared';
             if (linkedinValueEl) linkedinValueEl.textContent = profile.linkedin_url || 'Not shared';
-            
+
             // Open in app button - requires login, then stores the profile ID and redirects to home
             const openInAppBtn = document.getElementById('publicProfileOpenAppBtn');
             if (openInAppBtn) {
@@ -7094,11 +7712,11 @@ async function renderStandalonePublicProfile(userId) {
                     const currentUser = getCurrentUser();
                     if (!currentUser) {
                         // Store profile ID for after login
-                    sessionStorage.setItem('pendingProfileView', userId);
+                        sessionStorage.setItem('pendingProfileView', userId);
                         showToast('🔐 Please login to open in app', 'info');
                         // Redirect to home where login screen will be shown
                         setTimeout(() => {
-                    window.location.href = '/';
+                            window.location.href = '/';
                         }, 1500);
                     } else {
                         // Already logged in, proceed
@@ -7107,7 +7725,7 @@ async function renderStandalonePublicProfile(userId) {
                     }
                 };
             }
-            
+
             // Save to phone contacts button - works without login (saves directly to phone)
             const saveBtn = document.getElementById('publicProfileSaveBtn');
             if (saveBtn) {
@@ -7130,7 +7748,7 @@ async function renderStandalonePublicProfile(userId) {
                             tags: [],
                             event: null
                         };
-                        
+
                         // Add phone numbers
                         if (profile.mobile) {
                             contactData.phone_numbers.push({
@@ -7144,12 +7762,12 @@ async function renderStandalonePublicProfile(userId) {
                                 is_whatsapp: true
                             });
                         }
-                        
+
                         // Generate vCard with embedded photo
                         const vcard = await generateContactVCardWithPhoto(contactData);
                         const blob = new Blob([vcard], { type: 'text/vcard' });
                         const url = URL.createObjectURL(blob);
-                        
+
                         // Try Web Share API first (works on mobile)
                         if (navigator.share && navigator.canShare) {
                             const file = new File([blob], `${contactData.name.replace(/\s+/g, '_')}.vcf`, { type: 'text/vcard' });
@@ -7167,7 +7785,7 @@ async function renderStandalonePublicProfile(userId) {
                                 return;
                             }
                         }
-                        
+
                         // Fallback: Download vCard
                         downloadVCard(url, contactData.name);
                     } catch (error) {
@@ -7176,7 +7794,7 @@ async function renderStandalonePublicProfile(userId) {
                     }
                 };
             }
-            
+
             // Back button
             const backBtn = document.getElementById('publicProfileBackBtn');
             if (backBtn) {
@@ -7184,7 +7802,7 @@ async function renderStandalonePublicProfile(userId) {
                     window.location.href = '/';
                 };
             }
-            
+
             console.log('✅ Profile fields populated, hiding loader...');
             togglePublicProfileLoading(false);
             console.log('✅ Profile rendering complete!');
@@ -7222,7 +7840,7 @@ function togglePublicProfileLoading(isLoading) {
     const loader = document.getElementById('publicProfileLoading');
     const content = document.getElementById('publicProfileContent');
     const error = document.getElementById('publicProfileError');
-    
+
     if (loader) {
         loader.style.display = isLoading ? 'flex' : 'none';
     }
@@ -7243,7 +7861,7 @@ function showPublicProfileError(message) {
     const loader = document.getElementById('publicProfileLoading');
     const content = document.getElementById('publicProfileContent');
     const error = document.getElementById('publicProfileError');
-    
+
     if (loader) loader.style.display = 'none';
     if (content) content.classList.add('hidden');
     if (error) {
@@ -7267,16 +7885,16 @@ async function loadPublicProfile(userId) {
     try {
         // Fetch public profile from API
         const profile = await api.getPublicProfile(userId);
-        
+
         // Display the profile in contact view modal
         displayContactProfile(profile, false);
-        
+
         // Show save button for this public profile
         const saveBtn = document.getElementById('saveContactFromViewBtn');
         if (saveBtn) {
             saveBtn.style.display = 'block';
         }
-        
+
         // Store the profile data for saving
         const profileUrl = `${window.location.origin}/profile/${userId}`;
         currentViewingContact = {
@@ -7292,7 +7910,7 @@ async function loadPublicProfile(userId) {
             fromPplaiProfile: true,
             pplaiProfileUrl: profileUrl
         };
-        
+
         showToast('Profile loaded successfully', 'success');
     } catch (error) {
         console.error('Error loading public profile:', error);
@@ -7303,16 +7921,16 @@ async function loadPublicProfile(userId) {
 function parseVCard(vcardData) {
     const lines = vcardData.split(/\r?\n/);
     const contact = {};
-    
+
     for (let line of lines) {
         if (!line || line.startsWith('BEGIN:') || line.startsWith('END:')) continue;
-        
+
         const colonIndex = line.indexOf(':');
         if (colonIndex === -1) continue;
-        
+
         const field = line.substring(0, colonIndex).toUpperCase();
         const value = line.substring(colonIndex + 1);
-        
+
         // Parse standard vCard fields
         if (field.startsWith('FN')) {
             contact.name = unescapeVCardValue(value);
@@ -7353,7 +7971,7 @@ function parseVCard(vcardData) {
             contact.pplai_location = unescapeVCardValue(value);
         }
     }
-    
+
     return contact;
 }
 
@@ -7370,7 +7988,7 @@ async function createContactFromVCard(vcardContact) {
     try {
         // Check if contact already exists
         const existing = await api.findContact(vcardContact.email, vcardContact.mobile);
-        
+
         if (existing) {
             const update = confirm(
                 `Contact "${existing.name}" already exists.\n\n` +
@@ -7378,35 +7996,35 @@ async function createContactFromVCard(vcardContact) {
             );
             if (!update) return;
         }
-        
+
         // Open contact modal with pre-filled data
         openContactModal();
-        
+
         // Pre-fill form
         const nameEl = document.getElementById('contactName');
         if (nameEl && vcardContact.name) nameEl.value = vcardContact.name;
-        
+
         const emailEl = document.getElementById('contactEmail');
         if (emailEl && vcardContact.email) emailEl.value = vcardContact.email;
-        
+
         const mobileEl = document.getElementById('contactMobile');
         if (mobileEl && vcardContact.mobile) mobileEl.value = vcardContact.mobile;
-        
+
         const whatsappEl = document.getElementById('contactWhatsApp');
         if (whatsappEl && vcardContact.whatsapp) whatsappEl.value = vcardContact.whatsapp;
-        
+
         const linkedinEl = document.getElementById('contactLinkedIn');
         if (linkedinEl && vcardContact.linkedin_url) linkedinEl.value = vcardContact.linkedin_url;
-        
+
         const roleEl = document.getElementById('contactRole');
         if (roleEl && vcardContact.role_company) roleEl.value = vcardContact.role_company;
-        
+
         // Set meeting context with pplai.app metadata
         let meetingContext = '';
         if (vcardContact.pplai_notes) {
             meetingContext = vcardContact.pplai_notes;
         }
-        
+
         // Add date connected on pplai.app
         if (vcardContact.pplai_date_connected) {
             const dateConnected = vcardContact.pplai_date_connected;
@@ -7417,7 +8035,7 @@ async function createContactFromVCard(vcardContact) {
                 meetingContext = `Date Connected on pplai.app: ${dateConnectedReadable} (${dateConnected})`;
             }
         }
-        
+
         // Add pplai.app profile URL if available
         if (vcardContact.pplai_profile_url) {
             if (meetingContext) {
@@ -7426,17 +8044,17 @@ async function createContactFromVCard(vcardContact) {
                 meetingContext = `pplai.app Profile: ${vcardContact.pplai_profile_url}`;
             }
         }
-        
+
         const contextEl = document.getElementById('contactContext');
         if (contextEl && meetingContext) {
             contextEl.value = meetingContext.trim();
         }
-        
+
         // Try to find and select the event if event name is provided
         if (vcardContact.pplai_event) {
             try {
                 const events = await api.getEvents();
-                const matchingEvent = events.find(e => 
+                const matchingEvent = events.find(e =>
                     e.name.toLowerCase() === vcardContact.pplai_event.toLowerCase()
                 );
                 if (matchingEvent) {
@@ -7449,14 +8067,14 @@ async function createContactFromVCard(vcardContact) {
                 console.warn('Could not load events for matching:', error);
             }
         }
-        
+
         // Add tags if provided
         if (vcardContact.pplai_tags) {
             const tags = vcardContact.pplai_tags.split(',').map(t => t.trim()).filter(t => t);
             // Tags will be added when the form is saved
             // Store them temporarily
             window.tempVCardTags = tags;
-            
+
             // Also try to add them to the UI immediately
             setTimeout(() => {
                 const tagsContainer = document.getElementById('contactTags');
@@ -7477,7 +8095,7 @@ async function createContactFromVCard(vcardContact) {
                 }
             }, 100);
         }
-        
+
         // Set meeting date if provided (check both date_connected and date_met)
         if (vcardContact.pplai_date_met) {
             // Store for use when saving - prefer date_met over date_connected
@@ -7486,7 +8104,7 @@ async function createContactFromVCard(vcardContact) {
             // Fallback to date_connected
             window.tempVCardDate = vcardContact.pplai_date_connected;
         }
-        
+
         // Set meeting date in the form if available
         if (window.tempVCardDate) {
             setTimeout(() => {
@@ -7501,17 +8119,17 @@ async function createContactFromVCard(vcardContact) {
                 }
             }, 150);
         }
-        
+
         // Store pplai.app profile URL for use when saving
         if (vcardContact.pplai_profile_url) {
             window.tempVCardProfileUrl = vcardContact.pplai_profile_url;
         }
-        
+
         // Show success message
         setTimeout(() => {
             alert('Contact information loaded from QR code!\n\nPlease review and save the contact.');
         }, 300);
-        
+
     } catch (error) {
         console.error('Error creating contact from vCard:', error);
         alert('Error creating contact: ' + error.message);
@@ -7521,47 +8139,47 @@ async function createContactFromVCard(vcardContact) {
 function openBusinessCardScanner() {
     const modal = document.getElementById('businessCardScannerModal');
     const video = document.getElementById('businessCardVideo');
-    
+
     if (!modal || !video) {
         alert('Business Card Scanner elements not found');
         return;
     }
-    
+
     modal.classList.remove('hidden');
-    
+
     // Request camera access
-    navigator.mediaDevices.getUserMedia({ 
-        video: { 
+    navigator.mediaDevices.getUserMedia({
+        video: {
             facingMode: 'environment', // Use back camera on mobile
             width: { ideal: 1280 },
             height: { ideal: 720 }
-        } 
+        }
     })
-    .then(stream => {
-        businessCardScannerStream = stream;
-        video.srcObject = stream;
-        video.play();
-    })
-    .catch(error => {
-        console.error('Error accessing camera:', error);
-        alert('Unable to access camera. Please allow camera permissions or use the upload option.');
-    });
+        .then(stream => {
+            businessCardScannerStream = stream;
+            video.srcObject = stream;
+            video.play();
+        })
+        .catch(error => {
+            console.error('Error accessing camera:', error);
+            alert('Unable to access camera. Please allow camera permissions or use the upload option.');
+        });
 }
 
 function closeBusinessCardScanner() {
     const modal = document.getElementById('businessCardScannerModal');
     const video = document.getElementById('businessCardVideo');
-    
+
     // Stop camera stream
     if (businessCardScannerStream) {
         businessCardScannerStream.getTracks().forEach(track => track.stop());
         businessCardScannerStream = null;
     }
-    
+
     if (video) {
         video.srcObject = null;
     }
-    
+
     if (modal) {
         modal.classList.add('hidden');
     }
@@ -7570,17 +8188,17 @@ function closeBusinessCardScanner() {
 function captureBusinessCard() {
     const video = document.getElementById('businessCardVideo');
     const canvas = document.getElementById('businessCardCanvas');
-    
+
     if (!video || !canvas || video.readyState !== video.HAVE_ENOUGH_DATA) {
         alert('Camera not ready. Please wait a moment.');
         return;
     }
-    
+
     const ctx = canvas.getContext('2d');
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-    
+
     canvas.toBlob((blob) => {
         if (blob) {
             const file = new File([blob], `business-card-${Date.now()}.jpg`, { type: 'image/jpeg' });
@@ -7604,16 +8222,16 @@ async function processBusinessCardFile(file) {
         </div>
     `;
     document.body.appendChild(loadingModal);
-    
+
     const updateProgress = (message) => {
         const statusEl = loadingModal.querySelector('p');
         if (statusEl) statusEl.textContent = message;
     };
-        
+
     const removeLoadingModal = () => {
         if (loadingModal && loadingModal.parentNode) {
             try {
-            document.body.removeChild(loadingModal);
+                document.body.removeChild(loadingModal);
             } catch (e) {
                 // Modal may have already been removed, ignore error
                 console.warn('Loading modal already removed:', e);
@@ -7627,7 +8245,7 @@ async function processBusinessCardFile(file) {
 
     try {
         updateProgress('Preparing image...');
-        
+
         // Always preprocess - converts HEIC to JPEG which is universally supported
         const preprocessResult = await preprocessCardImage(file);
         const processedFile = preprocessResult?.file || file;
@@ -7663,16 +8281,16 @@ async function processBusinessCardFile(file) {
                         // Always use the original file for media, not the processed/cropped version
                         cardFileForMedia = file;
                         cloudErrorDetail = null; // Clear error on success
-                    break;
+                        break;
                     }
                 } catch (cloudError) {
                     const errorMessage = cloudError?.message || String(cloudError);
                     console.warn('Cloud OCR attempt failed:', errorMessage);
                     cloudErrorDetail = errorMessage;
-                    
+
                     // If it's a service unavailable error or credentials error, don't try other candidates
-                    if (errorMessage.includes('503') || 
-                        errorMessage.includes('not available') || 
+                    if (errorMessage.includes('503') ||
+                        errorMessage.includes('not available') ||
                         errorMessage.includes('Service Unavailable') ||
                         errorMessage.includes('credentials were not found') ||
                         errorMessage.includes('default credentials') ||
@@ -7713,20 +8331,20 @@ async function processBusinessCardFile(file) {
             const extraMessage = cloudErrorDetail && !cloudErrorDetail.includes('credentials')
                 ? `\n\nCloud OCR error: ${cloudErrorDetail}`
                 : cloudErrorDetail && cloudErrorDetail.includes('credentials')
-                ? `\n\nNote: Cloud OCR is not configured locally. Used local Tesseract.js OCR instead.`
-                : '';
+                    ? `\n\nNote: Cloud OCR is not configured locally. Used local Tesseract.js OCR instead.`
+                    : '';
             alert(`We could not extract information from this card. Please enter details manually.${extraMessage}`);
             return;
         }
 
         cardFileForMedia = cardFileForMedia || processedFile || file;
-        
+
         // Ensure we have a valid file object
         if (!cardFileForMedia || (!(cardFileForMedia instanceof File) && !(cardFileForMedia instanceof Blob))) {
             console.warn('cardFileForMedia is not a valid File/Blob, using original file:', cardFileForMedia);
             cardFileForMedia = file;
         }
-        
+
         console.log('Calling populateContactForm with cardFile:', cardFileForMedia?.name, cardFileForMedia?.size, 'bytes');
         await populateContactForm(contactInfo, { portraitFile, cardFile: cardFileForMedia });
     } catch (error) {
@@ -7739,47 +8357,47 @@ async function processBusinessCardFile(file) {
 function openEventPassScanner() {
     const modal = document.getElementById('eventPassScannerModal');
     const video = document.getElementById('eventPassVideo');
-    
+
     if (!modal || !video) {
         alert('Event Pass Scanner elements not found');
         return;
     }
-    
+
     modal.classList.remove('hidden');
-    
+
     // Request camera access
-    navigator.mediaDevices.getUserMedia({ 
-        video: { 
+    navigator.mediaDevices.getUserMedia({
+        video: {
             facingMode: 'environment', // Use back camera on mobile
             width: { ideal: 1280 },
             height: { ideal: 720 }
-        } 
+        }
     })
-    .then(stream => {
-        eventPassScannerStream = stream;
-        video.srcObject = stream;
-        video.play();
-    })
-    .catch(error => {
-        console.error('Error accessing camera:', error);
-        alert('Unable to access camera. Please allow camera permissions or use the upload option.');
-    });
+        .then(stream => {
+            eventPassScannerStream = stream;
+            video.srcObject = stream;
+            video.play();
+        })
+        .catch(error => {
+            console.error('Error accessing camera:', error);
+            alert('Unable to access camera. Please allow camera permissions or use the upload option.');
+        });
 }
 
 function closeEventPassScanner() {
     const modal = document.getElementById('eventPassScannerModal');
     const video = document.getElementById('eventPassVideo');
-    
+
     // Stop camera stream
     if (eventPassScannerStream) {
         eventPassScannerStream.getTracks().forEach(track => track.stop());
         eventPassScannerStream = null;
     }
-    
+
     if (video) {
         video.srcObject = null;
     }
-    
+
     if (modal) {
         modal.classList.add('hidden');
     }
@@ -7788,17 +8406,17 @@ function closeEventPassScanner() {
 function captureEventPass() {
     const video = document.getElementById('eventPassVideo');
     const canvas = document.getElementById('eventPassCanvas');
-    
+
     if (!video || !canvas || video.readyState !== video.HAVE_ENOUGH_DATA) {
         alert('Camera not ready. Please wait a moment.');
         return;
     }
-    
+
     const ctx = canvas.getContext('2d');
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-    
+
     canvas.toBlob((blob) => {
         if (blob) {
             const file = new File([blob], `event-pass-${Date.now()}.jpg`, { type: 'image/jpeg' });
@@ -7822,16 +8440,16 @@ async function processEventPassFile(file) {
         </div>
     `;
     document.body.appendChild(loadingModal);
-    
+
     try {
         // Check if it's HEIC - Tesseract can't handle HEIC
-        const isHeic = file.type && file.type.toLowerCase().includes('heic') || 
-                      file.name && file.name.toLowerCase().match(/\.(heic|heif)$/);
-        
+        const isHeic = file.type && file.type.toLowerCase().includes('heic') ||
+            file.name && file.name.toLowerCase().match(/\.(heic|heif)$/);
+
         if (isHeic) {
             if (loadingModal && loadingModal.parentNode) {
                 try {
-            document.body.removeChild(loadingModal);
+                    document.body.removeChild(loadingModal);
                 } catch (e) {
                     console.warn('Loading modal already removed:', e);
                 }
@@ -7839,7 +8457,7 @@ async function processEventPassFile(file) {
             alert('HEIC images are not supported for event pass scanning.\n\nPlease:\n1. Take a new photo in JPG/PNG format, or\n2. Convert the HEIC to JPG first, or\n3. Use the Business Card scanner instead (it supports HEIC)');
             return;
         }
-        
+
         loadingModal.querySelector('p').textContent = 'Preparing image...';
         const preprocessResult = await preprocessCardImage(file);
         const processedFile = preprocessResult?.file || file;
@@ -7852,17 +8470,17 @@ async function processEventPassFile(file) {
                 }
             }
         });
-        
+
         const contactInfo = parseEventPassText(text);
-        
+
         if (loadingModal && loadingModal.parentNode) {
             try {
-        document.body.removeChild(loadingModal);
+                document.body.removeChild(loadingModal);
             } catch (e) {
                 console.warn('Loading modal already removed:', e);
             }
         }
-        
+
         if (!contactInfo) {
             alert('We could not extract information from this pass. Please enter details manually.');
             return;
@@ -7878,12 +8496,12 @@ async function processEventPassFile(file) {
                     : `Met at: ${contactInfo.eventName}`;
             }
         }
-        
+
     } catch (error) {
         console.error('OCR Error:', error);
         if (loadingModal && loadingModal.parentNode) {
             try {
-        document.body.removeChild(loadingModal);
+                document.body.removeChild(loadingModal);
             } catch (e) {
                 console.warn('Loading modal already removed:', e);
             }
@@ -7893,11 +8511,11 @@ async function processEventPassFile(file) {
 }
 
 const JOB_TITLE_KEYWORDS = [
-    'manager','director','engineer','developer','designer','consultant','specialist','lead','head','officer','executive',
-    'chief','founder','co-founder','president','vice','vp','chair','partner','analyst','architect','strategist','scientist',
-    'advisor','associate','assistant','coordinator','administrator','representative','supervisor','professor',
-    'teacher','doctor','lawyer','attorney','marketing','sales','product','research','growth','recruiter','hr','talent',
-    'operations','finance','digital','brand','customer','support','agent','broker','realtor','estate','property'
+    'manager', 'director', 'engineer', 'developer', 'designer', 'consultant', 'specialist', 'lead', 'head', 'officer', 'executive',
+    'chief', 'founder', 'co-founder', 'president', 'vice', 'vp', 'chair', 'partner', 'analyst', 'architect', 'strategist', 'scientist',
+    'advisor', 'associate', 'assistant', 'coordinator', 'administrator', 'representative', 'supervisor', 'professor',
+    'teacher', 'doctor', 'lawyer', 'attorney', 'marketing', 'sales', 'product', 'research', 'growth', 'recruiter', 'hr', 'talent',
+    'operations', 'finance', 'digital', 'brand', 'customer', 'support', 'agent', 'broker', 'realtor', 'estate', 'property'
 ];
 
 function normalizeOcrText(rawText) {
@@ -8005,17 +8623,17 @@ function extractCommonContactInfo(rawText) {
         website: '',
         title: ''
     };
-    
+
     const normalizedText = normalizeOcrText(rawText);
     const sanitizedForEmail = normalizedText
         .replace(/\s@\s/g, '@')
         .replace(/\s\.\s/g, '.')
         .replace(/\sDOT\s/gi, '.')
         .replace(/\sAT\s/gi, '@');
-    
+
     const lines = normalizedText.split('\n').map(line => line.trim()).filter(Boolean);
     const labelRegex = /^(name|contact|email|e-mail|mail|phone|mobile|cell|tel|linkedin|website|url|company|organisation|organization|org|title|position|designation|role)\s*[:\-]\s*/i;
-    
+
     const lineData = lines.map((line, index) => {
         const stripped = line.replace(labelRegex, '').trim();
         return {
@@ -8026,7 +8644,7 @@ function extractCommonContactInfo(rawText) {
             index
         };
     });
-    
+
     const emailRegex = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g;
     for (const entry of lineData) {
         const match = entry.raw.match(emailRegex);
@@ -8038,10 +8656,10 @@ function extractCommonContactInfo(rawText) {
     if (!info.email) {
         const emails = sanitizedForEmail.match(emailRegex);
         if (emails && emails.length) {
-        info.email = emails[0];
+            info.email = emails[0];
+        }
     }
-    }
-    
+
     const phoneRegex = /(\+?\d{1,3}[\s().-]*)?(?:\d[\s().-]*){7,}\d/g;
     const phoneLabelRegex = /^(?:phone|mobile|cell|tel|ph|p|m|t)\b/i;
     const phoneCandidates = [];
@@ -8067,8 +8685,8 @@ function extractCommonContactInfo(rawText) {
             return normalizePhoneCandidate(b.raw).length - normalizePhoneCandidate(a.raw).length;
         });
         info.phone = normalizePhoneCandidate(phoneCandidates[0].raw);
-        }
-    
+    }
+
     const linkedinRegex = /(https?:\/\/)?(www\.)?linkedin\.com\/[^\s,;]+/i;
     for (const entry of lineData) {
         if (entry.lower.includes('linkedin')) {
@@ -8083,9 +8701,9 @@ function extractCommonContactInfo(rawText) {
         const match = sanitizedForEmail.match(linkedinRegex);
         if (match && match.length) {
             info.linkedin = cleanLinkedInUrl(match[0]);
+        }
     }
-    }
-    
+
     const websiteRegex = /(https?:\/\/)?(www\.)?[a-zA-Z0-9][a-zA-Z0-9-]{1,61}[a-zA-Z0-9]\.[a-zA-Z]{2,}(?:\/[^\s,;]*)?/g;
     for (const entry of lineData) {
         const match = entry.raw.match(websiteRegex);
@@ -8094,10 +8712,10 @@ function extractCommonContactInfo(rawText) {
             if (!candidate.toLowerCase().includes('linkedin')) {
                 info.website = candidate.startsWith('http') ? candidate : `https://${candidate.replace(/^www\./i, '')}`;
                 break;
-    }
+            }
         }
     }
-    
+
     const labelledName = lineData.find(entry => /^name\b/i.test(entry.raw) && entry.stripped);
     if (labelledName) {
         info.name = toTitleCase(labelledName.stripped);
@@ -8116,10 +8734,10 @@ function extractCommonContactInfo(rawText) {
             const capitalized = words.filter(word => /^[A-Z][a-zA-Z'’.-]*$/.test(word) || /^[A-Z]{2,}$/.test(word));
             if (capitalized.length >= Math.max(2, Math.floor(words.length * 0.6))) {
                 info.name = toTitleCase(entry.stripped);
-                    break;
-                }
+                break;
             }
         }
+    }
     if (!info.name && info.email) {
         const localPart = info.email.split('@')[0];
         if (localPart.includes('.')) {
@@ -8129,7 +8747,7 @@ function extractCommonContactInfo(rawText) {
             }
         }
     }
-    
+
     const labelledCompany = lineData.find(entry => /^(company|organisation|organization|org)\b/i.test(entry.raw) && entry.stripped);
     if (labelledCompany) {
         info.company = toTitleCase(labelledCompany.stripped);
@@ -8141,7 +8759,7 @@ function extractCommonContactInfo(rawText) {
                 lower.includes('company') || lower.includes('gmbh') || lower.includes('plc') || lower.includes('pty') ||
                 lower.includes('pvt') || lower.includes('limited')) {
                 info.company = toTitleCase(entry.stripped || entry.raw);
-            break;
+                break;
             }
         }
     }
@@ -8163,14 +8781,14 @@ function extractCommonContactInfo(rawText) {
     if (!info.company) {
         info.company = deriveCompanyFromEmail(info.email);
     }
-    
+
     if (!info.title) {
         const titleEntry = lineData.find(entry => isLikelyJobTitle(entry.stripped));
         if (titleEntry) {
             info.title = toTitleCase(titleEntry.stripped);
         }
     }
-    
+
     return { info, lines: lineData };
 }
 
@@ -8186,22 +8804,22 @@ function parseEventPassText(text) {
         eventName: '',
         role: info.title
     };
-    
+
     const eventKeywords = ['conference', 'summit', 'expo', 'exhibition', 'forum', 'meetup', 'event', 'gitex', 'tech', 'trade show', 'symposium', 'fair', 'festival'];
     const eventRegex = new RegExp(eventKeywords.join('|'), 'i');
-    
+
     for (const entry of lines) {
         if (!eventInfo.eventName && eventRegex.test(entry.lower)) {
             eventInfo.eventName = entry.raw;
         }
         if (!eventInfo.role && isLikelyJobTitle(entry.stripped)) {
             eventInfo.role = toTitleCase(entry.stripped);
-                }
-            }
-    
-    return eventInfo;
+        }
     }
-    
+
+    return eventInfo;
+}
+
 // Parse business card text to extract contact information
 function parseBusinessCardText(text) {
     const { info } = extractCommonContactInfo(text);
@@ -8241,7 +8859,7 @@ function addTag(tagName) {
     tagEl.innerHTML = `${tagName} <span class="tag-remove">&times;</span>`;
     tagEl.querySelector('.tag-remove').addEventListener('click', () => tagEl.remove());
     container.appendChild(tagEl);
-    
+
     // If it's a new custom tag, add to custom tags list
     const isSystemTag = systemTags.some(t => t.name === tagName);
     if (!isSystemTag && !customTags.some(t => t.name === tagName)) {
@@ -8254,13 +8872,13 @@ function addTag(tagName) {
 async function createNewTag() {
     const nameInput = document.getElementById('newTagName');
     if (!nameInput) return;
-    
+
     const tagName = nameInput.value.trim();
     if (!tagName) {
         alert('Please enter a tag name');
         return;
     }
-    
+
     // Disable button and show loading
     const createBtn = document.getElementById('createTagBtn');
     const originalText = createBtn?.textContent;
@@ -8268,16 +8886,16 @@ async function createNewTag() {
         createBtn.disabled = true;
         createBtn.textContent = 'Creating...';
     }
-    
+
     try {
         const newTag = await api.createTag(tagName);
-        
+
         // Clear input
         nameInput.value = '';
-        
+
         // Reload tags list
         await loadTagsForManagement();
-        
+
         // Show success message
         if (createBtn) {
             createBtn.textContent = '✓ Created!';
@@ -8304,7 +8922,7 @@ async function loadTagsForManagement() {
         showAuthScreen();
         return;
     }
-    
+
     try {
         const tags = await api.getTagsForManagement();
         displayTagsForManagement(tags);
@@ -8320,7 +8938,7 @@ async function loadTagsForManagement() {
                             Unable to connect to backend server.
                         </p>
                         <p style="font-size: 14px; color: var(--text-secondary);">
-                            Please ensure the backend server is running on port 8000.
+                            Please ensure the backend server is running on port 8002.
                         </p>
                     </div>
                 `;
@@ -8343,18 +8961,18 @@ async function loadTagsForManagement() {
 function displayTagsForManagement(tags) {
     const container = document.getElementById('tagsList');
     if (!container) return;
-    
+
     if (tags.length === 0) {
         container.innerHTML = '<p class="empty-state">No tags yet. Create tags when adding contacts!</p>';
         return;
     }
-    
+
     // Separate system and custom tags
     const systemTagsList = tags.filter(t => t.is_system_tag);
     const customTagsList = tags.filter(t => !t.is_system_tag);
-    
+
     let html = '';
-    
+
     // System Tags Section
     if (systemTagsList.length > 0) {
         html += '<div class="tag-section" style="margin-bottom: 24px;">';
@@ -8365,7 +8983,7 @@ function displayTagsForManagement(tags) {
         });
         html += '</div></div>';
     }
-    
+
     // Custom Tags Section
     if (customTagsList.length > 0) {
         html += '<div class="tag-section">';
@@ -8376,9 +8994,9 @@ function displayTagsForManagement(tags) {
         });
         html += '</div></div>';
     }
-    
+
     container.innerHTML = html;
-    
+
     // Add event listeners
     container.querySelectorAll('.tag-view-contacts-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
@@ -8387,7 +9005,7 @@ function displayTagsForManagement(tags) {
             viewContactsWithTag(tagId, tagName);
         });
     });
-    
+
     container.querySelectorAll('.tag-edit-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
             const tagId = e.target.dataset.tagId;
@@ -8395,25 +9013,25 @@ function displayTagsForManagement(tags) {
             editTag(tagId, tagName);
         });
     });
-    
+
     container.querySelectorAll('.tag-hide-btn').forEach(btn => {
         btn.addEventListener('click', async (e) => {
             const tagId = e.target.dataset.tagId;
             const tagName = e.target.dataset.tagName;
             const isHidden = e.target.dataset.isHidden === 'true';
             const action = isHidden ? 'show' : 'hide';
-            
+
             if (confirm(`Are you sure you want to ${action} the tag "${tagName}"?`)) {
                 await toggleTagVisibility(tagId, !isHidden);
             }
         });
     });
-    
+
     container.querySelectorAll('.tag-delete-btn').forEach(btn => {
         btn.addEventListener('click', async (e) => {
             const tagId = e.target.dataset.tagId;
             const tagName = e.target.dataset.tagName;
-            
+
             if (confirm(`⚠️ WARNING: Are you sure you want to delete the tag "${tagName}"?\n\nThis action cannot be undone. If this tag is used by contacts, you'll need to hide it instead of deleting.`)) {
                 await deleteTag(tagId);
             }
@@ -8476,7 +9094,7 @@ function createTagManagementItem(tag, isSystem) {
 function viewContactsWithTag(tagId, tagName) {
     // Switch to contacts view
     switchView('contacts');
-    
+
     // Wait for view to load, then set the tag filter
     setTimeout(() => {
         const tagFilter = document.getElementById('tagFilter');
@@ -8485,7 +9103,7 @@ function viewContactsWithTag(tagId, tagName) {
             loadTagFilter().then(() => {
                 // Set the selected tag
                 tagFilter.value = tagId;
-                
+
                 // Show filters if hidden
                 const filtersContainer = document.getElementById('contactsFilters');
                 const filterBtn = document.getElementById('filterContactsBtn');
@@ -8495,7 +9113,7 @@ function viewContactsWithTag(tagId, tagName) {
                         filterBtn.classList.add('active');
                     }
                 }
-                
+
                 // Filter contacts
                 filterContacts();
             });
@@ -8522,7 +9140,7 @@ function editTag(tagId, currentName) {
         return;
     }
     if (newName.trim() === currentName) return; // No change
-    
+
     updateTagName(tagId, newName.trim());
 }
 
@@ -8534,7 +9152,7 @@ async function updateTagName(tagId, newName) {
             alert('Tag update saved offline. It will sync when you\'re back online.');
             return;
         }
-        
+
         await api.updateTag(tagId, newName, null);
         await loadTagsForManagement();
         // Reload tags in contact form if modal is open
@@ -8561,7 +9179,7 @@ async function toggleTagVisibility(tagId, isHidden) {
             showToast('Tag visibility change saved offline. It will sync when you\'re back online. (pplai.app)', 'info');
             return;
         }
-        
+
         await api.updateTag(tagId, null, isHidden);
         await loadTagsForManagement();
         // Reload tags in contact form if modal is open
@@ -8588,7 +9206,7 @@ async function deleteTag(tagId) {
             showToast('Tag deletion saved offline. It will sync when you\'re back online. (pplai.app)', 'info');
             return;
         }
-        
+
         await api.deleteTag(tagId);
         await loadTagsForManagement();
         // Reload tags in contact form if modal is open
@@ -8634,7 +9252,7 @@ async function handleMediaUpload(e) {
         }
         preview.appendChild(div);
     });
-    
+
     // Store compressed files for later use in saveContact
     // We'll need to update the file input with compressed files
     // This is a bit tricky, so we'll store them in a data attribute or global variable
@@ -8667,7 +9285,7 @@ function setupPhotoUpload(containerId, inputId, previewId) {
                     // Continue with original file
                 }
             }
-            
+
             const reader = new FileReader();
             reader.onload = (event) => {
                 preview.src = event.target.result;
@@ -8685,12 +9303,12 @@ async function compressImage(file, maxWidth = 1920, maxHeight = 1920, quality = 
     if (!file.type.startsWith('image/')) {
         return file;
     }
-    
+
     // Skip compression for very small files (< 100KB) to avoid unnecessary processing
     if (file.size < 100 * 1024) {
         return file;
     }
-    
+
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = (e) => {
@@ -8699,21 +9317,21 @@ async function compressImage(file, maxWidth = 1920, maxHeight = 1920, quality = 
                 // Calculate new dimensions
                 let width = img.width;
                 let height = img.height;
-                
+
                 if (width > maxWidth || height > maxHeight) {
                     const ratio = Math.min(maxWidth / width, maxHeight / height);
                     width = width * ratio;
                     height = height * ratio;
                 }
-                
+
                 // Create canvas and compress
                 const canvas = document.createElement('canvas');
                 canvas.width = width;
                 canvas.height = height;
-                
+
                 const ctx = canvas.getContext('2d');
                 ctx.drawImage(img, 0, 0, width, height);
-                
+
                 // Convert to blob
                 canvas.toBlob(
                     (blob) => {
@@ -8721,13 +9339,13 @@ async function compressImage(file, maxWidth = 1920, maxHeight = 1920, quality = 
                             reject(new Error('Compression failed'));
                             return;
                         }
-                        
+
                         // Create a new File object with the same name and type
                         const compressedFile = new File([blob], file.name, {
                             type: file.type,
                             lastModified: Date.now()
                         });
-                        
+
                         console.log(`Image compressed: ${(file.size / 1024).toFixed(2)}KB → ${(compressedFile.size / 1024).toFixed(2)}KB (${((1 - compressedFile.size / file.size) * 100).toFixed(1)}% reduction)`);
                         resolve(compressedFile);
                     },
@@ -8768,8 +9386,9 @@ function closeModal() {
     const contactModal = document.getElementById('contactModal');
     if (contactModal && !contactModal.classList.contains('hidden')) {
         clearContactMedia();
+        clearPendingLibraryMediaSelection();
     }
-    
+
     document.querySelectorAll('.modal').forEach(modal => modal.classList.add('hidden'));
 }
 
@@ -8777,14 +9396,14 @@ function closeModal() {
 function showToast(message, type = 'info', duration = 5000) {
     const container = document.getElementById('toastContainer');
     if (!container) return;
-    
+
     const icons = {
         success: '✓',
         error: '✕',
         warning: '⚠',
         info: 'ℹ'
     };
-    
+
     const toast = document.createElement('div');
     toast.className = `toast ${type}`;
     toast.innerHTML = `
@@ -8794,9 +9413,9 @@ function showToast(message, type = 'info', duration = 5000) {
         </div>
         <button class="toast-close" onclick="this.parentElement.remove()">×</button>
     `;
-    
+
     container.appendChild(toast);
-    
+
     // Auto-remove after duration
     if (duration > 0) {
         setTimeout(() => {
@@ -8804,7 +9423,7 @@ function showToast(message, type = 'info', duration = 5000) {
             setTimeout(() => toast.remove(), 300);
         }, duration);
     }
-    
+
     return toast;
 }
 
@@ -8857,27 +9476,27 @@ let selectedLocationIndex = -1;
 function setupLocationAutocomplete() {
     const input = document.getElementById('eventLocation');
     const suggestions = document.getElementById('locationSuggestions');
-    
+
     if (!input || !suggestions) return;
-    
+
     // Clear any existing listeners by cloning and replacing
     const newInput = input.cloneNode(true);
     input.parentNode.replaceChild(newInput, input);
     const newSuggestions = suggestions.cloneNode(false);
     suggestions.parentNode.replaceChild(newSuggestions, suggestions);
-    
+
     // Re-get references after cloning
     const locationInput = document.getElementById('eventLocation');
     const locationSuggestions = document.getElementById('locationSuggestions');
-    
+
     locationInput.addEventListener('input', (e) => {
         const query = e.target.value.trim();
-        
+
         // Clear previous timeout
         if (locationSearchTimeout) {
             clearTimeout(locationSearchTimeout);
         }
-        
+
         // Hide suggestions if input is empty
         if (query.length < 2) {
             locationSuggestions.classList.add('hidden');
@@ -8885,16 +9504,16 @@ function setupLocationAutocomplete() {
             selectedLocationIndex = -1;
             return;
         }
-        
+
         // Debounce search
         locationSearchTimeout = setTimeout(async () => {
             await searchLocations(query, locationInput, locationSuggestions);
         }, 300);
     });
-    
+
     locationInput.addEventListener('keydown', (e) => {
         const items = locationSuggestions.querySelectorAll('.location-suggestion');
-        
+
         if (e.key === 'ArrowDown') {
             e.preventDefault();
             selectedLocationIndex = Math.min(selectedLocationIndex + 1, items.length - 1);
@@ -8911,7 +9530,7 @@ function setupLocationAutocomplete() {
             selectedLocationIndex = -1;
         }
     });
-    
+
     // Hide suggestions when clicking outside
     document.addEventListener('click', (e) => {
         if (!locationInput.contains(e.target) && !locationSuggestions.contains(e.target)) {
@@ -8926,25 +9545,25 @@ async function searchLocations(query, input, suggestionsContainer) {
         suggestionsContainer.classList.add('hidden');
         return;
     }
-    
+
     try {
         suggestionsContainer.innerHTML = '<div class="location-suggestion loading">Searching...</div>';
         suggestionsContainer.classList.remove('hidden');
-        
+
         // Use backend proxy to avoid CORS issues
         const data = await apiRequest(
             `/events/search/locations?q=${encodeURIComponent(query)}&limit=8`
         );
-        
+
         if (!Array.isArray(data)) {
             throw new Error('Invalid response format');
         }
-        
+
         if (data.length === 0) {
             suggestionsContainer.innerHTML = '<div class="location-suggestion">No locations found</div>';
             return;
         }
-        
+
         suggestionsContainer.innerHTML = data.map((item, index) => {
             const displayName = item.display_name || item.name || 'Unknown location';
             return `
@@ -8954,7 +9573,7 @@ async function searchLocations(query, input, suggestionsContainer) {
                 </div>
             `;
         }).join('');
-        
+
         // Add click listeners
         suggestionsContainer.querySelectorAll('.location-suggestion').forEach(item => {
             item.addEventListener('click', () => {
@@ -8965,13 +9584,13 @@ async function searchLocations(query, input, suggestionsContainer) {
                 selectedLocationIndex = -1;
             });
         });
-        
+
     } catch (error) {
         // Only log if it's not an abort (timeout) or network error
         if (error.name !== 'AbortError' && error.name !== 'TypeError') {
             console.warn('Location search error:', error.message);
         }
-        
+
         // Show user-friendly message
         if (error.name === 'AbortError') {
             suggestionsContainer.innerHTML = '<div class="location-suggestion">Search timed out. Please try again.</div>';
@@ -8983,10 +9602,10 @@ async function searchLocations(query, input, suggestionsContainer) {
         } else {
             suggestionsContainer.innerHTML = '<div class="location-suggestion">Unable to search locations. Please type location manually.</div>';
         }
-        
+
         // Hide suggestions after a delay
         setTimeout(() => {
-            if (suggestionsContainer.innerHTML.includes('Unable to search') || 
+            if (suggestionsContainer.innerHTML.includes('Unable to search') ||
                 suggestionsContainer.innerHTML.includes('timed out') ||
                 suggestionsContainer.innerHTML.includes('No internet') ||
                 suggestionsContainer.innerHTML.includes('temporarily unavailable')) {
@@ -9019,7 +9638,7 @@ async function loadAllUsers() {
         showAuthScreen();
         return;
     }
-    
+
     const usersList = document.getElementById('usersList');
     if (!usersList) return;
 
@@ -9051,7 +9670,7 @@ function displayUsers(users) {
     usersList.innerHTML = users.map(user => {
         const createdDate = formatDate(user.created_at);
         const adminBadge = user.is_admin ? '<span class="admin-badge" style="background: #ef4444; color: white; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; margin-left: 8px;">ADMIN</span>' : '';
-        
+
         return `
             <div class="user-card" style="background: white; border-radius: 12px; padding: 16px; margin-bottom: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
                 <div style="display: flex; justify-content: space-between; align-items: start; gap: 16px;">
@@ -9125,10 +9744,10 @@ function filterAdminUsers() {
     if (!searchInput) return;
 
     const query = searchInput.value.toLowerCase().trim();
-    
+
     if (query) {
         clearBtn?.classList.remove('hidden');
-        const filtered = allUsers.filter(user => 
+        const filtered = allUsers.filter(user =>
             user.name.toLowerCase().includes(query) ||
             (user.email && user.email.toLowerCase().includes(query)) ||
             (user.role_company && user.role_company.toLowerCase().includes(query))
@@ -9225,7 +9844,7 @@ async function saveAdminUser() {
                 alert('Password is required and must be at least 6 characters');
                 return;
             }
-            await api.createUser({ 
+            await api.createUser({
                 email: email,
                 name: name,
                 password: password,
@@ -9310,88 +9929,88 @@ function startUnifiedBusinessCardCamera() {
     console.log('Starting unified business card camera...');
     const video = document.getElementById('unifiedBusinessCardVideo');
     const canvas = document.getElementById('unifiedBusinessCardCanvas');
-    
+
     if (!video || !canvas) {
         console.error('Business card camera elements not found');
         return;
     }
-    
+
     // Stop any existing stream first
     if (unifiedScannerStream) {
         unifiedScannerStream.getTracks().forEach(track => track.stop());
         unifiedScannerStream = null;
     }
-    
+
     // Reset video element
     video.srcObject = null;
     video.load();
-    
-    navigator.mediaDevices.getUserMedia({ 
-        video: { 
+
+    navigator.mediaDevices.getUserMedia({
+        video: {
             facingMode: 'environment',
             width: { ideal: 1280 },
             height: { ideal: 720 }
-        } 
+        }
     })
-    .then(stream => {
-        console.log('Business card camera access granted');
-        unifiedScannerStream = stream;
-        video.srcObject = stream;
-        video.play().catch(err => {
-            console.error('Error playing business card video:', err);
+        .then(stream => {
+            console.log('Business card camera access granted');
+            unifiedScannerStream = stream;
+            video.srcObject = stream;
+            video.play().catch(err => {
+                console.error('Error playing business card video:', err);
+            });
+        })
+        .catch(error => {
+            console.error('Error accessing business card camera:', error);
+            showToast('Unable to access camera. Please allow camera permissions.', 'error');
         });
-    })
-    .catch(error => {
-        console.error('Error accessing business card camera:', error);
-        showToast('Unable to access camera. Please allow camera permissions.', 'error');
-    });
 }
 
 function startUnifiedVisitingCardCamera() {
     console.log('Starting unified visiting card camera...');
     const video = document.getElementById('unifiedVisitingCardVideo');
     const canvas = document.getElementById('unifiedVisitingCardCanvas');
-    
+
     if (!video || !canvas) {
         console.error('Visiting card camera elements not found');
         return;
     }
-    
+
     // Stop any existing stream first
     if (unifiedScannerStream) {
         unifiedScannerStream.getTracks().forEach(track => track.stop());
         unifiedScannerStream = null;
     }
-    
+
     // Reset video element
     video.srcObject = null;
     video.load();
-    
-    navigator.mediaDevices.getUserMedia({ 
-        video: { 
+
+    navigator.mediaDevices.getUserMedia({
+        video: {
             facingMode: 'environment',
             width: { ideal: 1280 },
             height: { ideal: 720 }
-        } 
+        }
     })
-    .then(stream => {
-        console.log('Visiting card camera access granted');
-        unifiedScannerStream = stream;
-        video.srcObject = stream;
-        video.play().catch(err => {
-            console.error('Error playing visiting card video:', err);
+        .then(stream => {
+            console.log('Visiting card camera access granted');
+            unifiedScannerStream = stream;
+            video.srcObject = stream;
+            video.play().catch(err => {
+                console.error('Error playing visiting card video:', err);
+            });
+        })
+        .catch(error => {
+            console.error('Error accessing visiting card camera:', error);
+            showToast('Unable to access camera. Please allow camera permissions.', 'error');
         });
-    })
-    .catch(error => {
-        console.error('Error accessing visiting card camera:', error);
-        showToast('Unable to access camera. Please allow camera permissions.', 'error');
-    });
 }
 
 // Update reset functions to start camera automatically
 if (typeof resetUnifiedBusinessCardView !== 'undefined') {
     const originalResetBusiness = resetUnifiedBusinessCardView;
-    resetUnifiedBusinessCardView = function() {
+    resetUnifiedBusinessCardView = function () {
         originalResetBusiness();
         document.getElementById('unifiedBusinessCardCameraView')?.classList.remove('hidden');
         setTimeout(() => startUnifiedBusinessCardCamera(), 100);
@@ -9400,7 +10019,7 @@ if (typeof resetUnifiedBusinessCardView !== 'undefined') {
 
 if (typeof resetUnifiedVisitingCardView !== 'undefined') {
     const originalResetVisiting = resetUnifiedVisitingCardView;
-    resetUnifiedVisitingCardView = function() {
+    resetUnifiedVisitingCardView = function () {
         originalResetVisiting();
         document.getElementById('unifiedVisitingCardCameraView')?.classList.remove('hidden');
         setTimeout(() => startUnifiedVisitingCardCamera(), 100);
@@ -9413,19 +10032,19 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('unifiedBusinessCardUploadBtn')?.addEventListener('click', () => {
         document.getElementById('unifiedBusinessCardFileInput')?.click();
     });
-    
+
     document.getElementById('unifiedBusinessCardFileInput')?.addEventListener('change', (e) => {
         const file = e.target.files[0];
         if (file) {
             handleUnifiedBusinessCardFile(file);
         }
     });
-    
+
     // Visiting card upload
     document.getElementById('unifiedVisitingCardUploadBtn')?.addEventListener('click', () => {
         document.getElementById('unifiedVisitingCardFileInput')?.click();
     });
-    
+
     document.getElementById('unifiedVisitingCardFileInput')?.addEventListener('change', (e) => {
         const file = e.target.files[0];
         if (file) {
@@ -9441,13 +10060,13 @@ function handleUnifiedBusinessCardFile(file) {
         const preview = document.getElementById('unifiedBusinessCardPreview');
         const previewView = document.getElementById('unifiedBusinessCardPreviewView');
         const cameraView = document.getElementById('unifiedBusinessCardCameraView');
-        
+
         if (preview && previewView && cameraView) {
             const url = URL.createObjectURL(file);
             preview.src = url;
             cameraView.classList.add('hidden');
             previewView.classList.remove('hidden');
-            
+
             // Store file for processing
             window.unifiedBusinessCardFile = file;
         }
@@ -9459,13 +10078,13 @@ function handleUnifiedVisitingCardFile(file) {
     const preview = document.getElementById('unifiedVisitingCardPreview');
     const previewView = document.getElementById('unifiedVisitingCardPreviewView');
     const cameraView = document.getElementById('unifiedVisitingCardCameraView');
-    
+
     if (preview && previewView && cameraView) {
         const url = URL.createObjectURL(file);
         preview.src = url;
         cameraView.classList.add('hidden');
         previewView.classList.remove('hidden');
-        
+
         window.unifiedVisitingCardFile = file;
     }
 }

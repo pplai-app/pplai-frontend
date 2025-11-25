@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -8,8 +9,10 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>pplai.app - Networking App</title>
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cdefs%3E%3ClinearGradient id='grad' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' style='stop-color:%23667eea;stop-opacity:1' /%3E%3Cstop offset='100%25' style='stop-color:%23764ba2;stop-opacity:1' /%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='100' height='100' fill='url(%23grad)' rx='20'/%3E%3Ctext x='50' y='70' font-size='60' font-weight='bold' fill='white' text-anchor='middle' font-family='Arial'%3EP%3C/text%3E%3C/svg%3E">
-    <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cdefs%3E%3ClinearGradient id='grad' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' style='stop-color:%23667eea;stop-opacity:1' /%3E%3Cstop offset='100%25' style='stop-color:%23764ba2;stop-opacity:1' /%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='100' height='100' fill='url(%23grad)' rx='20'/%3E%3Ctext x='50' y='70' font-size='60' font-weight='bold' fill='white' text-anchor='middle' font-family='Arial'%3EP%3C/text%3E%3C/svg%3E">
+    <link rel="icon" type="image/svg+xml"
+        href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cdefs%3E%3ClinearGradient id='grad' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' style='stop-color:%23667eea;stop-opacity:1' /%3E%3Cstop offset='100%25' style='stop-color:%23764ba2;stop-opacity:1' /%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='100' height='100' fill='url(%23grad)' rx='20'/%3E%3Ctext x='50' y='70' font-size='60' font-weight='bold' fill='white' text-anchor='middle' font-family='Arial'%3EP%3C/text%3E%3C/svg%3E">
+    <link rel="apple-touch-icon"
+        href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cdefs%3E%3ClinearGradient id='grad' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' style='stop-color:%23667eea;stop-opacity:1' /%3E%3Cstop offset='100%25' style='stop-color:%23764ba2;stop-opacity:1' /%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='100' height='100' fill='url(%23grad)' rx='20'/%3E%3Ctext x='50' y='70' font-size='60' font-weight='bold' fill='white' text-anchor='middle' font-family='Arial'%3EP%3C/text%3E%3C/svg%3E">
     <link rel="manifest" href="/manifest.json">
     <link rel="stylesheet" href="/styles.css">
     <!-- jsQR for QR scanning -->
@@ -22,11 +25,69 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
 </head>
+
 <body>
     <!-- Loading Screen -->
     <div id="loadingScreen" class="screen">
         <div class="loading-spinner"></div>
         <p>Loading pplai.app...</p>
+    </div>
+
+    <div id="eventMediaModal" class="modal hidden">
+        <div class="modal-content event-media-modal">
+            <div class="modal-header">
+                <h3 id="eventMediaTitle">Event Media</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="event-media-controls">
+                    <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+                        <button id="eventMediaUploadBtn" class="btn-secondary">Upload Media</button>
+                        <input type="file" id="eventMediaInput" class="hidden" multiple
+                            accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt">
+                        <button id="eventMediaFilterBtn" class="btn-secondary">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <polygon points="3 4 21 4 14 12.46 14 19 10 21 10 12.46"></polygon>
+                            </svg>
+                            <span>Show untagged only</span>
+                        </button>
+                    </div>
+                </div>
+                <div id="eventMediaEmptyState" class="empty-state hidden"></div>
+                <div id="eventMediaGrid" class="event-media-grid"></div>
+            </div>
+            <div id="eventMediaSelectionBar" class="event-media-selection hidden">
+                <span id="eventMediaSelectedCount">0 selected</span>
+                <div class="event-media-selection-actions">
+                    <button id="linkMediaToContactBtn" class="btn-primary">Link to Contact</button>
+                    <button id="createContactFromMediaBtn" class="btn-secondary">Create Contact</button>
+                    <button id="clearMediaSelectionBtn" class="btn-small btn-secondary">Clear</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="contactPickerModal" class="modal hidden">
+        <div class="modal-content contact-picker-modal">
+            <div class="modal-header">
+                <h3>Select Contact</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="search-box" style="margin-bottom: 12px;">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--text-secondary);">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <path d="m21 21-4.35-4.35"></path>
+                    </svg>
+                    <input type="text" id="contactPickerSearch" class="search-input"
+                        placeholder="Search contacts by name or company...">
+                </div>
+                <div id="contactPickerList" class="contact-picker-list"></div>
+                <div id="contactPickerEmptyState" class="empty-state hidden"></div>
+            </div>
+        </div>
     </div>
 
     <!-- Auth Screen -->
@@ -39,16 +100,21 @@
             <div class="auth-buttons">
                 <div id="googleSignIn" class="auth-btn google-btn" style="display: none;">
                     <svg width="20" height="20" viewBox="0 0 24 24">
-                        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                        <path fill="#4285F4"
+                            d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                        <path fill="#34A853"
+                            d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                        <path fill="#FBBC05"
+                            d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
+                        <path fill="#EA4335"
+                            d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
                     </svg>
                     Sign in with Google
                 </div>
                 <div id="linkedinSignIn" class="auth-btn linkedin-btn" style="display: none;">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="#0077B5">
-                        <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+                        <path
+                            d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
                     </svg>
                     Sign in with LinkedIn
                 </div>
@@ -57,13 +123,18 @@
                 </div>
                 <div class="email-auth-form">
                     <input type="email" id="emailInput" class="input-field" placeholder="Email" required>
-                    <input type="password" id="passwordInput" class="input-field" placeholder="Password" required style="margin-top: 12px;">
-                    <input type="text" id="nameInput" class="input-field" placeholder="Name (optional - can add later)" style="margin-top: 12px; display: none;">
+                    <input type="password" id="passwordInput" class="input-field" placeholder="Password" required
+                        style="margin-top: 12px;">
+                    <input type="text" id="nameInput" class="input-field" placeholder="Name (optional - can add later)"
+                        style="margin-top: 12px; display: none;">
                     <div style="margin-top: 16px; display: flex; gap: 12px; align-items: center;">
                         <button id="emailSignIn" class="auth-btn email-btn" style="flex: 1;">Sign In</button>
-                        <button id="emailSignUp" class="auth-btn email-btn" style="flex: 1; background: rgba(102, 126, 234, 0.1); color: var(--primary);">Sign Up</button>
+                        <button id="emailSignUp" class="auth-btn email-btn"
+                            style="flex: 1; background: rgba(102, 126, 234, 0.1); color: var(--primary);">Sign
+                            Up</button>
                     </div>
-                    <p id="emailAuthToggle" style="margin-top: 12px; text-align: center; font-size: 14px; color: var(--text-secondary); cursor: pointer;">
+                    <p id="emailAuthToggle"
+                        style="margin-top: 12px; text-align: center; font-size: 14px; color: var(--text-secondary); cursor: pointer;">
                         Don't have an account? <span style="color: var(--primary);">Sign up</span>
                     </p>
                 </div>
@@ -81,7 +152,8 @@
                         pplai
                     </div>
                     <button id="publicProfileBackBtn" class="public-profile-back">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
                             <path d="M15 18l-6-6 6-6"></path>
                         </svg>
                         Back to pplai
@@ -102,13 +174,17 @@
 
                     <div class="public-profile-actions" id="publicProfileActions">
                         <a id="publicProfileCall" class="public-profile-action" target="_blank" rel="noopener">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.44 12.44 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.44 12.44 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <path
+                                    d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.44 12.44 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.44 12.44 0 0 0 2.81.7A2 2 0 0 1 22 16.92z">
+                                </path>
                             </svg>
                             <span id="publicProfileCallText">Call</span>
                         </a>
                         <a id="publicProfileEmail" class="public-profile-action" target="_blank" rel="noopener">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
                                 <path d="M4 4h16v16H4z"></path>
                                 <polyline points="22,6 12,13 2,6"></polyline>
                             </svg>
@@ -116,13 +192,15 @@
                         </a>
                         <a id="publicProfileLinkedIn" class="public-profile-action" target="_blank" rel="noopener">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="#0077B5">
-                                <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+                                <path
+                                    d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
                             </svg>
                             <span>LinkedIn</span>
                         </a>
                         <a id="publicProfileWhatsapp" class="public-profile-action" target="_blank" rel="noopener">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                                <path d="M.057 24l1.687-6.163a11.867 11.867 0 01-1.62-6.01C.122 5.281 5.353 0 12.057 0c3.183 0 6.167 1.24 8.413 3.487a11.82 11.82 0 013.49 8.414c-.003 6.803-5.234 12.031-11.94 12.031a11.9 11.9 0 01-6.012-1.616L.057 24zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.877.002-5.462-4.415-9.89-9.881-9.894-5.452 0-9.887 4.433-9.889 9.881a9.82 9.82 0 001.588 5.26l-.999 3.648 3.9-1.61zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.94 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.52.149-.173.198-.297.298-.495.099-.198.05-.372-.025-.521-.075-.149-.669-1.611-.916-2.207-.242-.579-.487-.5-.669-.51l-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.095 3.2 5.076 4.487.709.306 1.262.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.29.173-1.414z"/>
+                                <path
+                                    d="M.057 24l1.687-6.163a11.867 11.867 0 01-1.62-6.01C.122 5.281 5.353 0 12.057 0c3.183 0 6.167 1.24 8.413 3.487a11.82 11.82 0 013.49 8.414c-.003 6.803-5.234 12.031-11.94 12.031a11.9 11.9 0 01-6.012-1.616L.057 24zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.877.002-5.462-4.415-9.89-9.881-9.894-5.452 0-9.887 4.433-9.889 9.881a9.82 9.82 0 001.588 5.26l-.999 3.648 3.9-1.61zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.94 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.52.149-.173.198-.297.298-.495.099-.198.05-.372-.025-.521-.075-.149-.669-1.611-.916-2.207-.242-.579-.487-.5-.669-.51l-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.095 3.2 5.076 4.487.709.306 1.262.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.29.173-1.414z" />
                             </svg>
                             <span>WhatsApp</span>
                         </a>
@@ -144,8 +222,10 @@
                     </div>
 
                     <div class="public-profile-cta">
-                        <button id="publicProfileSaveBtn" class="btn-primary" style="display: flex; align-items: center; justify-content: center; gap: 8px; padding: 14px 24px; font-size: 16px; font-weight: 600;">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <button id="publicProfileSaveBtn" class="btn-primary"
+                            style="display: flex; align-items: center; justify-content: center; gap: 8px; padding: 14px 24px; font-size: 16px; font-weight: 600;">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                 <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
                                 <circle cx="9" cy="7" r="4"></circle>
                                 <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
@@ -166,7 +246,7 @@
     <div id="appContainer" class="screen hidden">
         <!-- Toast Notifications Container -->
         <div id="toastContainer" class="toast-container"></div>
-        
+
         <!-- Current Event Banner (shown at top of all views) -->
         <div class="current-event-banner" id="currentEventBanner">
             <div class="banner-content">
@@ -174,16 +254,32 @@
                     <strong>Current Event:</strong>
                     <span id="currentEventName">No event selected</span>
                 </div>
-                <button id="unselectEventBtn" class="btn-small btn-secondary" style="display: none; align-items: center; gap: 6px;">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <line x1="18" y1="6" x2="6" y2="18"></line>
-                        <line x1="6" y1="6" x2="18" y2="18"></line>
-                    </svg>
-                    <span>Unselect</span>
-                </button>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <button id="uploadMediaToEventBtn" class="btn-small btn-secondary"
+                        style="display: none; align-items: center; gap: 6px;">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="17 8 12 3 7 8"></polyline>
+                            <line x1="12" y1="3" x2="12" y2="15"></line>
+                        </svg>
+                        <span>Upload Media</span>
+                    </button>
+                    <input type="file" id="homeMediaInput" class="hidden" multiple
+                        accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt">
+                    <button id="unselectEventBtn" class="btn-small btn-secondary"
+                        style="display: none; align-items: center; gap: 6px;">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                        <span>Unselect</span>
+                    </button>
+                </div>
             </div>
         </div>
-        
+
         <!-- Bottom Navigation -->
         <nav class="bottom-nav">
             <button class="nav-btn active" data-view="home">
@@ -236,7 +332,8 @@
             <div class="action-cards">
                 <div class="action-card" id="scanQRCard">
                     <div class="action-icon qr-icon">
-                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
                             <rect x="3" y="3" width="5" height="5"></rect>
                             <rect x="16" y="3" width="5" height="5"></rect>
                             <rect x="3" y="16" width="5" height="5"></rect>
@@ -251,7 +348,8 @@
                 </div>
                 <div class="action-card" id="scanCardCard">
                     <div class="action-icon card-icon">
-                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
                             <rect x="2" y="4" width="20" height="16" rx="2" ry="2"></rect>
                             <line x1="2" y1="10" x2="22" y2="10"></line>
                         </svg>
@@ -261,7 +359,8 @@
                 </div>
                 <div class="action-card" id="scanEventPassCard">
                     <div class="action-icon pass-icon">
-                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
                             <rect x="3" y="5" width="18" height="14" rx="2" ry="2"></rect>
                             <line x1="3" y1="10" x2="21" y2="10"></line>
                             <line x1="7" y1="5" x2="7" y2="19"></line>
@@ -273,7 +372,8 @@
                 </div>
                 <div class="action-card" id="manualEntryCard">
                     <div class="action-icon manual-icon">
-                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
                             <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
                             <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
                         </svg>
@@ -289,8 +389,10 @@
             <div class="view-header">
                 <h2>My Events</h2>
                 <div style="display: flex; gap: 8px;">
-                    <button id="importLumaBtn" class="icon-btn" title="Import from Luma" style="display: flex; align-items: center; gap: 6px;">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <button id="importLumaBtn" class="icon-btn" title="Import from Luma"
+                        style="display: flex; align-items: center; gap: 6px;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
                             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                             <polyline points="7 10 12 15 17 10"></polyline>
                             <line x1="12" y1="15" x2="12" y2="3"></line>
@@ -298,7 +400,8 @@
                         <span>Luma</span>
                     </button>
                     <button id="addEventBtn" class="icon-btn">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
                             <line x1="12" y1="5" x2="12" y2="19"></line>
                             <line x1="5" y1="12" x2="19" y2="12"></line>
                         </svg>
@@ -307,13 +410,16 @@
             </div>
             <div class="events-search-container">
                 <div class="search-box">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--text-secondary);">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--text-secondary);">
                         <circle cx="11" cy="11" r="8"></circle>
                         <path d="m21 21-4.35-4.35"></path>
                     </svg>
-                    <input type="text" id="eventsSearchInput" class="search-input" placeholder="Search events by name, location, or description...">
+                    <input type="text" id="eventsSearchInput" class="search-input"
+                        placeholder="Search events by name, location, or description...">
                     <button id="clearEventsSearch" class="search-clear hidden" title="Clear search">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
                             <line x1="18" y1="6" x2="6" y2="18"></line>
                             <line x1="6" y1="6" x2="18" y2="18"></line>
                         </svg>
@@ -323,12 +429,17 @@
             <div id="eventsFilters" class="events-filters">
                 <div style="display: flex; gap: 16px; align-items: center; flex-wrap: wrap;">
                     <div style="display: flex; align-items: center; gap: 12px; flex: 1; min-width: 200px;">
-                        <label style="font-size: 13px; font-weight: 600; color: var(--text-primary); white-space: nowrap; display: flex; align-items: center; gap: 6px;">
-                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" style="opacity: 0.7;">
-                                <path d="M12 2H4C3.44772 2 3 2.44772 3 3V13C3 13.5523 3.44772 14 4 14H12C12.5523 14 13 13.5523 13 13V3C13 2.44772 12.5523 2 12 2Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-                                <path d="M3 6H13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-                                <path d="M6 3V6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-                                <path d="M10 3V6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                        <label
+                            style="font-size: 13px; font-weight: 600; color: var(--text-primary); white-space: nowrap; display: flex; align-items: center; gap: 6px;">
+                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"
+                                xmlns="http://www.w3.org/2000/svg" style="opacity: 0.7;">
+                                <path
+                                    d="M12 2H4C3.44772 2 3 2.44772 3 3V13C3 13.5523 3.44772 14 4 14H12C12.5523 14 13 13.5523 13 13V3C13 2.44772 12.5523 2 12 2Z"
+                                    stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+                                    stroke-linejoin="round" />
+                                <path d="M3 6H13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+                                <path d="M6 3V6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+                                <path d="M10 3V6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
                             </svg>
                             Date Range
                         </label>
@@ -342,13 +453,16 @@
                             <option value="custom">Custom Range</option>
                         </select>
                     </div>
-                    <div id="eventsCustomDateRange" class="custom-date-range hidden" style="flex: 1; min-width: 200px; display: flex; align-items: center; gap: 12px;">
+                    <div id="eventsCustomDateRange" class="custom-date-range hidden"
+                        style="flex: 1; min-width: 200px; display: flex; align-items: center; gap: 12px;">
                         <input type="date" id="eventsDateFrom" class="filter-input" style="flex: 1;">
                         <span class="date-range-separator">→</span>
                         <input type="date" id="eventsDateTo" class="filter-input" style="flex: 1;">
                     </div>
-                    <button id="clearEventsFiltersBtn" class="btn-small btn-secondary" style="display: none; white-space: nowrap;">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <button id="clearEventsFiltersBtn" class="btn-small btn-secondary"
+                        style="display: none; white-space: nowrap;">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <line x1="18" y1="6" x2="6" y2="18"></line>
                             <line x1="6" y1="6" x2="18" y2="18"></line>
                         </svg>
@@ -365,18 +479,21 @@
                 <h2>Contacts</h2>
                 <div class="header-actions">
                     <button id="selectContactsBtn" class="icon-btn" title="Select Contacts">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
                             <path d="M9 11l3 3L22 4"></path>
                             <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
                         </svg>
                     </button>
                     <button id="filterContactsBtn" class="icon-btn" title="Filter Contacts">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
                             <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
                         </svg>
                     </button>
                     <button id="addContactBtn" class="icon-btn" title="Add Contact">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
                             <line x1="12" y1="5" x2="12" y2="19"></line>
                             <line x1="5" y1="12" x2="19" y2="12"></line>
                         </svg>
@@ -391,7 +508,7 @@
                     <button id="deselectAllContactsBtn" class="btn-small btn-secondary">Deselect All</button>
                 </div>
             </div>
-            
+
             <!-- Floating Bottom Actions Bar -->
             <div id="bulkActionsBar" class="bulk-actions-bar hidden">
                 <button id="bulkSaveBtn" class="bulk-action-btn" title="Save All">
@@ -436,13 +553,16 @@
             </div>
             <div class="search-container">
                 <div class="search-wrapper">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #999; z-index: 1;">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #999; z-index: 1;">
                         <circle cx="11" cy="11" r="8"></circle>
                         <path d="m21 21-4.35-4.35"></path>
                     </svg>
-                    <input type="text" id="contactsSearchInput" class="search-input" placeholder="Search contacts by name, email, company, or phone...">
+                    <input type="text" id="contactsSearchInput" class="search-input"
+                        placeholder="Search contacts by name, email, company, or phone...">
                     <button id="clearContactsSearch" class="search-clear hidden" title="Clear search">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
                             <line x1="18" y1="6" x2="6" y2="18"></line>
                             <line x1="6" y1="6" x2="18" y2="18"></line>
                         </svg>
@@ -452,7 +572,8 @@
             <div id="contactsFilters" class="contacts-filters hidden">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
                     <h4 style="margin: 0; font-size: 14px; font-weight: 600;">Filters</h4>
-                    <button id="clearAllFiltersBtn" class="btn-small btn-secondary" style="display: none;">Clear All</button>
+                    <button id="clearAllFiltersBtn" class="btn-small btn-secondary" style="display: none;">Clear
+                        All</button>
                 </div>
                 <select id="eventFilter" class="filter-select">
                     <option value="all">All Events</option>
@@ -472,8 +593,10 @@
                     <span>to</span>
                     <input type="date" id="dateTo" class="filter-input">
                 </div>
-                <label class="filter-checkbox-label" style="display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 8px 0;">
-                    <input type="checkbox" id="favoriteFilter" class="filter-checkbox" style="width: 18px; height: 18px; cursor: pointer;">
+                <label class="filter-checkbox-label"
+                    style="display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 8px 0;">
+                    <input type="checkbox" id="favoriteFilter" class="filter-checkbox"
+                        style="width: 18px; height: 18px; cursor: pointer;">
                     <span style="font-size: 14px;">Show favorites only</span>
                 </label>
             </div>
@@ -485,47 +608,58 @@
             <div class="view-header">
                 <button id="chatBackBtn" class="icon-btn" style="margin-right: 12px;" title="Back">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M19 12H5M12 19l-7-7 7-7"/>
+                        <path d="M19 12H5M12 19l-7-7 7-7" />
                     </svg>
                 </button>
                 <h2 id="chatContactName">Chat</h2>
             </div>
             <div class="chat-view-container">
-                <div id="chatViewMessages" class="chat-messages-full" style="flex: 1; overflow-y: auto; padding: 16px; background: var(--card-bg);">
+                <div id="chatViewMessages" class="chat-messages-full"
+                    style="flex: 1; overflow-y: auto; padding: 16px; background: var(--card-bg);">
                     <!-- Messages will be loaded here -->
                 </div>
-                <div class="chat-input-container-full" style="padding: 16px; background: white; border-top: 1px solid var(--border-color);">
+                <div class="chat-input-container-full"
+                    style="padding: 16px; background: white; border-top: 1px solid var(--border-color);">
                     <div class="chat-input-wrapper">
                         <input type="file" id="chatViewPhotoInput" accept="image/*" style="display: none;" multiple>
                         <button id="chatViewPhotoBtn" class="chat-action-btn" title="Upload Photo">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
                                 <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
                                 <circle cx="8.5" cy="8.5" r="1.5"></circle>
                                 <polyline points="21 15 16 10 5 21"></polyline>
                             </svg>
                         </button>
                         <button id="chatViewVoiceBtn" class="chat-action-btn" title="Record Voice Note">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
                                 <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
                                 <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
                                 <line x1="12" y1="19" x2="12" y2="23"></line>
                                 <line x1="8" y1="23" x2="16" y2="23"></line>
                             </svg>
                         </button>
-                        <input type="text" id="chatViewMessageInput" class="chat-input" placeholder="Type a message..." maxlength="500">
+                        <input type="text" id="chatViewMessageInput" class="chat-input" placeholder="Type a message..."
+                            maxlength="500">
                         <button id="chatViewSendBtn" class="chat-send-btn" title="Send">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
                                 <line x1="22" y1="2" x2="11" y2="13"></line>
                                 <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
                             </svg>
                         </button>
                     </div>
-                    <div id="chatViewPhotoPreview" class="chat-photo-preview" style="display: none; margin-top: 8px;"></div>
-                    <div id="chatViewVoiceRecording" class="chat-voice-recording" style="display: none; margin-top: 8px; padding: 12px; background: var(--danger, #ef4444); color: white; border-radius: 8px; text-align: center;">
+                    <div id="chatViewPhotoPreview" class="chat-photo-preview" style="display: none; margin-top: 8px;">
+                    </div>
+                    <div id="chatViewVoiceRecording" class="chat-voice-recording"
+                        style="display: none; margin-top: 8px; padding: 12px; background: var(--danger, #ef4444); color: white; border-radius: 8px; text-align: center;">
                         <div style="display: flex; align-items: center; justify-content: center; gap: 12px;">
-                            <div class="recording-indicator" style="width: 12px; height: 12px; background: white; border-radius: 50%; animation: pulse 1s infinite;"></div>
+                            <div class="recording-indicator"
+                                style="width: 12px; height: 12px; background: white; border-radius: 50%; animation: pulse 1s infinite;">
+                            </div>
                             <span id="chatViewRecordingTime">00:00</span>
-                            <button id="chatViewStopRecording" class="btn-small" style="background: white; color: var(--danger);">Stop</button>
+                            <button id="chatViewStopRecording" class="btn-small"
+                                style="background: white; color: var(--danger);">Stop</button>
                         </div>
                     </div>
                 </div>
@@ -538,26 +672,28 @@
                 <h2>Manage Tags</h2>
             </div>
             <div class="tags-management">
-                <div class="info-box" style="margin-bottom: 20px; padding: 16px; background: rgba(102, 126, 234, 0.1); border-radius: 12px;">
+                <div class="info-box"
+                    style="margin-bottom: 20px; padding: 16px; background: rgba(102, 126, 234, 0.1); border-radius: 12px;">
                     <p style="margin: 0; font-size: 14px; color: #666;">
-                        <strong>System tags</strong> cannot be deleted. <strong>Custom tags</strong> can be hidden or deleted if not in use.
+                        <strong>System tags</strong> cannot be deleted. <strong>Custom tags</strong> can be hidden or
+                        deleted if not in use.
                     </p>
                 </div>
-                <div class="create-tag-section" style="margin-bottom: 24px; padding: 20px; background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                <div class="create-tag-section"
+                    style="margin-bottom: 24px; padding: 20px; background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
                     <h3 style="margin: 0 0 16px 0; font-size: 16px; color: var(--text-primary);">Create New Tag</h3>
                     <div style="display: flex; gap: 12px; align-items: flex-end;">
                         <div style="flex: 1;">
-                            <label for="newTagName" style="display: block; margin-bottom: 8px; font-size: 14px; color: var(--text-secondary);">Tag Name</label>
-                            <input 
-                                type="text" 
-                                id="newTagName" 
-                                class="input-field" 
-                                placeholder="Enter tag name..."
-                                style="width: 100%;"
-                            >
+                            <label for="newTagName"
+                                style="display: block; margin-bottom: 8px; font-size: 14px; color: var(--text-secondary);">Tag
+                                Name</label>
+                            <input type="text" id="newTagName" class="input-field" placeholder="Enter tag name..."
+                                style="width: 100%;">
                         </div>
-                        <button id="createTagBtn" class="btn-primary" style="white-space: nowrap; display: flex; align-items: center; justify-content: center; gap: 8px;">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <button id="createTagBtn" class="btn-primary"
+                            style="white-space: nowrap; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                 <line x1="12" y1="5" x2="12" y2="19"></line>
                                 <line x1="5" y1="12" x2="19" y2="12"></line>
                             </svg>
@@ -574,9 +710,11 @@
             <div class="view-header">
                 <h2>My Profile</h2>
                 <div class="header-actions">
-                    <button id="manageTagsBtn" class="btn-small btn-secondary" style="margin-right: 8px;">Manage Tags</button>
+                    <button id="manageTagsBtn" class="btn-small btn-secondary" style="margin-right: 8px;">Manage
+                        Tags</button>
                     <button id="editProfileBtn" class="icon-btn">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
                             <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
                             <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
                         </svg>
@@ -590,8 +728,10 @@
                         <h4>Profile Completeness</h4>
                         <div style="display: flex; align-items: center; gap: 12px;">
                             <span id="completenessPercentage" class="completeness-percentage">0%</span>
-                            <button id="closeCompletenessBtn" class="icon-btn-small" style="padding: 4px; opacity: 0.6;" title="Hide completeness">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <button id="closeCompletenessBtn" class="icon-btn-small" style="padding: 4px; opacity: 0.6;"
+                                title="Hide completeness">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
                                     <line x1="18" y1="6" x2="6" y2="18"></line>
                                     <line x1="6" y1="6" x2="18" y2="18"></line>
                                 </svg>
@@ -603,14 +743,15 @@
                     </div>
                     <div id="completenessDetails" class="completeness-details"></div>
                 </div>
-                
+
                 <div class="profile-photo-large">
                     <img id="profilePhotoDisplay" src="" alt="Profile Photo">
                 </div>
                 <h3 id="profileNameDisplay"></h3>
                 <p id="profileRoleDisplay" class="profile-role"></p>
                 <div class="profile-qr-section">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                    <div
+                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
                         <h4 style="margin: 0;">My QR Code</h4>
                         <div class="qr-mode-toggle" style="display: flex; gap: 8px; align-items: center;">
                             <span style="font-size: 12px; color: var(--text-secondary);">URL</span>
@@ -621,12 +762,15 @@
                             <span style="font-size: 12px; color: var(--text-secondary);">Offline</span>
                         </div>
                     </div>
-                    <div id="qrModeInfo" style="font-size: 12px; color: var(--text-secondary); margin-bottom: 12px; text-align: center;">
+                    <div id="qrModeInfo"
+                        style="font-size: 12px; color: var(--text-secondary); margin-bottom: 12px; text-align: center;">
                         <span id="qrModeDescription">Contains profile link (requires network)</span>
                     </div>
                     <canvas id="profileQRCode"></canvas>
-                    <button id="shareProfileBtn" class="btn-secondary" style="margin-top: 16px; width: 100%; padding: 16px 24px; font-size: 16px; display: flex; align-items: center; justify-content: center; gap: 10px;">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <button id="shareProfileBtn" class="btn-secondary"
+                        style="margin-top: 16px; width: 100%; padding: 16px 24px; font-size: 16px; display: flex; align-items: center; justify-content: center; gap: 10px;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <circle cx="18" cy="5" r="3"></circle>
                             <circle cx="6" cy="12" r="3"></circle>
                             <circle cx="18" cy="19" r="3"></circle>
@@ -635,8 +779,10 @@
                         </svg>
                         <span>Share Profile</span>
                     </button>
-                    <button id="saveProfileToContactsBtn" class="btn-primary" style="margin-top: 12px; width: 100%; padding: 16px 24px; font-size: 16px; display: flex; align-items: center; justify-content: center; gap: 10px;">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <button id="saveProfileToContactsBtn" class="btn-primary"
+                        style="margin-top: 12px; width: 100%; padding: 16px 24px; font-size: 16px; display: flex; align-items: center; justify-content: center; gap: 10px;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
                             <polyline points="17 21 17 13 7 13 7 21"></polyline>
                             <polyline points="7 3 7 8 15 8"></polyline>
@@ -644,13 +790,16 @@
                         <span>Save to Contacts</span>
                     </button>
                 </div>
-                <div id="offlineIndicator" class="offline-indicator hidden" style="margin-top: 16px; padding: 12px; background: rgba(255, 193, 7, 0.1); border-radius: 8px; text-align: center; font-size: 14px; color: #856404;">
+                <div id="offlineIndicator" class="offline-indicator hidden"
+                    style="margin-top: 16px; padding: 12px; background: rgba(255, 193, 7, 0.1); border-radius: 8px; text-align: center; font-size: 14px; color: #856404;">
                     <span>📡 Offline Mode - Using cached data</span>
                 </div>
                 <!-- Logout Button -->
                 <div style="margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--border-color);">
-                    <button id="quickAuthBtn" class="btn-secondary" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px;">
-                        <svg id="authBtnIcon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <button id="quickAuthBtn" class="btn-secondary"
+                        style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                        <svg id="authBtnIcon" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2">
                             <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
                             <polyline points="16 17 21 12 16 7"></polyline>
                             <line x1="21" y1="12" x2="9" y2="12"></line>
@@ -673,13 +822,17 @@
                 <div style="margin-bottom: 20px;">
                     <div class="search-container">
                         <div class="search-wrapper">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #999;">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2"
+                                style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #999;">
                                 <circle cx="11" cy="11" r="8"></circle>
                                 <path d="m21 21-4.35-4.35"></path>
                             </svg>
-                            <input type="text" id="adminSearchInput" class="search-input" placeholder="Search users by name or email...">
+                            <input type="text" id="adminSearchInput" class="search-input"
+                                placeholder="Search users by name or email...">
                             <button id="clearAdminSearch" class="search-clear hidden" title="Clear search">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
                                     <line x1="18" y1="6" x2="6" y2="18"></line>
                                     <line x1="6" y1="6" x2="18" y2="18"></line>
                                 </svg>
@@ -705,11 +858,12 @@
                     <label>Profile Photo</label>
                     <div class="photo-upload-area" id="profilePhotoUpload">
                         <img id="profilePhotoPreview" src="" alt="Preview" class="hidden">
-                            <div class="photo-placeholder">
-                            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                                    <circle cx="12" cy="7" r="4"></circle>
-                                </svg>
+                        <div class="photo-placeholder">
+                            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                                <circle cx="12" cy="7" r="4"></circle>
+                            </svg>
                             <span>Tap to upload</span>
                         </div>
                         <input type="file" id="profilePhotoInput" accept="image/*" class="hidden">
@@ -737,7 +891,8 @@
                 </div>
                 <div class="form-group">
                     <label for="profileLinkedIn">LinkedIn URL</label>
-                    <input type="url" id="profileLinkedIn" class="input-field" placeholder="https://linkedin.com/in/...">
+                    <input type="url" id="profileLinkedIn" class="input-field"
+                        placeholder="https://linkedin.com/in/...">
                 </div>
                 <div class="form-group">
                     <label for="profileAbout">About Me</label>
@@ -758,17 +913,26 @@
             <div class="modal-body">
                 <div style="margin-bottom: 24px;">
                     <h4 style="margin-bottom: 12px; font-size: 16px; font-weight: 600;">Option 1: Import from URL</h4>
-                    <p style="margin-bottom: 12px; color: var(--text-secondary); font-size: 14px;">Paste a Luma event URL to import a single event</p>
-                    <input type="url" id="lumaUrlInput" class="input-field" placeholder="https://lu.ma/event/... or https://luma.com/...">
-                    <button id="importLumaUrlBtn" class="btn-primary" style="margin-top: 12px; width: 100%;">Import Event</button>
+                    <p style="margin-bottom: 12px; color: var(--text-secondary); font-size: 14px;">Paste a Luma event
+                        URL to import a single event</p>
+                    <input type="url" id="lumaUrlInput" class="input-field"
+                        placeholder="https://lu.ma/event/... or https://luma.com/...">
+                    <button id="importLumaUrlBtn" class="btn-primary" style="margin-top: 12px; width: 100%;">Import
+                        Event</button>
                 </div>
                 <div style="border-top: 1px solid var(--border-color); padding-top: 24px;">
-                    <h4 style="margin-bottom: 12px; font-size: 16px; font-weight: 600;">Option 2: Import Multiple Events (API)</h4>
-                    <p style="margin-bottom: 12px; color: var(--text-secondary); font-size: 14px;">Requires Luma Plus subscription and API key</p>
-                    <p style="margin-bottom: 12px; color: var(--text-secondary); font-size: 12px; font-style: italic;">⚠️ Note: Your API key is not saved. You'll need to enter it each time you import events.</p>
-                    <input type="text" id="lumaApiKeyInput" class="input-field" placeholder="Luma API Key" style="margin-bottom: 12px;">
-                    <input type="text" id="lumaCalendarIdInput" class="input-field" placeholder="Calendar ID (optional)">
-                    <button id="importLumaApiBtn" class="btn-primary" style="margin-top: 12px; width: 100%;">Import All Events</button>
+                    <h4 style="margin-bottom: 12px; font-size: 16px; font-weight: 600;">Option 2: Import Multiple Events
+                        (API)</h4>
+                    <p style="margin-bottom: 12px; color: var(--text-secondary); font-size: 14px;">Requires Luma Plus
+                        subscription and API key</p>
+                    <p style="margin-bottom: 12px; color: var(--text-secondary); font-size: 12px; font-style: italic;">
+                        ⚠️ Note: Your API key is not saved. You'll need to enter it each time you import events.</p>
+                    <input type="text" id="lumaApiKeyInput" class="input-field" placeholder="Luma API Key"
+                        style="margin-bottom: 12px;">
+                    <input type="text" id="lumaCalendarIdInput" class="input-field"
+                        placeholder="Calendar ID (optional)">
+                    <button id="importLumaApiBtn" class="btn-primary" style="margin-top: 12px; width: 100%;">Import All
+                        Events</button>
                 </div>
             </div>
         </div>
@@ -789,24 +953,29 @@
                 <div class="form-group">
                     <label for="eventLocation">Location *</label>
                     <div class="location-autocomplete-container">
-                        <input type="text" id="eventLocation" class="input-field location-input" placeholder="Search for a location..." autocomplete="off" required>
+                        <input type="text" id="eventLocation" class="input-field location-input"
+                            placeholder="Search for a location..." autocomplete="off" required>
                         <div id="locationSuggestions" class="location-suggestions hidden"></div>
                     </div>
                 </div>
                 <div class="form-group">
                     <label>Event Dates *</label>
                     <div class="date-range-container" role="group" aria-label="Event Dates">
-                        <input type="date" id="eventStartDate" class="input-field date-range-input" placeholder="Start Date" required aria-label="Event Start Date">
+                        <input type="date" id="eventStartDate" class="input-field date-range-input"
+                            placeholder="Start Date" required aria-label="Event Start Date">
                         <span class="date-range-separator" aria-hidden="true">to</span>
-                        <input type="date" id="eventEndDate" class="input-field date-range-input" placeholder="End Date" required aria-label="Event End Date">
+                        <input type="date" id="eventEndDate" class="input-field date-range-input" placeholder="End Date"
+                            required aria-label="Event End Date">
                     </div>
                 </div>
                 <div class="form-group">
                     <label for="eventDescription">Description</label>
                     <textarea id="eventDescription" class="textarea-field" rows="3"></textarea>
                 </div>
-                <button id="saveEventBtn" class="btn-primary" style="display: flex; align-items: center; justify-content: center; gap: 8px;">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <button id="saveEventBtn" class="btn-primary"
+                    style="display: flex; align-items: center; justify-content: center; gap: 8px;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
                         <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
                         <polyline points="17 21 17 13 7 13 7 21"></polyline>
                         <polyline points="7 3 7 8 15 8"></polyline>
@@ -824,27 +993,34 @@
                 <h3 id="contactViewTitle">Contact Details</h3>
                 <div class="header-actions">
                     <button id="chatContactBtn" class="icon-btn-action" style="display: none;" title="Chat">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
                             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
                         </svg>
                     </button>
-                    <button id="saveContactFromViewBtn" class="icon-btn-action" style="display: none;" title="Save Contact">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <button id="saveContactFromViewBtn" class="icon-btn-action" style="display: none;"
+                        title="Save Contact">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
                             <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
                             <polyline points="17 21 17 13 7 13 7 21"></polyline>
                             <polyline points="7 3 7 8 15 8"></polyline>
                         </svg>
                     </button>
                     <button id="editContactBtn" class="icon-btn-action" style="display: none;" title="Edit">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
                             <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
                         </svg>
                     </button>
-                    <button id="deleteContactBtn" class="icon-btn-action icon-btn-danger" style="display: none;" title="Delete">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <button id="deleteContactBtn" class="icon-btn-action icon-btn-danger" style="display: none;"
+                        title="Delete">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
                             <polyline points="3 6 5 6 21 6"></polyline>
-                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2">
+                            </path>
                         </svg>
                     </button>
                     <button class="modal-close">&times;</button>
@@ -855,7 +1031,8 @@
                     <div class="profile-photo-large" style="margin: 0 auto 24px;">
                         <img id="contactViewPhoto" src="" alt="Photo" style="display: none;">
                         <div class="photo-placeholder" id="contactViewPhotoPlaceholder">
-                            <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
                                 <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
                                 <circle cx="12" cy="7" r="4"></circle>
                             </svg>
@@ -863,26 +1040,37 @@
                     </div>
                     <h3 id="contactViewName" style="text-align: center; margin-bottom: 8px;"></h3>
                     <p id="contactViewRole" class="profile-role" style="text-align: center; margin-bottom: 24px;"></p>
-                    
+
                     <div class="contact-details-grid">
                         <!-- AI Follow-up and Email Actions -->
-                        <div class="detail-item" id="contactViewEmailActionsItem" style="display: none; grid-column: 1 / -1; margin-bottom: 8px;">
+                        <div class="detail-item" id="contactViewEmailActionsItem"
+                            style="display: none; grid-column: 1 / -1; margin-bottom: 8px;">
                             <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
-                                <button id="aiEmailBtn" class="contact-action-btn-small" style="display: none;" title="✨ AI Email">
-                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                                <button id="aiEmailBtn" class="contact-action-btn-small" style="display: none;"
+                                    title="✨ AI Email">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                        stroke-width="2">
+                                        <path
+                                            d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z">
+                                        </path>
                                         <polyline points="22,6 12,13 2,6"></polyline>
                                     </svg>
                                     <span>AI Email</span>
                                 </button>
-                                <button id="aiWhatsAppBtn" class="contact-action-btn-small" style="display: none;" title="✨ AI WhatsApp">
-                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path>
+                                <button id="aiWhatsAppBtn" class="contact-action-btn-small" style="display: none;"
+                                    title="✨ AI WhatsApp">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                        stroke-width="2">
+                                        <path
+                                            d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z">
+                                        </path>
                                     </svg>
                                     <span>AI WhatsApp</span>
                                 </button>
-                                <button id="aiSmsBtn" class="contact-action-btn-small" style="display: none;" title="✨ AI SMS">
-                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <button id="aiSmsBtn" class="contact-action-btn-small" style="display: none;"
+                                    title="✨ AI SMS">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                        stroke-width="2">
                                         <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
                                     </svg>
                                     <span>AI SMS</span>
@@ -904,28 +1092,37 @@
                         <div class="detail-item" id="contactViewLinkedInItem" style="display: none;">
                             <span class="detail-label" style="display: flex; align-items: center; gap: 6px;">
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                                    <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+                                    <path
+                                        d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
                                 </svg>
                                 <span>LinkedIn</span>
                             </span>
-                            <a class="detail-value" id="contactViewLinkedIn" href="" target="_blank" style="color: var(--primary); display: flex; align-items: center; gap: 6px;">
+                            <a class="detail-value" id="contactViewLinkedIn" href="" target="_blank"
+                                style="color: var(--primary); display: flex; align-items: center; gap: 6px;">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="#0077B5" style="flex-shrink: 0;">
-                                    <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+                                    <path
+                                        d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
                                 </svg>
                                 <span id="contactViewLinkedInText"></span>
                             </a>
                         </div>
                         <div class="detail-item" id="contactViewWebsiteItem" style="display: none;">
                             <span class="detail-label" style="display: flex; align-items: center; gap: 6px;">
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                     <circle cx="12" cy="12" r="10"></circle>
                                     <line x1="2" y1="12" x2="22" y2="12"></line>
-                                    <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+                                    <path
+                                        d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z">
+                                    </path>
                                 </svg>
                                 <span>Website</span>
                             </span>
-                            <a class="detail-value" id="contactViewWebsite" href="" target="_blank" rel="noopener" style="color: var(--primary); display: flex; align-items: center; gap: 6px;">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;">
+                            <a class="detail-value" id="contactViewWebsite" href="" target="_blank" rel="noopener"
+                                style="color: var(--primary); display: flex; align-items: center; gap: 6px;">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                                    style="flex-shrink: 0;">
                                     <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
                                     <polyline points="15 3 21 3 21 9"></polyline>
                                     <line x1="10" y1="14" x2="21" y2="3"></line>
@@ -936,7 +1133,7 @@
                         <div class="detail-item" id="contactViewEventItem" style="display: none;">
                             <span class="detail-label">📅 Event</span>
                             <span class="detail-value" id="contactViewEvent"></span>
-                            </div>
+                        </div>
                         <div class="detail-item" id="contactViewDateItem" style="display: none;">
                             <span class="detail-label">📆 Met On</span>
                             <span class="detail-value" id="contactViewDate"></span>
@@ -946,35 +1143,43 @@
                             <span class="detail-value" id="contactViewLocation"></span>
                         </div>
                     </div>
-                    
+
                     <div class="detail-section" id="contactViewAiSummaryItem" style="display: none; margin-top: 24px;">
-                        <h4 style="font-size: 14px; font-weight: 600; margin-bottom: 8px; color: var(--text-primary); display: flex; align-items: center; gap: 6px;">
+                        <h4
+                            style="font-size: 14px; font-weight: 600; margin-bottom: 8px; color: var(--text-primary); display: flex; align-items: center; gap: 6px;">
                             <span>✨</span>
                             <span>AI Summary</span>
                         </h4>
-                        <p id="contactViewAiSummary" style="color: var(--text-secondary); line-height: 1.6; background: linear-gradient(to right, #f0f9ff, #f0fdf4); padding: 12px; border-radius: 8px; border-left: 3px solid #3b82f6;"></p>
+                        <p id="contactViewAiSummary"
+                            style="color: var(--text-secondary); line-height: 1.6; background: linear-gradient(to right, #f0f9ff, #f0fdf4); padding: 12px; border-radius: 8px; border-left: 3px solid #3b82f6;">
+                        </p>
                     </div>
-                    
+
                     <div class="detail-section" id="contactViewContextItem" style="display: none; margin-top: 24px;">
-                        <h4 style="font-size: 14px; font-weight: 600; margin-bottom: 8px; color: var(--text-primary);">Meeting Notes</h4>
+                        <h4 style="font-size: 14px; font-weight: 600; margin-bottom: 8px; color: var(--text-primary);">
+                            Meeting Notes</h4>
                         <p id="contactViewContext" style="color: var(--text-secondary); line-height: 1.6;"></p>
                     </div>
-                    
+
                     <div class="detail-section" id="contactViewTagsItem" style="display: none; margin-top: 24px;">
-                        <h4 style="font-size: 14px; font-weight: 600; margin-bottom: 12px; color: var(--text-primary);">Tags</h4>
+                        <h4 style="font-size: 14px; font-weight: 600; margin-bottom: 12px; color: var(--text-primary);">
+                            Tags</h4>
                         <div id="contactViewTags" class="tags-display" style="justify-content: flex-start;"></div>
                     </div>
-                    
+
                     <div class="detail-section" id="contactViewMediaItem" style="display: none; margin-top: 24px;">
-                        <h4 style="font-size: 14px; font-weight: 600; margin-bottom: 12px; color: var(--text-primary);">Media</h4>
+                        <h4 style="font-size: 14px; font-weight: 600; margin-bottom: 12px; color: var(--text-primary);">
+                            Media</h4>
                         <div id="contactViewMedia" class="media-preview"></div>
                     </div>
-                    
+
                     <!-- Contact Actions -->
-                    <div class="contact-actions" style="margin-top: 32px; padding-top: 24px; border-top: 2px solid var(--border-color);">
+                    <div class="contact-actions"
+                        style="margin-top: 32px; padding-top: 24px; border-top: 2px solid var(--border-color);">
                         <div class="contact-actions-grid">
                             <button id="saveToContactsBtn" class="contact-action-btn" title="Save to Contacts">
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
                                     <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
                                     <polyline points="17 21 17 13 7 13 7 21"></polyline>
                                     <polyline points="7 3 7 8 15 8"></polyline>
@@ -983,10 +1188,10 @@
                             </button>
                         </div>
                     </div>
-                            </div>
-                        </div>
-                    </div>
                 </div>
+            </div>
+        </div>
+    </div>
 
     <!-- Contact Entry Modal -->
     <div id="contactModal" class="modal hidden">
@@ -1001,7 +1206,8 @@
                     <div class="photo-upload-area" id="contactPhotoUpload">
                         <img id="contactPhotoPreview" src="" alt="Preview" class="hidden">
                         <div class="photo-placeholder">
-                            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
                                 <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
                                 <circle cx="8.5" cy="8.5" r="1.5"></circle>
                                 <polyline points="21 15 16 10 5 21"></polyline>
@@ -1020,8 +1226,10 @@
                     <div id="emailAddressesContainer">
                         <!-- Email fields will be dynamically added here -->
                     </div>
-                    <button type="button" id="addEmailBtn" class="btn-small btn-secondary" style="margin-top: 8px; display: none;">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <button type="button" id="addEmailBtn" class="btn-small btn-secondary"
+                        style="margin-top: 8px; display: none;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
                             <line x1="12" y1="5" x2="12" y2="19"></line>
                             <line x1="5" y1="12" x2="19" y2="12"></line>
                         </svg>
@@ -1037,8 +1245,10 @@
                     <div id="phoneNumbersContainer">
                         <!-- Phone number fields will be dynamically added here -->
                     </div>
-                    <button type="button" id="addPhoneBtn" class="btn-small btn-secondary" style="margin-top: 8px; display: none;">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <button type="button" id="addPhoneBtn" class="btn-small btn-secondary"
+                        style="margin-top: 8px; display: none;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
                             <line x1="12" y1="5" x2="12" y2="19"></line>
                             <line x1="5" y1="12" x2="19" y2="12"></line>
                         </svg>
@@ -1069,7 +1279,8 @@
                 </div>
                 <div class="form-group">
                     <label for="contactContext">Meeting Context (max 500 chars)</label>
-                    <textarea id="contactContext" class="textarea-field" rows="4" maxlength="500" placeholder="Where did you meet? What did you discuss?"></textarea>
+                    <textarea id="contactContext" class="textarea-field" rows="4" maxlength="500"
+                        placeholder="Where did you meet? What did you discuss?"></textarea>
                     <div class="char-count"><span id="contextCharCount">0</span>/500</div>
                 </div>
                 <div class="form-group">
@@ -1093,8 +1304,17 @@
                         <div id="mediaPreview" class="media-preview"></div>
                     </div>
                 </div>
+                <div class="form-group" id="contactLibraryMediaNotice" style="display: none;">
+                    <label>Event Media Included</label>
+                    <div id="contactLibraryMediaPreview" class="library-media-preview"></div>
+                    <button type="button" id="clearLibraryMediaSelectionBtn" class="btn-small btn-secondary"
+                        style="margin-top: 8px; display: none;">Remove Linked Media</button>
+                    <p style="font-size: 12px; color: var(--text-secondary); margin-top: 6px;">These files stay in your
+                        event media library and will also be attached to this contact.</p>
+                </div>
                 <button id="saveContactBtn" class="btn-primary">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
                         <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
                         <polyline points="17 21 17 13 7 13 7 21"></polyline>
                         <polyline points="7 3 7 8 15 8"></polyline>
@@ -1135,7 +1355,8 @@
                 </div>
                 <div class="form-group">
                     <label for="adminUserLinkedIn">LinkedIn URL</label>
-                    <input type="url" id="adminUserLinkedIn" class="input-field" placeholder="https://linkedin.com/in/...">
+                    <input type="url" id="adminUserLinkedIn" class="input-field"
+                        placeholder="https://linkedin.com/in/...">
                 </div>
                 <div class="form-group">
                     <label for="adminUserAbout">About Me</label>
@@ -1194,10 +1415,14 @@
                     </div>
                 </div>
                 <p class="scanner-hint">Point camera at business card</p>
-                <div style="position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); display: flex; gap: 12px; z-index: 10; padding-bottom: env(safe-area-inset-bottom, 0);">
-                    <button id="businessCardCaptureBtn" class="btn-primary" style="padding: 14px 28px; border-radius: 50px; font-weight: 600; min-width: 120px;">Capture</button>
-                    <button id="businessCardUploadBtn" class="btn-secondary" style="padding: 14px 28px; border-radius: 50px; font-weight: 600; display: flex; align-items: center; gap: 8px; min-width: 120px; background: rgba(255, 255, 255, 0.9); color: #333;">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <div
+                    style="position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); display: flex; gap: 12px; z-index: 10; padding-bottom: env(safe-area-inset-bottom, 0);">
+                    <button id="businessCardCaptureBtn" class="btn-primary"
+                        style="padding: 14px 28px; border-radius: 50px; font-weight: 600; min-width: 120px;">Capture</button>
+                    <button id="businessCardUploadBtn" class="btn-secondary"
+                        style="padding: 14px 28px; border-radius: 50px; font-weight: 600; display: flex; align-items: center; gap: 8px; min-width: 120px; background: rgba(255, 255, 255, 0.9); color: #333;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
                             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                             <polyline points="17 8 12 3 7 8"></polyline>
                             <line x1="12" y1="3" x2="12" y2="15"></line>
@@ -1229,10 +1454,14 @@
                     </div>
                 </div>
                 <p class="scanner-hint">Point camera at event pass</p>
-                <div style="position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); display: flex; gap: 12px; z-index: 10; padding-bottom: env(safe-area-inset-bottom, 0);">
-                    <button id="eventPassCaptureBtn" class="btn-primary" style="padding: 14px 28px; border-radius: 50px; font-weight: 600; min-width: 120px;">Capture</button>
-                    <button id="eventPassUploadBtn" class="btn-secondary" style="padding: 14px 28px; border-radius: 50px; font-weight: 600; display: flex; align-items: center; gap: 8px; min-width: 120px; background: rgba(255, 255, 255, 0.9); color: #333;">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <div
+                    style="position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); display: flex; gap: 12px; z-index: 10; padding-bottom: env(safe-area-inset-bottom, 0);">
+                    <button id="eventPassCaptureBtn" class="btn-primary"
+                        style="padding: 14px 28px; border-radius: 50px; font-weight: 600; min-width: 120px;">Capture</button>
+                    <button id="eventPassUploadBtn" class="btn-secondary"
+                        style="padding: 14px 28px; border-radius: 50px; font-weight: 600; display: flex; align-items: center; gap: 8px; min-width: 120px; background: rgba(255, 255, 255, 0.9); color: #333;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
                             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                             <polyline points="17 8 12 3 7 8"></polyline>
                             <line x1="12" y1="3" x2="12" y2="15"></line>
@@ -1267,13 +1496,18 @@
             </div>
             <div class="modal-body">
                 <div style="margin-bottom: 20px;">
-                    <label style="display: block; margin-bottom: 12px; font-weight: 600; font-size: 14px; color: var(--text-primary);">Select tags to add or remove:</label>
-                    <div id="bulkTagsList" class="tags-checkbox-list" style="max-height: 350px; overflow-y: auto; padding: 4px;">
+                    <label
+                        style="display: block; margin-bottom: 12px; font-weight: 600; font-size: 14px; color: var(--text-primary);">Select
+                        tags to add or remove:</label>
+                    <div id="bulkTagsList" class="tags-checkbox-list"
+                        style="max-height: 350px; overflow-y: auto; padding: 4px;">
                         <!-- Dynamically populated -->
                     </div>
                 </div>
                 <div style="margin-bottom: 20px;">
-                    <label for="bulkNewTagInput" style="display: block; margin-bottom: 8px; font-weight: 500; font-size: 14px;">Or create a new tag:</label>
+                    <label for="bulkNewTagInput"
+                        style="display: block; margin-bottom: 8px; font-weight: 500; font-size: 14px;">Or create a new
+                        tag:</label>
                     <input type="text" id="bulkNewTagInput" class="input-field" placeholder="Enter new tag name">
                 </div>
                 <div class="modal-actions" style="display: flex; gap: 12px;">
@@ -1294,20 +1528,26 @@
             </div>
             <div class="modal-body">
                 <div style="margin-bottom: 24px;">
-                    <label style="display: block; margin-bottom: 12px; font-weight: 500; font-size: 15px;">Choose export format:</label>
+                    <label style="display: block; margin-bottom: 12px; font-weight: 500; font-size: 15px;">Choose export
+                        format:</label>
                     <div style="display: grid; gap: 12px;">
-                        <button id="exportPDFBtn" class="export-format-btn" style="display: flex; align-items: center; gap: 12px; padding: 16px; border: 2px solid var(--border-color); border-radius: 12px; background: white; cursor: pointer; transition: all 0.2s;">
+                        <button id="exportPDFBtn" class="export-format-btn"
+                            style="display: flex; align-items: center; gap: 12px; padding: 16px; border: 2px solid var(--border-color); border-radius: 12px; background: white; cursor: pointer; transition: all 0.2s;">
                             <div style="font-size: 32px;">📄</div>
                             <div style="text-align: left; flex: 1;">
                                 <div style="font-weight: 600; font-size: 16px; margin-bottom: 4px;">PDF Document</div>
-                                <div style="font-size: 13px; color: var(--text-secondary);">Professional format with photos and details</div>
+                                <div style="font-size: 13px; color: var(--text-secondary);">Professional format with
+                                    photos and details</div>
                             </div>
                         </button>
-                        <button id="exportCSVBtn" class="export-format-btn" style="display: flex; align-items: center; gap: 12px; padding: 16px; border: 2px solid var(--border-color); border-radius: 12px; background: white; cursor: pointer; transition: all 0.2s;">
+                        <button id="exportCSVBtn" class="export-format-btn"
+                            style="display: flex; align-items: center; gap: 12px; padding: 16px; border: 2px solid var(--border-color); border-radius: 12px; background: white; cursor: pointer; transition: all 0.2s;">
                             <div style="font-size: 32px;">📊</div>
                             <div style="text-align: left; flex: 1;">
-                                <div style="font-weight: 600; font-size: 16px; margin-bottom: 4px;">CSV Spreadsheet</div>
-                                <div style="font-size: 13px; color: var(--text-secondary);">Import into Excel, Google Sheets, or CRM</div>
+                                <div style="font-weight: 600; font-size: 16px; margin-bottom: 4px;">CSV Spreadsheet
+                                </div>
+                                <div style="font-size: 13px; color: var(--text-secondary);">Import into Excel, Google
+                                    Sheets, or CRM</div>
                             </div>
                         </button>
                     </div>
@@ -1319,14 +1559,18 @@
                 </div>
                 <div id="exportSuccess" class="hidden" style="text-align: center; padding: 20px;">
                     <div style="font-size: 48px; margin-bottom: 12px;">✅</div>
-                    <div style="font-weight: 600; font-size: 18px; margin-bottom: 8px; color: var(--primary-color);">Export Complete!</div>
-                    <div style="font-size: 14px; color: var(--text-secondary); margin-bottom: 20px;">Your file has been downloaded</div>
+                    <div style="font-weight: 600; font-size: 18px; margin-bottom: 8px; color: var(--primary-color);">
+                        Export Complete!</div>
+                    <div style="font-size: 14px; color: var(--text-secondary); margin-bottom: 20px;">Your file has been
+                        downloaded</div>
                     <button class="btn-primary modal-close">Done</button>
                 </div>
                 <div id="exportError" class="hidden" style="text-align: center; padding: 20px;">
                     <div style="font-size: 48px; margin-bottom: 12px;">❌</div>
-                    <div style="font-weight: 600; font-size: 18px; margin-bottom: 8px; color: var(--danger-color);">Export Failed</div>
-                    <div id="exportErrorMessage" style="font-size: 14px; color: var(--text-secondary); margin-bottom: 20px;"></div>
+                    <div style="font-weight: 600; font-size: 18px; margin-bottom: 8px; color: var(--danger-color);">
+                        Export Failed</div>
+                    <div id="exportErrorMessage"
+                        style="font-size: 14px; color: var(--text-secondary); margin-bottom: 20px;"></div>
                     <button class="btn-secondary modal-close">Close</button>
                 </div>
             </div>
@@ -1336,10 +1580,11 @@
     <!-- Inject API_BASE_URL and GOOGLE_CLIENT_ID from environment variables -->
     <script>
         // Force HTTPS conversion immediately, before any other code runs
-        (function() {
+        (function () {
             var apiBaseUrl = '${API_BASE_URL}';
             if (!apiBaseUrl || apiBaseUrl.startsWith('${')) {
-                apiBaseUrl = 'http://localhost:8000/api';
+                // Default to localhost:8002 for development
+                apiBaseUrl = 'http://localhost:8002/api';
             }
             // If we're on HTTPS and API_BASE_URL is HTTP, convert it
             if (window.location.protocol === 'https:' && apiBaseUrl.startsWith('http://')) {
@@ -1356,4 +1601,5 @@
     <script src="/offline-queue.js"></script>
     <script src="/script.js"></script>
 </body>
+
 </html>

@@ -211,6 +211,17 @@ function setupEventListeners() {
     document.getElementById('linkedinSignIn')?.addEventListener('click', handleLinkedInSignIn);
     document.getElementById('emailSignIn')?.addEventListener('click', handleEmailSignIn);
     document.getElementById('emailSignUp')?.addEventListener('click', handleEmailSignUp);
+    
+    // OTP Auth handlers
+    document.getElementById('passwordAuthBtn')?.addEventListener('click', () => toggleAuthMethod('password'));
+    document.getElementById('otpAuthBtn')?.addEventListener('click', () => toggleAuthMethod('otp'));
+    document.getElementById('otpEmailBtn')?.addEventListener('click', () => selectOtpMethod('email'));
+    document.getElementById('otpWhatsAppBtn')?.addEventListener('click', () => selectOtpMethod('whatsapp'));
+    document.getElementById('otpSmsBtn')?.addEventListener('click', () => selectOtpMethod('sms'));
+    document.getElementById('requestOtpBtn')?.addEventListener('click', handleRequestOTP);
+    document.getElementById('verifyOtpBtn')?.addEventListener('click', handleVerifyOTP);
+    document.getElementById('resendOtpBtn')?.addEventListener('click', handleResendOTP);
+    document.getElementById('otpAuthToggle')?.addEventListener('click', toggleOtpAuthMode);
     document.getElementById('emailAuthToggle')?.addEventListener('click', toggleEmailAuthMode);
     document.getElementById('quickAuthBtn')?.addEventListener('click', () => {
         const user = getCurrentUser();
@@ -1516,6 +1527,432 @@ async function handleLinkedInSignIn() {
 
 let isSignUpMode = false;
 
+// OTP Auth State
+let otpMethod = null; // 'email', 'whatsapp', 'sms'
+let otpResendCount = 0;
+let otpResendTimer = null;
+let otpResendWaitTime = 30; // First retry: 30 seconds
+let otpSmsFallbackTimer = null; // Timer to show SMS option after 30s
+let otpRequested = false; // Track if OTP has been requested
+
+function toggleAuthMethod(method) {
+    const passwordForm = document.getElementById('passwordAuthForm');
+    const otpForm = document.getElementById('otpAuthForm');
+    const passwordBtn = document.getElementById('passwordAuthBtn');
+    const otpBtn = document.getElementById('otpAuthBtn');
+    
+    if (method === 'password') {
+        if (passwordForm) passwordForm.style.display = 'block';
+        if (otpForm) otpForm.style.display = 'none';
+        if (passwordBtn) passwordBtn.classList.add('active');
+        if (otpBtn) otpBtn.classList.remove('active');
+    } else if (method === 'otp') {
+        if (passwordForm) passwordForm.style.display = 'none';
+        if (otpForm) otpForm.style.display = 'block';
+        if (passwordBtn) passwordBtn.classList.remove('active');
+        if (otpBtn) otpBtn.classList.add('active');
+        // Reset OTP form state
+        resetOtpForm();
+    }
+}
+
+function selectOtpMethod(method) {
+    otpMethod = method;
+    const emailInput = document.getElementById('otpEmailInput');
+    const whatsappInput = document.getElementById('otpWhatsAppInput');
+    const smsInput = document.getElementById('otpSmsInput');
+    const requestBtn = document.getElementById('requestOtpBtn');
+    const emailBtn = document.getElementById('otpEmailBtn');
+    const whatsappBtn = document.getElementById('otpWhatsAppBtn');
+    const smsBtn = document.getElementById('otpSmsBtn');
+    
+    // If SMS is selected, cancel the fallback timer
+    if (method === 'sms' && otpSmsFallbackTimer) {
+        clearTimeout(otpSmsFallbackTimer);
+        otpSmsFallbackTimer = null;
+    }
+    
+    // Hide all inputs
+    if (emailInput) emailInput.style.display = 'none';
+    if (whatsappInput) whatsappInput.style.display = 'none';
+    if (smsInput) smsInput.style.display = 'none';
+    
+    // Show selected input
+    if (method === 'email' && emailInput) {
+        emailInput.style.display = 'block';
+        emailInput.required = true;
+    } else if (method === 'whatsapp') {
+        const whatsappContainer = document.getElementById('otpWhatsAppContainer');
+        if (whatsappContainer) whatsappContainer.style.display = 'flex';
+        if (whatsappInput) {
+            whatsappInput.style.display = 'block';
+            whatsappInput.required = true;
+        }
+    } else if (method === 'sms' && smsInput) {
+        smsInput.style.display = 'block';
+        smsInput.required = true;
+    }
+    
+    // Show request button
+    if (requestBtn) requestBtn.style.display = 'block';
+    
+    // Update button styles
+    if (emailBtn) emailBtn.style.background = method === 'email' ? 'var(--primary)' : '';
+    if (whatsappBtn) whatsappBtn.style.background = method === 'whatsapp' ? '#25D366' : '#25D366';
+    if (smsBtn) smsBtn.style.background = method === 'sms' ? 'rgba(102, 126, 234, 0.2)' : 'rgba(102, 126, 234, 0.1)';
+}
+
+function resetOtpForm() {
+    otpMethod = null;
+    otpResendCount = 0;
+    otpRequested = false;
+    if (otpResendTimer) {
+        clearInterval(otpResendTimer);
+        otpResendTimer = null;
+    }
+    if (otpSmsFallbackTimer) {
+        clearTimeout(otpSmsFallbackTimer);
+        otpSmsFallbackTimer = null;
+    }
+    otpResendWaitTime = 30;
+    
+    const emailInput = document.getElementById('otpEmailInput');
+    const whatsappInput = document.getElementById('otpWhatsAppInput');
+    const smsInput = document.getElementById('otpSmsInput');
+    const requestBtn = document.getElementById('requestOtpBtn');
+    const verifySection = document.getElementById('otpVerifySection');
+    const resendBtn = document.getElementById('resendOtpBtn');
+    const timerText = document.getElementById('otpTimer');
+    const emailBtn = document.getElementById('otpEmailBtn');
+    const whatsappBtn = document.getElementById('otpWhatsAppBtn');
+    const smsBtn = document.getElementById('otpSmsBtn');
+    
+    if (emailInput) { emailInput.style.display = 'none'; emailInput.value = ''; }
+    const whatsappContainer = document.getElementById('otpWhatsAppContainer');
+    if (whatsappContainer) whatsappContainer.style.display = 'none';
+    if (whatsappInput) { whatsappInput.style.display = 'none'; whatsappInput.value = ''; }
+    if (smsInput) { smsInput.style.display = 'none'; smsInput.value = ''; }
+    if (requestBtn) requestBtn.style.display = 'none';
+    if (verifySection) verifySection.style.display = 'none';
+    if (resendBtn) { resendBtn.disabled = true; resendBtn.textContent = 'Resend OTP'; }
+    if (timerText) timerText.textContent = '';
+    if (emailBtn) emailBtn.style.display = 'block';
+    if (whatsappBtn) whatsappBtn.style.display = 'block';
+    if (smsBtn) smsBtn.style.display = 'none'; // Hide SMS initially
+}
+
+async function handleRequestOTP() {
+    if (!otpMethod) {
+        showToast('Please select a method (Email, WhatsApp, or SMS)', 'error');
+        return;
+    }
+    
+    const emailInput = document.getElementById('otpEmailInput');
+    const whatsappInput = document.getElementById('otpWhatsAppInput');
+    const smsInput = document.getElementById('otpSmsInput');
+    const nameInput = document.getElementById('otpNameInput');
+    const requestBtn = document.getElementById('requestOtpBtn');
+    const verifySection = document.getElementById('otpVerifySection');
+    const codeInput = document.getElementById('otpCodeInput');
+    
+    let email = null;
+    let whatsapp = null;
+    let mobile = null;
+    
+    if (otpMethod === 'email') {
+        email = emailInput?.value?.trim();
+        if (!email) {
+            showToast('Please enter your email', 'error');
+            return;
+        }
+    } else if (otpMethod === 'whatsapp') {
+        const countryCode = document.getElementById('otpWhatsAppCountryCode')?.value || '+1';
+        const phoneNumber = whatsappInput?.value?.trim();
+        if (!phoneNumber) {
+            showToast('Please enter your WhatsApp number', 'error');
+            return;
+        }
+        // Combine country code with phone number (remove leading zeros from phone)
+        const cleanPhone = phoneNumber.replace(/^0+/, ''); // Remove leading zeros
+        whatsapp = countryCode + cleanPhone;
+    } else if (otpMethod === 'sms') {
+        mobile = smsInput?.value?.trim();
+        if (!mobile) {
+            showToast('Please enter your mobile number', 'error');
+            return;
+        }
+        if (!mobile.startsWith('+')) {
+            showToast('Please enter mobile number in E.164 format (e.g., +1234567890)', 'error');
+            return;
+        }
+    }
+    
+    const purpose = isSignUpMode ? 'signup' : 'login';
+    const name = isSignUpMode ? (nameInput?.value?.trim() || null) : null;
+    
+    if (isSignUpMode && !name) {
+        showToast('Please enter your name for signup', 'error');
+        return;
+    }
+    
+    // Disable button
+    if (requestBtn) {
+        requestBtn.disabled = true;
+        requestBtn.textContent = 'Sending...';
+    }
+    
+    try {
+        await api.requestOTP(email, mobile, whatsapp, purpose);
+        showToast('OTP sent successfully!', 'success');
+        
+        otpRequested = true; // Mark that OTP has been requested
+        
+        // Show verify section
+        if (verifySection) verifySection.style.display = 'block';
+        if (codeInput) {
+            codeInput.value = '';
+            codeInput.focus();
+        }
+        
+        // Hide request button and method selection
+        if (requestBtn) requestBtn.style.display = 'none';
+        const emailBtn = document.getElementById('otpEmailBtn');
+        const whatsappBtn = document.getElementById('otpWhatsAppBtn');
+        const smsBtn = document.getElementById('otpSmsBtn');
+        if (emailBtn) emailBtn.style.display = 'none';
+        if (whatsappBtn) whatsappBtn.style.display = 'none';
+        if (smsBtn) smsBtn.style.display = 'none'; // Keep SMS hidden initially
+        
+        // Start resend timer (30 seconds for first retry)
+        otpResendCount = 0;
+        otpResendWaitTime = 30;
+        startResendTimer();
+        
+        // Start SMS fallback timer - show SMS option after 30 seconds if OTP not verified
+        startSmsFallbackTimer();
+    } catch (error) {
+        console.error('OTP request error:', error);
+        
+        // Handle rate limiting (429 status)
+        if (error.status === 429 || error.message?.includes('wait') || error.message?.includes('Too many')) {
+            const errorMsg = error.message || 'Please wait before requesting another OTP';
+            showToast(errorMsg, 'error');
+            
+            // Extract wait time from error message if available
+            const waitMatch = errorMsg.match(/(\d+)\s*seconds?/i);
+            if (waitMatch) {
+                const waitSeconds = parseInt(waitMatch[1]);
+                otpResendWaitTime = waitSeconds;
+                startResendTimer();
+            }
+        } else {
+            showToast('Failed to send OTP: ' + (error.message || 'Unknown error'), 'error');
+        }
+    } finally {
+        if (requestBtn) {
+            requestBtn.disabled = false;
+            requestBtn.textContent = 'Send OTP';
+        }
+    }
+}
+
+async function handleResendOTP() {
+    if (otpResendTimer) {
+        showToast('Please wait before resending', 'error');
+        return;
+    }
+    
+    await handleRequestOTP();
+}
+
+function startSmsFallbackTimer() {
+    // Clear any existing timer
+    if (otpSmsFallbackTimer) {
+        clearTimeout(otpSmsFallbackTimer);
+    }
+    
+    // Show SMS option after 30 seconds if OTP hasn't been verified
+    otpSmsFallbackTimer = setTimeout(() => {
+        // Only show SMS if OTP was requested but not yet verified
+        if (otpRequested && otpMethod !== 'sms') {
+            const smsBtn = document.getElementById('otpSmsBtn');
+            const verifySection = document.getElementById('otpVerifySection');
+            
+            // Only show if verify section is visible (OTP was sent but not verified)
+            if (smsBtn && verifySection && verifySection.style.display !== 'none') {
+                smsBtn.style.display = 'flex';
+                showToast('Haven\'t received OTP? Try SMS as an alternative', 'info');
+            }
+        }
+    }, 30000); // 30 seconds
+}
+
+function startResendTimer() {
+    const resendBtn = document.getElementById('resendOtpBtn');
+    const timerText = document.getElementById('otpTimer');
+    
+    if (otpResendTimer) {
+        clearInterval(otpResendTimer);
+    }
+    
+    let timeLeft = otpResendWaitTime;
+    
+    if (resendBtn) {
+        resendBtn.disabled = true;
+    }
+    
+    otpResendTimer = setInterval(() => {
+        timeLeft--;
+        
+        if (timerText) {
+            timerText.textContent = `Resend available in ${timeLeft}s`;
+        }
+        
+        if (timeLeft <= 0) {
+            clearInterval(otpResendTimer);
+            otpResendTimer = null;
+            
+            if (resendBtn) {
+                resendBtn.disabled = false;
+                resendBtn.textContent = 'Resend OTP';
+            }
+            if (timerText) {
+                timerText.textContent = '';
+            }
+            
+            // Update wait time for next retry (1 minute after first retry)
+            otpResendCount++;
+            if (otpResendCount > 0) {
+                otpResendWaitTime = 60; // 1 minute for subsequent retries
+            }
+        }
+    }, 1000);
+}
+
+async function handleVerifyOTP() {
+    const codeInput = document.getElementById('otpCodeInput');
+    const nameInput = document.getElementById('otpNameInput');
+    const verifyBtn = document.getElementById('verifyOtpBtn');
+    
+    const code = codeInput?.value?.trim();
+    if (!code || code.length !== 6) {
+        showToast('Please enter a valid 6-digit code', 'error');
+        return;
+    }
+    
+    const emailInput = document.getElementById('otpEmailInput');
+    const whatsappInput = document.getElementById('otpWhatsAppInput');
+    const smsInput = document.getElementById('otpSmsInput');
+    
+    let email = null;
+    let whatsapp = null;
+    let mobile = null;
+    
+    if (otpMethod === 'email') {
+        email = emailInput?.value?.trim();
+    } else if (otpMethod === 'whatsapp') {
+        const countryCode = document.getElementById('otpWhatsAppCountryCode')?.value || '+1';
+        const phoneNumber = whatsappInput?.value?.trim();
+        if (phoneNumber) {
+            const cleanPhone = phoneNumber.replace(/^0+/, ''); // Remove leading zeros
+            whatsapp = countryCode + cleanPhone;
+        }
+    } else if (otpMethod === 'sms') {
+        mobile = smsInput?.value?.trim();
+    }
+    
+    const purpose = isSignUpMode ? 'signup' : 'login';
+    const name = isSignUpMode ? (nameInput?.value?.trim() || null) : null;
+    
+    if (verifyBtn) {
+        verifyBtn.disabled = true;
+        verifyBtn.textContent = 'Verifying...';
+    }
+    
+    try {
+        await api.verifyOTP(code, email, mobile, whatsapp, purpose, name);
+        showToast('Verification successful!', 'success');
+        
+        // Clear SMS fallback timer on successful verification
+        if (otpSmsFallbackTimer) {
+            clearTimeout(otpSmsFallbackTimer);
+            otpSmsFallbackTimer = null;
+        }
+        otpRequested = false;
+        
+        currentUser = getCurrentUser();
+        showApp();
+        await loadInitialData();
+        await checkAdminStatus();
+        
+        // Initialize push notifications
+        await initializePushNotifications();
+        
+        // Check if there's a pending contact save action
+        const pendingContactSave = sessionStorage.getItem('pendingContactSave');
+        if (pendingContactSave) {
+            try {
+                const contactData = JSON.parse(pendingContactSave);
+                sessionStorage.removeItem('pendingContactSave');
+                setTimeout(async () => {
+                    await openContactModal(contactData);
+                }, 500);
+            } catch (error) {
+                console.error('Error parsing pending contact save:', error);
+                sessionStorage.removeItem('pendingContactSave');
+            }
+        }
+    } catch (error) {
+        console.error('OTP verification error:', error);
+        // Extract error message from API response
+        // The API returns {detail: 'message'} which gets converted to error.message by api.js
+        let errorMessage = 'Invalid or expired OTP code';
+        if (error.message) {
+            // error.message already contains errorData.detail from api.js
+            errorMessage = error.message;
+        } else if (error.detail) {
+            errorMessage = error.detail;
+        } else if (typeof error === 'string') {
+            errorMessage = error;
+        }
+        // Show the error message to the user
+        showToast(errorMessage, 'error');
+        if (codeInput) {
+            codeInput.value = '';
+            codeInput.focus(); // Focus back on input so user can retry
+        }
+    } finally {
+        if (verifyBtn) {
+            verifyBtn.disabled = false;
+            verifyBtn.textContent = 'Verify OTP';
+        }
+    }
+}
+
+function toggleOtpAuthMode() {
+    isSignUpMode = !isSignUpMode;
+    const nameInput = document.getElementById('otpNameInput');
+    const toggleText = document.getElementById('otpAuthToggle');
+    
+    if (isSignUpMode) {
+        if (nameInput) {
+            nameInput.style.display = 'block';
+            nameInput.required = true;
+        }
+        if (toggleText) {
+            toggleText.innerHTML = 'Already have an account? <span style="color: var(--primary);">Sign in</span>';
+        }
+    } else {
+        if (nameInput) {
+            nameInput.style.display = 'none';
+            nameInput.required = false;
+        }
+        if (toggleText) {
+            toggleText.innerHTML = 'Don\'t have an account? <span style="color: var(--primary);">Sign up</span>';
+        }
+    }
+}
+
 function toggleEmailAuthMode() {
     isSignUpMode = !isSignUpMode;
     const nameInput = document.getElementById('nameInput');
@@ -1562,6 +1999,17 @@ function initializeEmailAuthForm() {
     }
     if (signInBtn) signInBtn.style.display = 'block';
     if (signUpBtn) signUpBtn.style.display = 'none';
+    
+    // Show OTP by default (preferred method)
+    const passwordForm = document.getElementById('passwordAuthForm');
+    const otpForm = document.getElementById('otpAuthForm');
+    const passwordBtn = document.getElementById('passwordAuthBtn');
+    const otpBtn = document.getElementById('otpAuthBtn');
+    
+    if (passwordForm) passwordForm.style.display = 'none';
+    if (otpForm) otpForm.style.display = 'block';
+    if (passwordBtn) passwordBtn.classList.remove('active');
+    if (otpBtn) otpBtn.classList.add('active');
 }
 
 async function handleEmailSignIn() {
@@ -1973,9 +2421,10 @@ async function loadProfileQR() {
     }
     
     try {
-        // Get QR code from backend
+        // Get QR code from backend (use username if available, fallback to ID)
         const mode = qrMode || 'url';
-        const response = await api.getProfileQR(currentUser.id, mode);
+        const userIdentifier = currentUser.username || currentUser.id;
+        const response = await api.getProfileQR(userIdentifier, mode);
         
         if (response.qr_code) {
             // Display the QR code image
@@ -2076,9 +2525,10 @@ function generateVCard(user) {
         vcard += `PHOTO;VALUE=URI:${escapeVCardValue(user.profile_photo_url)}\n`;
     }
     
-    // Add pplai.app profile URL
+    // Add pplai.app profile URL (use username, fallback to ID)
     const frontendUrl = window.location.origin || 'http://localhost:8080';
-    const pplaiProfileUrl = `${frontendUrl}/profile/${user.id}`;
+    const profileIdentifier = user.username || user.id;
+    const pplaiProfileUrl = `${frontendUrl}/profile/${profileIdentifier}`;
     vcard += `URL;TYPE=PPLAI:${escapeVCardValue(pplaiProfileUrl)}\n`;
     
     // Add pplai.app custom fields
@@ -2552,6 +3002,7 @@ function openProfileModal() {
     if (profile) {
         const nameEl = document.getElementById('profileName');
         const emailEl = document.getElementById('profileEmail');
+        const usernameEl = document.getElementById('profileUsername');
         const roleEl = document.getElementById('profileRole');
         const mobileEl = document.getElementById('profileMobile');
         const whatsappEl = document.getElementById('profileWhatsApp');
@@ -2560,6 +3011,11 @@ function openProfileModal() {
         
         if (nameEl) nameEl.value = profile.name || '';
         if (emailEl) emailEl.value = profile.email || '';
+        if (usernameEl) {
+            usernameEl.value = profile.username || '';
+            // Store original username to detect changes
+            usernameEl.dataset.originalUsername = profile.username || '';
+        }
         if (roleEl) roleEl.value = profile.role_company || '';
         if (mobileEl) mobileEl.value = profile.mobile || '';
         if (whatsappEl) whatsappEl.value = profile.whatsapp || '';
@@ -2571,6 +3027,20 @@ function openProfileModal() {
             preview.src = profile.profile_photo_url;
             preview.classList.remove('hidden');
         }
+        
+        // Add event listener to show warning when username changes
+        if (usernameEl) {
+            const warningEl = document.getElementById('usernameChangeWarning');
+            usernameEl.addEventListener('input', function() {
+                const originalUsername = this.dataset.originalUsername || '';
+                const newUsername = this.value.trim();
+                if (warningEl && originalUsername && newUsername && newUsername !== originalUsername) {
+                    warningEl.style.display = 'block';
+                } else if (warningEl) {
+                    warningEl.style.display = 'none';
+                }
+            });
+        }
     }
     
     if (modal) modal.classList.remove('hidden');
@@ -2579,6 +3049,9 @@ function openProfileModal() {
 async function saveProfile() {
     const name = document.getElementById('profileName')?.value;
     const email = document.getElementById('profileEmail')?.value;
+    const usernameEl = document.getElementById('profileUsername');
+    const username = usernameEl?.value?.trim();
+    const originalUsername = usernameEl?.dataset.originalUsername || '';
     const role = document.getElementById('profileRole')?.value;
     const mobile = document.getElementById('profileMobile')?.value;
     const whatsapp = document.getElementById('profileWhatsApp')?.value;
@@ -2586,6 +3059,20 @@ async function saveProfile() {
     const about = document.getElementById('profileAbout')?.value;
     const photoInput = document.getElementById('profilePhotoInput');
     let photoFile = photoInput?.files[0];
+    
+    // Check if username is being changed
+    const isUsernameChanging = originalUsername && username && username !== originalUsername;
+    if (isUsernameChanging) {
+        const confirmMessage = `⚠️ Warning: Changing your username will make your old profile links and QR codes stop working.\n\n` +
+            `Old username: ${originalUsername}\n` +
+            `New username: ${username}\n\n` +
+            `Anyone who has your old link or QR code won't be able to access your profile.\n\n` +
+            `Are you sure you want to change your username?`;
+        
+        if (!confirm(confirmMessage)) {
+            return; // User cancelled
+        }
+    }
     
     // Compress profile photo if provided
     if (photoFile && photoFile.type.startsWith('image/')) {
@@ -2605,6 +3092,7 @@ async function saveProfile() {
     try {
         const profileData = {
             name,
+            username: username || undefined, // Send undefined if empty (don't clear username)
             role_company: role,
             mobile,
             whatsapp,
@@ -2711,8 +3199,9 @@ async function shareProfile() {
     } else {
         // Share URL
         try {
-            const qrData = await api.getProfileQR(currentUser.id);
-            const profileUrl = qrData.profile_url || `${window.location.origin}/profile/${currentUser.id}`;
+            const userIdentifier = currentUser.username || currentUser.id;
+            const qrData = await api.getProfileQR(userIdentifier);
+            const profileUrl = qrData.profile_url || `${window.location.origin}/profile/${userIdentifier}`;
             
             if (navigator.share) {
                 try {
@@ -5197,7 +5686,7 @@ function showFollowupEditModal(contact, originalContent, messageType, contactId)
         
         // Extract subject if present
         const subjectMatch = originalContent.match(/Subject:\s*(.+?)(\n|$)/i);
-        if (subjectMatch) {
+    if (subjectMatch) {
             subjectEl.value = subjectMatch[1].trim();
             messageEl.value = originalContent.replace(/Subject:\s*(.+?)(\n|$)/i, '').trim();
         } else {

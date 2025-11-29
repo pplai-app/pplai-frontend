@@ -380,7 +380,9 @@ async function apiRequest(endpoint, options = {}) {
             errorData = { error: `Request failed with status ${response.status}` };
         }
         console.error('API error response:', errorData);
-        throw new Error(errorData.error || errorData.detail || `Request failed with status ${response.status}`);
+        const error = new Error(errorData.error || errorData.detail || `Request failed with status ${response.status}`);
+        error.status = response.status; // Preserve status code for rate limiting checks
+        throw error;
     }
 
     let data;
@@ -431,6 +433,36 @@ const api = {
         return data;
     },
 
+    // OTP Authentication
+    async requestOTP(email, mobile, whatsapp, purpose = 'login') {
+        const body = {};
+        if (email) body.email = email;
+        if (mobile) body.mobile = mobile;
+        if (whatsapp) body.whatsapp = whatsapp;
+        body.purpose = purpose;
+        return apiRequest('/auth/otp/request', {
+            method: 'POST',
+            body: JSON.stringify(body),
+        });
+    },
+
+    async verifyOTP(code, email, mobile, whatsapp, purpose = 'login', name = null) {
+        const body = { code, purpose };
+        if (email) body.email = email;
+        if (mobile) body.mobile = mobile;
+        if (whatsapp) body.whatsapp = whatsapp;
+        if (name) body.name = name;
+        const data = await apiRequest('/auth/otp/verify', {
+            method: 'POST',
+            body: JSON.stringify(body),
+        });
+        setAuthToken(data.token);
+        setCurrentUser(data.user);
+        // Clear all cache on login (new user session)
+        cacheInvalidation.invalidateAll();
+        return data;
+    },
+
     // Profile
     async getProfile() {
         return apiRequest('/profile');
@@ -440,6 +472,7 @@ const api = {
         const formData = new FormData();
         if (photoFile) formData.append('photo', photoFile);
         if (profileData.name) formData.append('name', profileData.name);
+        if (profileData.username !== undefined) formData.append('username', profileData.username || '');
         if (profileData.role_company !== undefined) formData.append('role_company', profileData.role_company);
         if (profileData.mobile !== undefined) formData.append('mobile', profileData.mobile);
         if (profileData.whatsapp !== undefined) formData.append('whatsapp', profileData.whatsapp);

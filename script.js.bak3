@@ -35,62 +35,6 @@ setTimeout(() => {
 document.addEventListener('DOMContentLoaded', async () => {
     debugLog('🚀 Initializing pplai.app...');
     
-    // Initialize push notifications after user is authenticated
-    // (Will be called after successful login)
-    
-    // Set up MutationObserver to prevent unauthorized view access
-    // This helps prevent direct DOM manipulation from showing protected views
-    const protectedViewIds = ['contactsView', 'eventsView', 'tagsView', 'profileView', 'adminView', 'chatView', 'homeView'];
-    const observer = new MutationObserver((mutations) => {
-        mutations.forEach((mutation) => {
-            mutation.addedNodes.forEach((node) => {
-                if (node.nodeType === 1 && node.classList) {
-                    // Check if a protected view is being shown
-                    protectedViewIds.forEach(viewId => {
-                        if (node.id === viewId || node.querySelector(`#${viewId}`)) {
-                            const view = document.getElementById(viewId);
-                            if (view && !view.classList.contains('hidden')) {
-                                const currentUser = getCurrentUser();
-                                const token = getAuthToken();
-                                if (!currentUser || !token) {
-                                    // Hide the view and show auth screen
-                                    view.classList.add('hidden');
-                                    showAuthScreen();
-                                }
-                            }
-                        }
-                    });
-                }
-            });
-            
-            // Check for class changes (removing 'hidden' class)
-            if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
-                const target = mutation.target;
-                if (protectedViewIds.includes(target.id)) {
-                    if (!target.classList.contains('hidden')) {
-                        const currentUser = getCurrentUser();
-                        const token = getAuthToken();
-                        if (!currentUser || !token) {
-                            target.classList.add('hidden');
-                            showAuthScreen();
-                        }
-                    }
-                }
-            }
-        });
-    });
-    
-    // Observe the app container for changes
-    const appContainer = document.getElementById('appContainer');
-    if (appContainer) {
-        observer.observe(appContainer, {
-            childList: true,
-            subtree: true,
-            attributes: true,
-            attributeFilter: ['class']
-        });
-    }
-    
     // Check if URL is a shared profile link
     const urlPath = window.location.pathname;
     const profileMatch = urlPath.match(/\/profile\/([a-f0-9-]+)/i);
@@ -134,8 +78,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 await loadInitialData();
                 // Check admin status and show/hide admin nav button
                 await checkAdminStatus();
-                // Initialize push notifications
-                await initializePushNotifications();
                 
                 // Check if there's a profile ID from URL (logged-in user viewing shared profile)
                 if (profileUserId) {
@@ -149,22 +91,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                     if (pendingProfileId) {
                         sessionStorage.removeItem('pendingProfileView');
                         await loadPublicProfile(pendingProfileId);
-                    }
-                
-                // Check if there's a pending contact save action
-                const pendingContactSave = sessionStorage.getItem('pendingContactSave');
-                if (pendingContactSave) {
-                    try {
-                        const contactData = JSON.parse(pendingContactSave);
-                        sessionStorage.removeItem('pendingContactSave');
-                        // Small delay to ensure UI is ready
-                        setTimeout(async () => {
-                            await openContactModal(contactData);
-                        }, 500);
-                    } catch (error) {
-                        console.error('Error parsing pending contact save:', error);
-                        sessionStorage.removeItem('pendingContactSave');
-                    }
                     }
                 }
             } catch (error) {
@@ -233,7 +159,6 @@ function setupEventListeners() {
     document.getElementById('editProfileBtn')?.addEventListener('click', openProfileModal);
     document.getElementById('saveProfileBtn')?.addEventListener('click', saveProfile);
     document.getElementById('shareProfileBtn')?.addEventListener('click', shareProfile);
-    document.getElementById('saveProfileToContactsBtn')?.addEventListener('click', saveProfileToContacts);
     document.getElementById('manageTagsBtn')?.addEventListener('click', () => switchView('tags'));
     document.getElementById('qrModeToggle')?.addEventListener('change', handleQRModeToggle);
     document.getElementById('closeCompletenessBtn')?.addEventListener('click', () => {
@@ -247,41 +172,9 @@ function setupEventListeners() {
 
     // Events
     document.getElementById('addEventBtn')?.addEventListener('click', openEventModal);
-    document.getElementById('importLumaBtn')?.addEventListener('click', () => {
-        document.getElementById('lumaImportModal')?.classList.remove('hidden');
-    });
-    document.getElementById('importLumaUrlBtn')?.addEventListener('click', importLumaEventFromUrl);
-    document.getElementById('importLumaApiBtn')?.addEventListener('click', importLumaEventsFromApi);
-    
-    // Close Luma import modal
-    document.getElementById('lumaImportModal')?.querySelector('.modal-close')?.addEventListener('click', () => {
-        document.getElementById('lumaImportModal')?.classList.add('hidden');
-    });
     document.getElementById('saveEventBtn')?.addEventListener('click', saveEvent);
     document.getElementById('eventsSearchInput')?.addEventListener('input', filterEvents);
     document.getElementById('clearEventsSearch')?.addEventListener('click', clearEventsSearch);
-    document.getElementById('eventsDateFilter')?.addEventListener('change', () => {
-        const dateFilter = document.getElementById('eventsDateFilter');
-        const customRange = document.getElementById('eventsCustomDateRange');
-        if (dateFilter && customRange) {
-            if (dateFilter.value === 'custom') {
-                customRange.classList.remove('hidden');
-            } else {
-                customRange.classList.add('hidden');
-            }
-        }
-        filterEvents();
-        updateEventsClearFiltersButton();
-    });
-    document.getElementById('eventsDateFrom')?.addEventListener('change', () => {
-        filterEvents();
-        updateEventsClearFiltersButton();
-    });
-    document.getElementById('eventsDateTo')?.addEventListener('change', () => {
-        filterEvents();
-        updateEventsClearFiltersButton();
-    });
-    document.getElementById('clearEventsFiltersBtn')?.addEventListener('click', clearEventsFilters);
     
     // Contacts search
     document.getElementById('contactsSearchInput')?.addEventListener('input', filterContactsBySearch);
@@ -292,48 +185,6 @@ function setupEventListeners() {
     document.getElementById('scanCardCard')?.addEventListener('click', openBusinessCardScanner);
     document.getElementById('scanEventPassCard')?.addEventListener('click', openEventPassScanner);
     document.getElementById('manualEntryCard')?.addEventListener('click', openContactModal);
-    
-    // Business Card Scanner
-    document.getElementById('businessCardCaptureBtn')?.addEventListener('click', captureBusinessCard);
-    document.getElementById('businessCardUploadBtn')?.addEventListener('click', () => {
-        document.getElementById('businessCardFileInput')?.click();
-    });
-    document.getElementById('businessCardFileInput')?.addEventListener('change', (e) => {
-        const file = e.target.files[0];
-        if (file) {
-            closeBusinessCardScanner();
-            processBusinessCardFile(file);
-        }
-    });
-    
-    // Event Pass Scanner
-    document.getElementById('eventPassCaptureBtn')?.addEventListener('click', captureEventPass);
-    document.getElementById('eventPassUploadBtn')?.addEventListener('click', () => {
-        document.getElementById('eventPassFileInput')?.click();
-    });
-    document.getElementById('eventPassFileInput')?.addEventListener('change', (e) => {
-        const file = e.target.files[0];
-        if (file) {
-            closeEventPassScanner();
-            processEventPassFile(file);
-        }
-    });
-    
-    // Close modals on close button
-    document.querySelectorAll('.modal-close').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            const modal = e.target.closest('.modal');
-            if (modal) {
-                if (modal.id === 'qrScannerModal') {
-                    closeQRScanner();
-                } else if (modal.id === 'businessCardScannerModal') {
-                    closeBusinessCardScanner();
-                } else if (modal.id === 'eventPassScannerModal') {
-                    closeEventPassScanner();
-                }
-            }
-        });
-    });
     document.getElementById('addContactBtn')?.addEventListener('click', () => switchView('home'));
     document.getElementById('filterContactsBtn')?.addEventListener('click', toggleContactsFilters);
     document.getElementById('selectContactsBtn')?.addEventListener('click', toggleSelectionMode);
@@ -342,8 +193,7 @@ function setupEventListeners() {
     document.getElementById('bulkSaveBtn')?.addEventListener('click', bulkSaveContacts);
     document.getElementById('bulkExportBtn')?.addEventListener('click', bulkExportContacts);
     document.getElementById('bulkAddTagBtn')?.addEventListener('click', bulkAddTagToContacts);
-    document.getElementById('addBulkTagsBtn')?.addEventListener('click', addBulkTags);
-    document.getElementById('removeBulkTagsBtn')?.addEventListener('click', removeBulkTags);
+    document.getElementById('applyBulkTagsBtn')?.addEventListener('click', applyBulkTags);
     document.getElementById('bulkAddEventBtn')?.addEventListener('click', bulkAddEventToContacts);
     document.getElementById('bulkDeleteBtn')?.addEventListener('click', bulkDeleteContacts);
     
@@ -351,8 +201,6 @@ function setupEventListeners() {
     document.getElementById('exportPDFBtn')?.addEventListener('click', () => handleExportFormat('pdf'));
     document.getElementById('exportCSVBtn')?.addEventListener('click', () => handleExportFormat('csv'));
     document.getElementById('saveContactBtn')?.addEventListener('click', saveContact);
-    document.getElementById('addPhoneBtn')?.addEventListener('click', () => addPhoneNumberField());
-    document.getElementById('addEmailBtn')?.addEventListener('click', () => addEmailField());
     document.getElementById('saveContactFromViewBtn')?.addEventListener('click', async () => {
         if (currentViewingContactId && currentViewingContact) {
             await saveContactFromView();
@@ -372,19 +220,19 @@ function setupEventListeners() {
     
     // AI Follow-up buttons
     document.getElementById('aiEmailBtn')?.addEventListener('click', async () => {
-        if (currentViewingContact) {
+        if (currentViewingContactId && currentViewingContact) {
             await handleAiFollowup(currentViewingContactId, currentViewingContact, 'email');
         }
     });
     
     document.getElementById('aiWhatsAppBtn')?.addEventListener('click', async () => {
-        if (currentViewingContact) {
+        if (currentViewingContactId && currentViewingContact) {
             await handleAiFollowup(currentViewingContactId, currentViewingContact, 'whatsapp');
         }
     });
     
     document.getElementById('aiSmsBtn')?.addEventListener('click', async () => {
-        if (currentViewingContact) {
+        if (currentViewingContactId && currentViewingContact) {
             await handleAiFollowup(currentViewingContactId, currentViewingContact, 'sms');
         }
     });
@@ -398,7 +246,7 @@ function setupEventListeners() {
     
     // Chat button in contact view modal
     document.getElementById('chatContactBtn')?.addEventListener('click', () => {
-        if (currentViewingContact) {
+        if (currentViewingContactId && currentViewingContact) {
             openChatView(currentViewingContactId, currentViewingContact.name);
         }
     });
@@ -450,10 +298,6 @@ function setupEventListeners() {
         filterContacts();
         updateClearFiltersButton();
     });
-    document.getElementById('favoriteFilter')?.addEventListener('change', () => {
-        filterContacts();
-        updateClearFiltersButton();
-    });
     document.getElementById('clearAllFiltersBtn')?.addEventListener('click', clearAllFilters);
     document.getElementById('unselectEventBtn')?.addEventListener('click', unselectEvent);
     document.getElementById('currentEventBanner')?.addEventListener('click', (e) => {
@@ -485,16 +329,12 @@ function setupEventListeners() {
     setupPhotoUpload('contactPhotoUpload', 'contactPhotoInput', 'contactPhotoPreview');
 
     // Modal close buttons
-    // Modal close handlers are set up earlier in setupEventListeners
-    // This section handles other modals that use closeModal()
     document.querySelectorAll('.modal-close').forEach(btn => {
-        // Skip if already handled by scanner modals
-        if (btn.closest('#qrScannerModal') || btn.closest('#businessCardScannerModal') || btn.closest('#eventPassScannerModal')) {
-            return;
-        }
         btn.addEventListener('click', (e) => {
             const modal = e.target.closest('.modal');
-            if (modal) {
+            if (modal && modal.id === 'qrScannerModal') {
+                closeQRScanner();
+            } else {
                 closeModal();
             }
         });
@@ -506,35 +346,12 @@ function setupEventListeners() {
             if (e.target === modal) {
                 if (modal.id === 'qrScannerModal') {
                     closeQRScanner();
-                } else if (modal.id === 'businessCardScannerModal') {
-                    closeBusinessCardScanner();
-                } else if (modal.id === 'eventPassScannerModal') {
-                    closeEventPassScanner();
-                } else if (modal.id === 'followupEditModal') {
-                    modal.classList.add('hidden');
                 } else {
                     closeModal();
                 }
             }
         });
     });
-    
-    // Followup edit modal handlers
-    document.getElementById('followupCancelBtn')?.addEventListener('click', () => {
-        const modal = document.getElementById('followupEditModal');
-        if (modal) modal.classList.add('hidden');
-    });
-    
-    document.getElementById('followupSendBtn')?.addEventListener('click', sendEditedFollowup);
-    
-    // Close followup modal on close button
-    const followupModalClose = document.querySelector('#followupEditModal .modal-close');
-    if (followupModalClose) {
-        followupModalClose.addEventListener('click', () => {
-            const modal = document.getElementById('followupEditModal');
-            if (modal) modal.classList.add('hidden');
-        });
-    }
 }
 
 // Screen management
@@ -655,47 +472,6 @@ function setPublicProfileAction(elementId, href, labelElementId, labelText) {
     }
 }
 
-// Wrapper function to check login and saved contact before allowing chat actions
-function createChatActionHandler(originalHandler, actionType) {
-    return function(e) {
-        e.preventDefault();
-        
-        // Check if user is logged in
-        const currentUser = getCurrentUser();
-        if (!currentUser) {
-            showToast('🔐 Please login first to use chat features', 'error');
-            setTimeout(() => {
-                if (typeof showAuthScreen === 'function') {
-                    showAuthScreen();
-                }
-            }, 1500);
-            return;
-        }
-        
-        // Check if contact is saved (has contactId)
-        // For public profiles, we need to check if the contact exists in the app
-        // Since we don't have contactId on public profile, we'll prompt to save first
-        if (!currentPublicProfileId || !currentViewingContactId) {
-            showToast('💾 Please save this contact first to use chat features', 'error');
-            const saveBtn = document.getElementById('publicProfileSaveBtn');
-            if (saveBtn) {
-                saveBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                // Highlight the button briefly
-                saveBtn.style.transform = 'scale(1.05)';
-                setTimeout(() => {
-                    saveBtn.style.transform = '';
-                }, 500);
-            }
-            return;
-        }
-        
-        // If all checks pass, execute the original handler
-        if (originalHandler) {
-            originalHandler(e);
-        }
-    };
-}
-
 function populatePublicProfileView(profile) {
     const nameEl = document.getElementById('publicProfileName');
     const roleEl = document.getElementById('publicProfileRole');
@@ -769,71 +545,10 @@ function populatePublicProfileView(profile) {
     contentEl?.classList.remove('hidden');
 }
 
-async function handlePublicProfileSave() {
-    if (!currentPublicProfileId || !currentPublicProfile) return;
-    
-    try {
-        // Convert profile to contact format for vCard generation
-        const contactData = {
-            name: currentPublicProfile.name || '',
-            email: currentPublicProfile.email || null,
-            email_addresses: currentPublicProfile.email ? [{ address: currentPublicProfile.email }] : [],
-            mobile: currentPublicProfile.mobile || null,
-            whatsapp: currentPublicProfile.whatsapp || null,
-            phone_numbers: [],
-            role_company: currentPublicProfile.role_company || null,
-            company: null,
-            website: null,
-            linkedin_url: currentPublicProfile.linkedin_url || null,
-            contact_photo_url: currentPublicProfile.profile_photo_url || null,
-            meeting_context: currentPublicProfile.about_me || null,
-            tags: [],
-            event: null
-        };
-        
-        // Add phone numbers
-        if (currentPublicProfile.mobile) {
-            contactData.phone_numbers.push({
-                number: currentPublicProfile.mobile,
-                is_whatsapp: false
-            });
-        }
-        if (currentPublicProfile.whatsapp && currentPublicProfile.whatsapp !== currentPublicProfile.mobile) {
-            contactData.phone_numbers.push({
-                number: currentPublicProfile.whatsapp,
-                is_whatsapp: true
-            });
-        }
-        
-        // Generate vCard with embedded photo
-        const vcard = await generateContactVCardWithPhoto(contactData);
-        const blob = new Blob([vcard], { type: 'text/vcard' });
-        const url = URL.createObjectURL(blob);
-        
-        // Try Web Share API first (works on mobile)
-        if (navigator.share && navigator.canShare) {
-            const file = new File([blob], `${contactData.name.replace(/\s+/g, '_')}.vcf`, { type: 'text/vcard' });
-            if (navigator.canShare({ files: [file] })) {
-                navigator.share({
-                    title: `Save ${contactData.name}`,
-                    text: `Contact card for ${contactData.name}`,
-                    files: [file]
-                }).then(() => {
-                    URL.revokeObjectURL(url);
-                }).catch(() => {
-                    // Fallback to download
-                    downloadVCard(url, contactData.name);
-                });
-                return;
-            }
-        }
-        
-        // Fallback: Download vCard
-        downloadVCard(url, contactData.name);
-    } catch (error) {
-        console.error('Error saving contact to phone:', error);
-        showToast('Failed to save contact to phone: ' + error.message, 'error');
-    }
+function handlePublicProfileSave() {
+    if (!currentPublicProfileId) return;
+    sessionStorage.setItem('pendingProfileView', currentPublicProfileId);
+    window.location.href = '/';
 }
 
 function formatPhoneForLink(number) {
@@ -963,29 +678,12 @@ async function populateContactForm(contactInfo, options = {}) {
     const { portraitFile = null, cardFile = null } = options;
 
     await openContactModal();
-    
-    // Wait a bit for the modal to fully render and form to be initialized
-    await new Promise(resolve => setTimeout(resolve, 100));
 
     const nameEl = document.getElementById('contactName');
-    if (nameEl && contactInfo.name) {
-        nameEl.value = contactInfo.name;
-    } else if (!nameEl) {
-        console.error('contactName element not found');
-    }
+    if (nameEl && contactInfo.name) nameEl.value = contactInfo.name;
 
-    // Use the new email fields structure (emailAddressesContainer)
-    if (contactInfo.email) {
-        const emailContainer = document.getElementById('emailAddressesContainer');
-        if (emailContainer) {
-            // Clear existing email fields
-            emailContainer.innerHTML = '';
-            // Add the email from OCR
-            addEmailField(contactInfo.email, 0);
-        } else {
-            console.warn('emailAddressesContainer not found, email field may not be populated');
-        }
-    }
+    const emailEl = document.getElementById('contactEmail');
+    if (emailEl && contactInfo.email) emailEl.value = contactInfo.email;
 
     applyPhoneToForm(contactInfo.phone);
 
@@ -1007,30 +705,12 @@ async function populateContactForm(contactInfo, options = {}) {
     if (cardFile) {
         const mediaInput = document.getElementById('mediaInput');
         if (mediaInput) {
-            // Validate the cardFile is a valid File object
-            if (!(cardFile instanceof File) && !(cardFile instanceof Blob)) {
-                console.error('cardFile is not a valid File or Blob:', cardFile);
-            } else {
-                console.log('Adding card file to media input:', cardFile.name, cardFile.size, 'bytes');
             const mediaDataTransfer = new DataTransfer();
-                // Preserve existing files
-                if (mediaInput.files && mediaInput.files.length > 0) {
-                    Array.from(mediaInput.files).forEach(existingFile => {
-                        mediaDataTransfer.items.add(existingFile);
-                    });
+            if (mediaInput.files) {
+                Array.from(mediaInput.files).forEach(existingFile => mediaDataTransfer.items.add(existingFile));
             }
-                // Add the card file
             mediaDataTransfer.items.add(cardFile);
             mediaInput.files = mediaDataTransfer.files;
-                
-                // Trigger change event - this will call handleMediaUpload which updates the preview
-                // Don't manually update preview to avoid duplicates
-                mediaInput.dispatchEvent(new Event('change', { bubbles: true }));
-                
-                console.log('Card file added to media input. Total files:', mediaInput.files.length);
-            }
-        } else {
-            console.error('mediaInput element not found');
         }
     }
 
@@ -1065,34 +745,7 @@ function handleLogout() {
     }
 }
 
-async function switchView(viewName) {
-    // Check authentication for protected views (everything except public profile)
-    const protectedViews = ['contacts', 'events', 'tags', 'profile', 'admin', 'chat', 'home'];
-    
-    if (protectedViews.includes(viewName)) {
-        const currentUser = getCurrentUser();
-        const token = getAuthToken();
-        
-        if (!currentUser || !token) {
-            // User not authenticated - redirect to auth screen
-            showToast('🔐 Please login to access this feature', 'error');
-            showAuthScreen();
-            return;
-        }
-        
-        // Verify token is still valid by checking if we can access the API
-        // This prevents simple DOM manipulation from bypassing auth
-        try {
-            await api.getProfile();
-        } catch (error) {
-            // Token invalid or expired
-            clearAuthToken();
-            showToast('🔐 Session expired. Please login again', 'error');
-            showAuthScreen();
-            return;
-        }
-    }
-    
+function switchView(viewName) {
     // Close any open modals first
     closeModal();
     
@@ -1100,12 +753,7 @@ async function switchView(viewName) {
     document.querySelectorAll('.view').forEach(view => view.classList.add('hidden'));
     
     // Show selected view
-    const targetView = document.getElementById(`${viewName}View`);
-    if (!targetView) {
-        console.error(`View ${viewName}View not found`);
-        return;
-    }
-    targetView.classList.remove('hidden');
+    document.getElementById(`${viewName}View`)?.classList.remove('hidden');
 
     // Update nav buttons
     document.querySelectorAll('.nav-btn').forEach(btn => {
@@ -1191,290 +839,9 @@ async function handleGoogleCredentialResponse(response) {
         currentUser = getCurrentUser();
         showApp();
         await loadInitialData();
-        await checkAdminStatus();
-        
-        // Initialize push notifications
-        await initializePushNotifications();
-        
-        // Check if there's a pending contact save action
-        const pendingContactSave = sessionStorage.getItem('pendingContactSave');
-        if (pendingContactSave) {
-            try {
-                const contactData = JSON.parse(pendingContactSave);
-                sessionStorage.removeItem('pendingContactSave');
-                // Small delay to ensure UI is ready
-                setTimeout(async () => {
-                    await openContactModal(contactData);
-                }, 500);
-            } catch (error) {
-                console.error('Error parsing pending contact save:', error);
-                sessionStorage.removeItem('pendingContactSave');
-            }
-        }
     } catch (error) {
         console.error('Google OAuth error:', error);
         showToast('Google sign-in failed: ' + error.message, 'error');
-    }
-}
-
-// Push Notification Functions
-let pushSubscriptionEndpoint = null;
-
-async function initializePushNotifications() {
-    // Check if browser supports push notifications
-    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-        console.warn('⚠️ Push notifications not supported in this browser');
-        debugLog('⚠️ Push notifications not supported in this browser');
-        return;
-    }
-    
-    // Check if user is authenticated
-    const currentUser = getCurrentUser();
-    if (!currentUser) {
-        console.log('ℹ️ User not authenticated, skipping push notification setup');
-        return;
-    }
-    
-    try {
-        console.log('🔔 Initializing push notifications...');
-        
-        // Register service worker
-        const registration = await navigator.serviceWorker.register('/sw.js');
-        console.log('✅ Service Worker registered:', registration.scope);
-        debugLog('✅ Service Worker registered');
-        
-        // Wait for service worker to be ready
-        await navigator.serviceWorker.ready;
-        console.log('✅ Service Worker ready');
-        
-        // Check if already subscribed
-        const existingSubscription = await registration.pushManager.getSubscription();
-        if (existingSubscription) {
-            pushSubscriptionEndpoint = existingSubscription.endpoint;
-            console.log('✅ Already subscribed to push notifications');
-            console.log('   Endpoint:', existingSubscription.endpoint.substring(0, 50) + '...');
-            debugLog('✅ Already subscribed to push notifications');
-            // Update subscription in backend (in case user logged in from different device)
-            await updatePushSubscription(existingSubscription);
-            setupAppExitDetection();
-            return;
-        }
-        
-        // Check current permission
-        const currentPermission = Notification.permission;
-        console.log('📋 Current notification permission:', currentPermission);
-        
-        // Request notification permission
-        let permission = currentPermission;
-        if (permission === 'default') {
-            console.log('📋 Requesting notification permission...');
-            permission = await Notification.requestPermission();
-            console.log('📋 Permission result:', permission);
-        }
-        
-        if (permission !== 'granted') {
-            console.warn('⚠️ Notification permission denied:', permission);
-            debugLog('⚠️ Notification permission denied');
-            return;
-        }
-        
-        // Get VAPID public key from backend
-        console.log('🔑 Getting VAPID public key from backend...');
-        const vapidKeyResponse = await api.getVapidPublicKey();
-        const vapidPublicKey = vapidKeyResponse.publicKey;
-        
-        if (!vapidPublicKey) {
-            console.error('❌ VAPID public key not available');
-            debugLog('⚠️ VAPID public key not available');
-            return;
-        }
-        
-        console.log('✅ Got VAPID public key');
-        console.log('   Key length:', vapidPublicKey.length);
-        console.log('   Key preview:', vapidPublicKey.substring(0, 20) + '...');
-        
-        // Convert VAPID key to Uint8Array
-        let applicationServerKey;
-        try {
-            applicationServerKey = urlBase64ToUint8Array(vapidPublicKey);
-            console.log('✅ Converted VAPID key to Uint8Array');
-            console.log('   Array length:', applicationServerKey.length);
-            
-            // Validate key length (should be 65 bytes for P-256 uncompressed public key)
-            if (applicationServerKey.length !== 65) {
-                console.warn('⚠️ VAPID key length is', applicationServerKey.length, 'bytes (expected 65 for P-256)');
-            }
-        } catch (error) {
-            console.error('❌ Error converting VAPID key:', error);
-            throw new Error('Invalid VAPID key format: ' + error.message);
-        }
-        
-        // Subscribe to push service
-        console.log('📝 Subscribing to push service...');
-        let subscription;
-        try {
-            subscription = await registration.pushManager.subscribe({
-                userVisibleOnly: true,
-                applicationServerKey: applicationServerKey
-            });
-        } catch (error) {
-            console.error('❌ Subscription failed:', error);
-            console.error('   Error name:', error.name);
-            console.error('   Error message:', error.message);
-            console.error('   VAPID key (first 50 chars):', vapidPublicKey.substring(0, 50));
-            console.error('   ApplicationServerKey length:', applicationServerKey.length);
-            throw error;
-        }
-        
-        pushSubscriptionEndpoint = subscription.endpoint;
-        console.log('✅ Subscribed to push notifications');
-        console.log('   Endpoint:', subscription.endpoint.substring(0, 50) + '...');
-        
-        // Send subscription to backend
-        await updatePushSubscription(subscription);
-        console.log('✅ Subscription saved to backend');
-        
-        debugLog('✅ Subscribed to push notifications');
-        
-        // Set up app exit detection
-        setupAppExitDetection();
-        console.log('✅ App exit detection set up');
-        
-    } catch (error) {
-        console.error('❌ Error initializing push notifications:', error);
-        debugError('❌ Error initializing push notifications:', error);
-    }
-}
-
-async function updatePushSubscription(subscription) {
-    try {
-        const subscriptionData = {
-            endpoint: subscription.endpoint,
-            keys: {
-                p256dh: arrayBufferToBase64(subscription.getKey('p256dh')),
-                auth: arrayBufferToBase64(subscription.getKey('auth'))
-            },
-            user_agent: navigator.userAgent
-        };
-        
-        console.log('📤 Sending subscription to backend...');
-        await api.subscribePush(subscriptionData);
-        console.log('✅ Subscription updated in backend');
-    } catch (error) {
-        console.error('❌ Error updating push subscription:', error);
-        debugError('❌ Error updating push subscription:', error);
-    }
-}
-
-function urlBase64ToUint8Array(base64String) {
-    if (!base64String || typeof base64String !== 'string') {
-        throw new Error('Invalid base64 string');
-    }
-    
-    // Remove any whitespace
-    base64String = base64String.trim();
-    
-    // Add padding if needed
-    const padding = '='.repeat((4 - base64String.length % 4) % 4);
-    const base64 = (base64String + padding)
-        .replace(/\-/g, '+')
-        .replace(/_/g, '/');
-    
-    try {
-        const rawData = window.atob(base64);
-        const outputArray = new Uint8Array(rawData.length);
-        
-        for (let i = 0; i < rawData.length; ++i) {
-            outputArray[i] = rawData.charCodeAt(i);
-        }
-        
-        return outputArray;
-    } catch (error) {
-        throw new Error('Failed to decode base64: ' + error.message);
-    }
-}
-
-function arrayBufferToBase64(buffer) {
-    const bytes = new Uint8Array(buffer);
-    let binary = '';
-    for (let i = 0; i < bytes.byteLength; i++) {
-        binary += String.fromCharCode(bytes[i]);
-    }
-    return window.btoa(binary);
-}
-
-function setupAppExitDetection() {
-    // Send notification when app is closed/exited
-    let isExiting = false;
-    let exitTimeout = null;
-    
-    // Handle visibility change (tab switch, minimize, etc.)
-    document.addEventListener('visibilitychange', async () => {
-        if (document.hidden && !isExiting) {
-            isExiting = true;
-            // Clear any existing timeout
-            if (exitTimeout) {
-                clearTimeout(exitTimeout);
-            }
-            // Small delay to avoid sending on every tab switch
-            exitTimeout = setTimeout(async () => {
-                if (document.hidden) {
-                    await sendProfileNotification();
-                }
-                isExiting = false;
-            }, 2000); // Only send if still hidden after 2 seconds
-        } else if (!document.hidden) {
-            // Clear timeout if user comes back
-            if (exitTimeout) {
-                clearTimeout(exitTimeout);
-                exitTimeout = null;
-            }
-            isExiting = false;
-        }
-    });
-    
-    // Handle beforeunload (browser close, refresh)
-    window.addEventListener('beforeunload', async () => {
-        // Use sendBeacon for reliability during page unload
-        await sendProfileNotification();
-    });
-}
-
-async function sendProfileNotification() {
-    try {
-        const currentUser = getCurrentUser();
-        if (!currentUser) {
-            console.warn('⚠️ Cannot send notification: User not logged in');
-            return;
-        }
-        
-        if (!pushSubscriptionEndpoint) {
-            console.warn('⚠️ Cannot send notification: No push subscription endpoint');
-            // Try to get subscription
-            try {
-                const registration = await navigator.serviceWorker.ready;
-                const subscription = await registration.pushManager.getSubscription();
-                if (subscription) {
-                    pushSubscriptionEndpoint = subscription.endpoint;
-                    console.log('✅ Found push subscription endpoint');
-                } else {
-                    console.warn('⚠️ No push subscription found. User may need to grant permission.');
-                    return;
-                }
-            } catch (error) {
-                console.error('❌ Error checking push subscription:', error);
-                return;
-            }
-        }
-        
-        // Send notification request to backend
-        console.log('📤 Sending profile notification...');
-        const result = await api.sendProfileNotification();
-        console.log('✅ Profile notification sent:', result);
-        debugLog('✅ Profile notification sent');
-    } catch (error) {
-        console.error('❌ Error sending profile notification:', error);
-        debugError('❌ Error sending profile notification:', error);
     }
 }
 
@@ -1611,25 +978,6 @@ async function handleEmailSignIn() {
             showApp();
             await loadInitialData();
             await checkAdminStatus();
-            
-            // Initialize push notifications
-            await initializePushNotifications();
-            
-            // Check if there's a pending contact save action
-            const pendingContactSave = sessionStorage.getItem('pendingContactSave');
-            if (pendingContactSave) {
-                try {
-                    const contactData = JSON.parse(pendingContactSave);
-                    sessionStorage.removeItem('pendingContactSave');
-                    // Small delay to ensure UI is ready
-                    setTimeout(async () => {
-                        await openContactModal(contactData);
-                    }, 500);
-                } catch (error) {
-                    console.error('Error parsing pending contact save:', error);
-                    sessionStorage.removeItem('pendingContactSave');
-                }
-            }
         } catch (error) {
             debugError('Login error:', error);
             alert('Login failed: ' + (error.message || 'Unknown error'));
@@ -1707,23 +1055,6 @@ async function handleEmailSignUp() {
             
             showApp();
             await loadInitialData();
-            await checkAdminStatus();
-            
-            // Check if there's a pending contact save action
-            const pendingContactSave = sessionStorage.getItem('pendingContactSave');
-            if (pendingContactSave) {
-                try {
-                    const contactData = JSON.parse(pendingContactSave);
-                    sessionStorage.removeItem('pendingContactSave');
-                    // Small delay to ensure UI is ready
-                    setTimeout(async () => {
-                        await openContactModal(contactData);
-                    }, 500);
-                } catch (error) {
-                    console.error('Error parsing pending contact save:', error);
-                    sessionStorage.removeItem('pendingContactSave');
-                }
-            }
         } catch (error) {
             console.error('Signup error:', error);
             alert('Sign up failed: ' + (error.message || 'Unknown error'));
@@ -1744,23 +1075,6 @@ async function handleEmailSignUp() {
             currentUser = getCurrentUser();
             showApp();
             await loadInitialData();
-            await checkAdminStatus();
-            
-            // Check if there's a pending contact save action
-            const pendingContactSave = sessionStorage.getItem('pendingContactSave');
-            if (pendingContactSave) {
-                try {
-                    const contactData = JSON.parse(pendingContactSave);
-                    sessionStorage.removeItem('pendingContactSave');
-                    // Small delay to ensure UI is ready
-                    setTimeout(async () => {
-                        await openContactModal(contactData);
-                    }, 500);
-                } catch (error) {
-                    console.error('Error parsing pending contact save:', error);
-                    sessionStorage.removeItem('pendingContactSave');
-                }
-            }
         } catch (error) {
             console.error('Signup error:', error);
             alert('Sign up failed: ' + (error.message || 'Unknown error'));
@@ -1773,12 +1087,11 @@ async function loadInitialData() {
     try {
         // Load current event from localStorage
         const savedEventId = localStorage.getItem('currentEventId');
-        if (savedEventId && savedEventId !== 'undefined' && savedEventId !== 'null') {
+        if (savedEventId) {
             try {
                 currentEvent = await api.getEvent(savedEventId);
                 updateCurrentEventBanner();
             } catch (error) {
-                console.error('Failed to load saved event:', error);
                 localStorage.removeItem('currentEventId');
             }
         }
@@ -1829,7 +1142,18 @@ async function loadProfile() {
     
     if (!user || !token) {
         console.warn('No user or token, cannot load profile');
-        showAuthScreen();
+        // Don't redirect, just show empty state
+const profileView = document.getElementById('profileView');
+        if (profileView) {
+            profileView.innerHTML = `
+                <div class="view-header">
+                    <h2>My Profile</h2>
+                </div>
+                <div class="empty-state">
+                    <p>Please log in to view your profile</p>
+                </div>
+            `;
+        }
         return;
     }
 
@@ -2045,27 +1369,12 @@ function generateVCard(user) {
         vcard += `TEL;TYPE=CELL,WA:${escapeVCardValue(user.whatsapp)}\n`;
     }
     
-    // Role/Title
+    if (user.linkedin_url) {
+        vcard += `URL:${escapeVCardValue(user.linkedin_url)}\n`;
+    }
+    
     if (user.role_company) {
         vcard += `TITLE:${escapeVCardValue(user.role_company)}\n`;
-    }
-    
-    // Website (if user has website field)
-    if (user.website) {
-        let websiteUrl = user.website;
-        if (!websiteUrl.startsWith('http://') && !websiteUrl.startsWith('https://')) {
-            websiteUrl = 'https://' + websiteUrl;
-        }
-        vcard += `URL:${escapeVCardValue(websiteUrl)}\n`;
-    }
-    
-    // LinkedIn
-    if (user.linkedin_url) {
-        let linkedInUrl = user.linkedin_url;
-        if (!linkedInUrl.startsWith('http://') && !linkedInUrl.startsWith('https://')) {
-            linkedInUrl = 'https://' + linkedInUrl;
-        }
-        vcard += `URL;TYPE=LinkedIn:${escapeVCardValue(linkedInUrl)}\n`;
     }
     
     if (user.about_me) {
@@ -2167,36 +1476,36 @@ let currentViewingContact = null;
 function updateContactActionButtons(contact) {
     currentViewingContact = contact;
     
-    // Email button (now inline with email field, handled by displayContactProfile)
+    // Email button
     const emailBtn = document.getElementById('emailContactBtn');
     if (emailBtn) {
-        emailBtn.style.display = contact.email ? 'inline-flex' : 'none';
+        emailBtn.style.display = contact.email ? 'flex' : 'none';
     }
     
-    // Call button (now inline with mobile field, handled by displayContactProfile)
+    // Call button
     const callBtn = document.getElementById('callContactBtn');
     if (callBtn) {
-        callBtn.style.display = contact.mobile ? 'inline-flex' : 'none';
+        callBtn.style.display = contact.mobile ? 'flex' : 'none';
     }
     
-    // Message button (now inline with mobile field, handled by displayContactProfile)
+    // Message button
     const messageBtn = document.getElementById('messageContactBtn');
     if (messageBtn) {
-        messageBtn.style.display = contact.mobile ? 'inline-flex' : 'none';
+        messageBtn.style.display = contact.mobile ? 'flex' : 'none';
     }
     
-    // WhatsApp button (now inline with mobile field, handled by displayContactProfile)
+    // WhatsApp button
     const whatsappBtn = document.getElementById('whatsappContactBtn');
     if (whatsappBtn) {
-        whatsappBtn.style.display = (contact.mobile || contact.whatsapp) ? 'inline-flex' : 'none';
+        whatsappBtn.style.display = (contact.mobile || contact.whatsapp) ? 'flex' : 'none';
     }
 }
 
-async function saveContactToDevice() {
+function saveContactToDevice() {
     if (!currentViewingContact) return;
     
-    // Generate vCard with embedded photo
-    const vcard = await generateContactVCardWithPhoto(currentViewingContact);
+    // Generate vCard
+    const vcard = generateContactVCard(currentViewingContact);
     const blob = new Blob([vcard], { type: 'text/vcard' });
     const url = URL.createObjectURL(blob);
     
@@ -2238,230 +1547,36 @@ function generateContactVCard(contact) {
     vcard += `FN:${escapeVCardValue(contact.name || '')}\n`;
     vcard += `N:${escapeVCardValue(contact.name || '')};;;;\n`;
     
-    // Handle multiple email addresses - merge single and multiple
-    const emailAddresses = [];
-    if (contact.email_addresses && Array.isArray(contact.email_addresses) && contact.email_addresses.length > 0) {
-        contact.email_addresses.forEach(email => {
-            const emailAddr = email.address || email;
-            if (emailAddr) {
-                emailAddresses.push(emailAddr);
-            }
-        });
+    if (contact.email) {
+        vcard += `EMAIL:${escapeVCardValue(contact.email)}\n`;
     }
-    // Add single email if not already in the list
-    if (contact.email && !emailAddresses.includes(contact.email)) {
-        emailAddresses.unshift(contact.email);
-    }
-    // Add all emails to vCard
-    emailAddresses.forEach(email => {
-        vcard += `EMAIL:${escapeVCardValue(email)}\n`;
-    });
     
-    // Handle multiple phone numbers - merge single and multiple
-    const phoneNumbers = [];
-    if (contact.phone_numbers && Array.isArray(contact.phone_numbers) && contact.phone_numbers.length > 0) {
-        contact.phone_numbers.forEach(phone => {
-            const phoneNumber = phone.number || phone;
-            if (phoneNumber) {
-                phoneNumbers.push({
-                    number: phoneNumber,
-                    is_whatsapp: phone.is_whatsapp !== false
-                });
-            }
-        });
-    }
-    // Add single mobile if not already in the list
     if (contact.mobile) {
-        const mobileExists = phoneNumbers.some(pn => pn.number === contact.mobile);
-        if (!mobileExists) {
-            phoneNumbers.unshift({
-                number: contact.mobile,
-                is_whatsapp: false
-            });
-        }
-    }
-    // Add single whatsapp if not already in the list
-    if (contact.whatsapp && contact.whatsapp !== contact.mobile) {
-        const whatsappExists = phoneNumbers.some(pn => pn.number === contact.whatsapp);
-        if (!whatsappExists) {
-            phoneNumbers.push({
-                number: contact.whatsapp,
-                is_whatsapp: true
-            });
-        }
-    }
-    // Add all phone numbers to vCard
-    phoneNumbers.forEach(phone => {
-        if (phone.is_whatsapp) {
-            vcard += `TEL;TYPE=CELL,WA:${escapeVCardValue(phone.number)}\n`;
-        } else {
-            vcard += `TEL;TYPE=CELL:${escapeVCardValue(phone.number)}\n`;
-    }
-    });
-    
-    // Company
-    if (contact.company) {
-        vcard += `ORG:${escapeVCardValue(contact.company)}\n`;
+        vcard += `TEL;TYPE=CELL:${escapeVCardValue(contact.mobile)}\n`;
     }
     
-    // Role/Title
+    if (contact.whatsapp) {
+        vcard += `TEL;TYPE=CELL,WA:${escapeVCardValue(contact.whatsapp)}\n`;
+    }
+    
+    if (contact.linkedin_url) {
+        vcard += `URL:${escapeVCardValue(contact.linkedin_url)}\n`;
+    }
+    
     if (contact.role_company) {
         vcard += `TITLE:${escapeVCardValue(contact.role_company)}\n`;
     }
     
-    // Website
-    if (contact.website) {
-        let websiteUrl = contact.website;
-        if (!websiteUrl.startsWith('http://') && !websiteUrl.startsWith('https://')) {
-            websiteUrl = 'https://' + websiteUrl;
-        }
-        vcard += `URL:${escapeVCardValue(websiteUrl)}\n`;
-    }
-    
-    // LinkedIn
-    if (contact.linkedin_url) {
-        let linkedInUrl = contact.linkedin_url;
-        if (!linkedInUrl.startsWith('http://') && !linkedInUrl.startsWith('https://')) {
-            linkedInUrl = 'https://' + linkedInUrl;
-        }
-        vcard += `URL;TYPE=LinkedIn:${escapeVCardValue(linkedInUrl)}\n`;
-    }
-    
-    // Custom pplai.app fields
-    // Tags as custom field
-    if (contact.tags && contact.tags.length > 0) {
-        const tagNames = contact.tags.map(t => t.name || t).join(', ');
-        vcard += `X-PPLAI-TAGS:${escapeVCardValue(tagNames)}\n`;
-    }
-    
-    // Date met on pplai.app as custom field (ISO format: YYYY-MM-DD)
-    if (contact.meeting_date) {
-        const meetingDate = new Date(contact.meeting_date);
-        const dateMetISO = meetingDate.toISOString().split('T')[0]; // YYYY-MM-DD format
-        vcard += `X-PPLAI-DATE-MET:${escapeVCardValue(dateMetISO)}\n`;
-    }
-    
-    // Event as custom field
-    if (contact.event && contact.event.name) {
-        vcard += `X-PPLAI-EVENT:${escapeVCardValue(contact.event.name)}\n`;
-    }
-    
-    // Location as custom field
-    if (contact.meeting_location_name) {
-        vcard += `X-PPLAI-LOCATION:${escapeVCardValue(contact.meeting_location_name)}\n`;
-    } else if (contact.meeting_latitude && contact.meeting_longitude) {
-        vcard += `X-PPLAI-LOCATION:${escapeVCardValue(`${contact.meeting_latitude}, ${contact.meeting_longitude}`)}\n`;
-    }
-    
-    // Notes - combine all contact information
-    let notes = [];
-    
-    // Add tags if available (also in notes for compatibility)
-    if (contact.tags && contact.tags.length > 0) {
-        const tagNames = contact.tags.map(t => t.name || t).join(', ');
-        notes.push(`Tags: ${tagNames}`);
-    }
-    
-    // Add event if available (also in notes for compatibility)
-    if (contact.event && contact.event.name) {
-        notes.push(`Event: ${contact.event.name}`);
-    }
-    
-    // Add location if available (also in notes for compatibility)
-    if (contact.meeting_location_name) {
-        notes.push(`Location: ${contact.meeting_location_name}`);
-    } else if (contact.meeting_latitude && contact.meeting_longitude) {
-        notes.push(`Location: ${contact.meeting_latitude}, ${contact.meeting_longitude}`);
-    }
-    
-    // Add meeting date if available (also in notes for compatibility)
-    if (contact.meeting_date) {
-        const meetingDate = new Date(contact.meeting_date);
-        const dateStr = meetingDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
-        notes.push(`Met on: ${dateStr}`);
-    }
-    
-    // Add AI summary if available
-    if (contact.ai_summary) {
-        notes.push(`\nAI Summary:\n${contact.ai_summary}`);
-    }
-    
-    // Add meeting context (chat messages/notes)
     if (contact.meeting_context) {
-        if (notes.length > 0) {
-            notes.push(`\nNotes:\n${contact.meeting_context}`);
-        } else {
-            notes.push(contact.meeting_context);
-        }
+        vcard += `NOTE:${escapeVCardValue(contact.meeting_context)}\n`;
     }
     
-    // Add combined notes to vCard
-    if (notes.length > 0) {
-        vcard += `NOTE:${escapeVCardValue(notes.join('\n'))}\n`;
+    if (contact.contact_photo_url) {
+        vcard += `PHOTO;VALUE=URI:${escapeVCardValue(contact.contact_photo_url)}\n`;
     }
-    
-    // Photo - will be added asynchronously if available
-    // (Photo is handled separately to embed as base64)
     
     vcard += 'END:VCARD';
     return vcard;
-}
-
-async function generateContactVCardWithPhoto(contact) {
-    // Generate base vCard without photo
-    let vcard = generateContactVCard(contact);
-    
-    // Try to embed photo as base64 if available
-    if (contact.contact_photo_url) {
-        try {
-            const photoData = await fetchPhotoAsBase64(contact.contact_photo_url);
-            if (photoData && photoData.base64) {
-                // Insert photo before END:VCARD
-                const photoLine = `PHOTO;ENCODING=b;TYPE=${photoData.imageType}:${photoData.base64}\n`;
-                vcard = vcard.replace('END:VCARD', photoLine + 'END:VCARD');
-            }
-        } catch (error) {
-            console.warn('Failed to embed photo in vCard:', error);
-            // Don't include photo URL if we can't embed it
-        }
-    }
-    
-    return vcard;
-}
-
-async function fetchPhotoAsBase64(imageUrl) {
-    try {
-        // Fetch the image
-        const response = await fetch(imageUrl);
-        if (!response.ok) {
-            throw new Error(`Failed to fetch image: ${response.status}`);
-        }
-        
-        const blob = await response.blob();
-        
-        // Convert blob to base64 and return both base64 and content type
-        return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                // Remove data:image/...;base64, prefix
-                const base64 = reader.result.split(',')[1];
-                // Determine image type from blob type
-                let imageType = 'JPEG'; // Default
-                if (blob.type) {
-                    if (blob.type.includes('png')) imageType = 'PNG';
-                    else if (blob.type.includes('gif')) imageType = 'GIF';
-                    else if (blob.type.includes('webp')) imageType = 'WEBP';
-                    else if (blob.type.includes('jpeg') || blob.type.includes('jpg')) imageType = 'JPEG';
-                }
-                resolve({ base64, imageType });
-            };
-            reader.onerror = reject;
-            reader.readAsDataURL(blob);
-        });
-    } catch (error) {
-        console.warn('Error fetching photo for vCard:', error);
-        return null;
-    }
 }
 
 function emailContact() {
@@ -2524,19 +1639,12 @@ function displayProfile(profile) {
     
     // Also update the profile view display for backward compatibility
     const photoEl = document.getElementById('profilePhotoDisplay');
-    const photoContainer = photoEl?.parentElement; // Get the profile-photo-large container
     const nameEl = document.getElementById('profileNameDisplay');
     const roleEl = document.getElementById('profileRoleDisplay');
 
-    if (photoEl && photoContainer) {
-        if (profile.profile_photo_url) {
+    if (photoEl && profile.profile_photo_url) {
         photoEl.src = profile.profile_photo_url;
         photoEl.style.display = 'block';
-            photoContainer.style.display = 'block'; // Show container when photo exists
-        } else {
-            photoEl.style.display = 'none';
-            photoContainer.style.display = 'none'; // Hide container when no photo
-        }
     }
     if (nameEl) nameEl.textContent = profile.name;
     if (roleEl) roleEl.textContent = profile.role_company || '';
@@ -2616,12 +1724,9 @@ async function saveProfile() {
         setCurrentUser(updated);
         currentUser = updated;
         
-        // Cache invalidation is handled in api.updateProfile()
-        // Clear QR cache when profile is updated (additional cleanup)
-        if (typeof clearQRCache === 'function') {
-            clearQRCache(updated.id, 'url');
-            clearQRCache(updated.id, 'vcard');
-        }
+        // Clear QR cache when profile is updated
+        clearQRCache(updated.id, 'url');
+        clearQRCache(updated.id, 'vcard');
         
         displayProfile(updated);
         await loadProfileQR(); // Reload QR with new data
@@ -2630,52 +1735,6 @@ async function saveProfile() {
     } catch (error) {
         showToast('Failed to update profile: ' + error.message, 'error');
     }
-}
-
-async function saveProfileToContacts() {
-    const profile = getCurrentUser();
-    if (!profile) {
-        showToast('Unable to load profile', 'error');
-        return;
-    }
-    
-    // Convert profile to contact data format
-    // Handle phone numbers - use phone_numbers array if available, otherwise create from mobile
-    let phoneNumbers = [];
-    if (profile.phone_numbers && Array.isArray(profile.phone_numbers) && profile.phone_numbers.length > 0) {
-        phoneNumbers = profile.phone_numbers;
-    } else if (profile.mobile) {
-        phoneNumbers = [{
-            number: profile.mobile,
-            is_whatsapp: profile.whatsapp ? true : false
-        }];
-    }
-    
-    // Handle email addresses - use email_addresses array if available, otherwise create from email
-    let emailAddresses = [];
-    if (profile.email_addresses && Array.isArray(profile.email_addresses) && profile.email_addresses.length > 0) {
-        emailAddresses = profile.email_addresses;
-    } else if (profile.email) {
-        emailAddresses = [{
-            address: profile.email
-        }];
-    }
-    
-    // Map about_me to meeting_context for the contact form
-    const contactData = {
-        name: profile.name || '',
-        role_company: profile.role_company || '',
-        phone_numbers: phoneNumbers,
-        email_addresses: emailAddresses,
-        mobile: profile.mobile || '', // Keep for backward compatibility
-        email: profile.email || '', // Keep for backward compatibility
-        linkedin_url: profile.linkedin_url || '',
-        meeting_context: profile.about_me || '', // Map about_me to meeting_context
-        contact_photo_url: profile.profile_photo_url || ''
-    };
-    
-    // Open contact modal with profile data
-    await openContactModal(contactData);
 }
 
 async function shareProfile() {
@@ -2746,96 +1805,7 @@ async function shareProfile() {
 // Event functions
 let allEvents = []; // Store all events for search filtering
 
-async function importLumaEventFromUrl() {
-    const urlInput = document.getElementById('lumaUrlInput');
-    const url = urlInput?.value?.trim();
-    
-    if (!url || (!url.includes('lu.ma') && !url.includes('luma.com'))) {
-        showToast('Please enter a valid Luma event URL (lu.ma or luma.com)', 'error');
-        return;
-    }
-    
-    const btn = document.getElementById('importLumaUrlBtn');
-    const originalText = btn?.textContent;
-    if (btn) {
-        btn.disabled = true;
-        btn.textContent = 'Importing...';
-    }
-    
-    try {
-        const event = await api.importLumaEventFromUrl(url);
-        showToast(`✅ Successfully imported "${event.name}"`, 'success');
-        document.getElementById('lumaImportModal')?.classList.add('hidden');
-        if (urlInput) urlInput.value = '';
-        // Refresh events list - ensure we're on events view and reload
-        await loadEvents();
-        // Force display update if events view is visible
-        const eventsView = document.getElementById('eventsView');
-        if (eventsView && !eventsView.classList.contains('hidden')) {
-            displayEvents(allEvents);
-        }
-    } catch (error) {
-        console.error('Error importing Luma event:', error);
-        showToast(error.message || 'Failed to import event from Luma', 'error');
-    } finally {
-        if (btn) {
-            btn.disabled = false;
-            btn.textContent = originalText;
-        }
-    }
-}
-
-async function importLumaEventsFromApi() {
-    const apiKeyInput = document.getElementById('lumaApiKeyInput');
-    const calendarIdInput = document.getElementById('lumaCalendarIdInput');
-    const apiKey = apiKeyInput?.value?.trim();
-    const calendarId = calendarIdInput?.value?.trim() || null;
-    
-    if (!apiKey) {
-        showToast('Please enter your Luma API key', 'error');
-        return;
-    }
-    
-    const btn = document.getElementById('importLumaApiBtn');
-    const originalText = btn?.textContent;
-    if (btn) {
-        btn.disabled = true;
-        btn.textContent = 'Importing...';
-    }
-    
-    try {
-        const events = await api.importLumaEventsFromApi(apiKey, calendarId);
-        showToast(`✅ Successfully imported ${events.length} event(s)`, 'success');
-        document.getElementById('lumaImportModal')?.classList.add('hidden');
-        if (apiKeyInput) apiKeyInput.value = '';
-        if (calendarIdInput) calendarIdInput.value = '';
-        // Refresh events list - ensure we're on events view and reload
-        await loadEvents();
-        // Force display update if events view is visible
-        const eventsView = document.getElementById('eventsView');
-        if (eventsView && !eventsView.classList.contains('hidden')) {
-            displayEvents(allEvents);
-        }
-    } catch (error) {
-        console.error('Error importing Luma events:', error);
-        showToast(error.message || 'Failed to import events from Luma', 'error');
-    } finally {
-        if (btn) {
-            btn.disabled = false;
-            btn.textContent = originalText;
-        }
-    }
-}
-
 async function loadEvents() {
-    // Check authentication
-    const currentUser = getCurrentUser();
-    const token = getAuthToken();
-    if (!currentUser || !token) {
-        showAuthScreen();
-        return;
-    }
-    
     try {
         allEvents = await api.getEvents();
         displayEvents(allEvents);
@@ -2848,10 +1818,6 @@ async function loadEvents() {
 function filterEvents() {
     const searchInput = document.getElementById('eventsSearchInput');
     const clearBtn = document.getElementById('clearEventsSearch');
-    const dateFilter = document.getElementById('eventsDateFilter');
-    const dateFrom = document.getElementById('eventsDateFrom');
-    const dateTo = document.getElementById('eventsDateTo');
-    
     if (!searchInput) return;
     
     const searchTerm = searchInput.value.toLowerCase().trim();
@@ -2865,65 +1831,22 @@ function filterEvents() {
         }
     }
     
-    let filteredEvents = [...allEvents];
-    
-    // Apply search filter
-    if (searchTerm !== '') {
-        filteredEvents = filteredEvents.filter(event => {
-            const name = (event.name || '').toLowerCase();
-            const location = (event.location || '').toLowerCase();
-            const description = (event.description || '').toLowerCase();
-            
-            return name.includes(searchTerm) || 
-                   location.includes(searchTerm) || 
-                   description.includes(searchTerm);
-        });
+    if (searchTerm === '') {
+        // Show all events if search is empty
+        displayEvents(allEvents);
+        return;
     }
-    
-    // Apply date filter
-    if (dateFilter && dateFilter.value !== 'all') {
-        const now = new Date();
-        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    // Filter events by name, location, or description
+    const filteredEvents = allEvents.filter(event => {
+        const name = (event.name || '').toLowerCase();
+        const location = (event.location || '').toLowerCase();
+        const description = (event.description || '').toLowerCase();
         
-        filteredEvents = filteredEvents.filter(event => {
-            const startDate = new Date(event.start_date);
-            const endDate = new Date(event.end_date);
-            
-            if (dateFilter.value === 'today') {
-                return startDate <= today && endDate >= today;
-            } else if (dateFilter.value === 'week') {
-                const weekStart = new Date(today);
-                weekStart.setDate(today.getDate() - today.getDay());
-                const weekEnd = new Date(weekStart);
-                weekEnd.setDate(weekStart.getDate() + 6);
-                return (startDate >= weekStart && startDate <= weekEnd) || 
-                       (endDate >= weekStart && endDate <= weekEnd) ||
-                       (startDate <= weekStart && endDate >= weekEnd);
-            } else if (dateFilter.value === 'month') {
-                const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-                const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-                return (startDate >= monthStart && startDate <= monthEnd) || 
-                       (endDate >= monthStart && endDate <= monthEnd) ||
-                       (startDate <= monthStart && endDate >= monthEnd);
-            } else if (dateFilter.value === 'upcoming') {
-                return startDate > today;
-            } else if (dateFilter.value === 'past') {
-                return endDate < today;
-            } else if (dateFilter.value === 'custom') {
-                if (dateFrom && dateFrom.value) {
-                    const fromDate = new Date(dateFrom.value);
-                    if (endDate < fromDate) return false;
-                }
-                if (dateTo && dateTo.value) {
-                    const toDate = new Date(dateTo.value);
-                    toDate.setHours(23, 59, 59, 999);
-                    if (startDate > toDate) return false;
-                }
-                return true;
-            }
-            return true;
-        });
-    }
+        return name.includes(searchTerm) || 
+               location.includes(searchTerm) || 
+               description.includes(searchTerm);
+    });
     
     displayEvents(filteredEvents);
 }
@@ -2940,46 +1863,7 @@ function clearEventsSearch() {
     }
     
     // Show all events
-    filterEvents();
-}
-
-function clearEventsFilters() {
-    const searchInput = document.getElementById('eventsSearchInput');
-    const dateFilter = document.getElementById('eventsDateFilter');
-    const customRange = document.getElementById('eventsCustomDateRange');
-    const dateFrom = document.getElementById('eventsDateFrom');
-    const dateTo = document.getElementById('eventsDateTo');
-    
-    if (searchInput) searchInput.value = '';
-    if (dateFilter) dateFilter.value = 'all';
-    if (customRange) customRange.classList.add('hidden');
-    if (dateFrom) dateFrom.value = '';
-    if (dateTo) dateTo.value = '';
-    
-    filterEvents();
-    updateEventsClearFiltersButton();
-}
-
-function updateEventsClearFiltersButton() {
-    const clearBtn = document.getElementById('clearEventsFiltersBtn');
-    const searchInput = document.getElementById('eventsSearchInput');
-    const dateFilter = document.getElementById('eventsDateFilter');
-    const dateFrom = document.getElementById('eventsDateFrom');
-    const dateTo = document.getElementById('eventsDateTo');
-    
-    if (!clearBtn) return;
-    
-    const hasSearch = searchInput && searchInput.value.trim().length > 0;
-    const hasDateFilter = dateFilter && dateFilter.value !== 'all';
-    const hasCustomDates = dateFrom && dateFrom.value || dateTo && dateTo.value;
-    
-    if (hasSearch || hasDateFilter || hasCustomDates) {
-        clearBtn.style.display = 'flex';
-        clearBtn.style.alignItems = 'center';
-        clearBtn.style.gap = '6px';
-    } else {
-        clearBtn.style.display = 'none';
-    }
+    displayEvents(allEvents);
 }
 
 async function loadEventsForContactForm() {
@@ -3026,70 +1910,22 @@ function displayEvents(events) {
         const isSelected = currentEvent && currentEvent.id === event.id;
         return `
         <div class="event-card ${isSelected ? 'event-selected' : ''}" data-event-id="${event.id}">
-            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
-                <h3 style="margin: 0; flex: 1;">${event.name}${isSelected ? ' <span style="font-size: 14px; color: var(--primary);">(Selected)</span>' : ''}</h3>
-                <div style="display: flex; gap: 4px; flex-shrink: 0; margin-left: 12px;">
-                    <button class="btn-small btn-secondary edit-event" data-event-id="${event.id}" title="Edit" style="display: flex; align-items: center; justify-content: center; padding: 6px 8px;">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                        </svg>
-                    </button>
-                    <button class="btn-small btn-secondary delete-event" data-event-id="${event.id}" title="Delete" style="display: flex; align-items: center; justify-content: center; padding: 6px 8px; color: var(--danger); border-color: var(--danger);">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <polyline points="3 6 5 6 21 6"></polyline>
-                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                        </svg>
-                    </button>
-                </div>
-            </div>
+            <h3>${event.name}${isSelected ? ' <span style="font-size: 14px; color: var(--primary);">(Selected)</span>' : ''}</h3>
             <p class="event-location">📍 ${event.location}</p>
             <p class="event-dates">${formatDateRange(event.start_date, event.end_date)}</p>
             ${event.description ? `<p class="event-description">${event.description}</p>` : ''}
             <div class="event-actions">
                 ${isSelected 
-                    ? `<button class="btn-small btn-secondary unselect-event" data-event-id="${event.id}" title="Unselect" style="display: flex; align-items: center; justify-content: center; padding: 6px 8px;">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <line x1="18" y1="6" x2="6" y2="18"></line>
-                            <line x1="6" y1="6" x2="18" y2="18"></line>
-                        </svg>
-                    </button>`
-                    : `<button class="btn-small btn-secondary select-event" data-event-id="${event.id}" title="Select" style="display: flex; align-items: center; gap: 6px; padding: 6px 10px;">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <polyline points="20 6 9 17 4 12"></polyline>
-                        </svg>
-                        <span>Select</span>
-                    </button>`
+                    ? `<button class="btn-small btn-secondary unselect-event" data-event-id="${event.id}">Unselect</button>`
+                    : `<button class="btn-small btn-primary select-event" data-event-id="${event.id}">Select</button>`
                 }
-                <div style="display: flex; gap: 4px; flex-shrink: 0;">
-                    <button class="btn-small btn-secondary view-contacts" data-event-id="${event.id}" data-event-name="${event.name}" title="View Contacts" style="display: flex; align-items: center; gap: 6px; padding: 6px 10px;">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                            <circle cx="9" cy="7" r="4"></circle>
-                            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-                            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-                        </svg>
-                        <span>Contacts</span>
-                    </button>
-                    <button class="btn-small btn-secondary export-pdf" data-event-id="${event.id}" title="Export PDF" style="display: flex; align-items: center; gap: 6px; padding: 6px 10px;">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                            <polyline points="14 2 14 8 20 8"></polyline>
-                            <line x1="16" y1="13" x2="8" y2="13"></line>
-                            <line x1="16" y1="17" x2="8" y2="17"></line>
-                            <polyline points="10 9 9 9 8 9"></polyline>
-                        </svg>
-                        <span>PDF</span>
-                    </button>
-                    <button class="btn-small btn-secondary export-csv" data-event-id="${event.id}" title="Export CSV" style="display: flex; align-items: center; gap: 6px; padding: 6px 10px;">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                            <polyline points="7 10 12 15 17 10"></polyline>
-                            <line x1="12" y1="15" x2="12" y2="3"></line>
-                        </svg>
-                        <span>CSV</span>
-                    </button>
+                <button class="btn-small btn-secondary view-contacts" data-event-id="${event.id}" data-event-name="${event.name}">View Contacts</button>
+                <div class="export-buttons" style="display: flex; gap: 4px;">
+                    <button class="btn-small btn-secondary export-pdf" data-event-id="${event.id}" title="Export PDF">📄 PDF</button>
+                    <button class="btn-small btn-secondary export-csv" data-event-id="${event.id}" title="Export CSV">📊 CSV</button>
                 </div>
+                <button class="btn-small btn-secondary edit-event" data-event-id="${event.id}">Edit</button>
+                <button class="btn-small btn-danger delete-event" data-event-id="${event.id}">Delete</button>
             </div>
         </div>
     `;
@@ -3098,11 +1934,7 @@ function displayEvents(events) {
     // Add event listeners
     container.querySelectorAll('.select-event').forEach(btn => {
         btn.addEventListener('click', async (e) => {
-            const eventId = e.currentTarget.dataset.eventId || e.target.closest('.select-event')?.dataset.eventId;
-            if (!eventId) {
-                console.error('Event ID not found for select event');
-                return;
-            }
+            const eventId = e.target.dataset.eventId;
             await selectEvent(eventId);
         });
     });
@@ -3128,14 +1960,9 @@ function displayEvents(events) {
     container.querySelectorAll('.export-pdf, .export-csv').forEach(btn => {
         btn.addEventListener('click', (e) => {
             e.preventDefault();
-            const button = e.currentTarget || e.target.closest('.export-pdf, .export-csv');
-            const eventId = button?.dataset.eventId;
-            if (!eventId) {
-                console.error('Event ID not found for export');
-                return;
-            }
+            const eventId = e.target.dataset.eventId;
             // Find event name from the card
-            const eventCard = button.closest('.event-card');
+            const eventCard = e.target.closest('.event-card');
             const eventName = eventCard?.querySelector('h3')?.textContent || 'Event';
             showEventExportModal(eventId, eventName);
         });
@@ -3143,38 +1970,23 @@ function displayEvents(events) {
 
     container.querySelectorAll('.view-contacts').forEach(btn => {
         btn.addEventListener('click', (e) => {
-            const button = e.currentTarget || e.target.closest('.view-contacts');
-            const eventId = button?.dataset.eventId;
-            const eventName = button?.dataset.eventName;
-            if (!eventId) {
-                console.error('Event ID not found for view contacts');
-                return;
-            }
+            const eventId = e.target.dataset.eventId;
+            const eventName = e.target.dataset.eventName;
             viewEventContacts(eventId, eventName);
         });
     });
 
     container.querySelectorAll('.edit-event').forEach(btn => {
         btn.addEventListener('click', async (e) => {
-            const button = e.currentTarget || e.target.closest('.edit-event');
-            const eventId = button?.dataset.eventId;
-            if (!eventId) {
-                console.error('Event ID not found for edit event');
-                return;
-            }
+            const eventId = e.target.dataset.eventId;
             await editEvent(eventId);
         });
     });
 
     container.querySelectorAll('.delete-event').forEach(btn => {
         btn.addEventListener('click', async (e) => {
-            const button = e.currentTarget || e.target.closest('.delete-event');
-            const eventId = button?.dataset.eventId;
-            if (!eventId) {
-                console.error('Event ID not found for delete event');
-                return;
-            }
             if (confirm('Are you sure you want to delete this event?')) {
+                const eventId = e.target.dataset.eventId;
                 try {
                     await api.deleteEvent(eventId);
                     await loadEvents();
@@ -3461,29 +2273,15 @@ function toggleContactsFilters() {
 }
 
 async function loadContacts() {
-    // Check authentication
-    const currentUser = getCurrentUser();
-    const token = getAuthToken();
-    if (!currentUser || !token) {
-        showAuthScreen();
-        return;
-    }
-    
     try {
         const eventId = document.getElementById('eventFilter')?.value || 'all';
         const tagId = document.getElementById('tagFilter')?.value || 'all';
         const dateFilter = document.getElementById('dateFilter')?.value || 'all';
-        const favoriteFilter = document.getElementById('favoriteFilter')?.checked || false;
         
         // Build filter params
         const filters = {};
         if (eventId !== 'all') filters.event_id = eventId;
         if (tagId !== 'all') filters.tag_id = tagId;
-        
-        // Handle favorite filter
-        if (favoriteFilter) {
-            filters.is_favorite = true;
-        }
         
         // Handle date filters
         if (dateFilter === 'custom') {
@@ -3635,11 +2433,6 @@ function displayContacts(contacts) {
                 <p class="contact-date">Met: ${formatDateTime(contact.meeting_date)}</p>
             </div>
             <div class="contact-actions-list" style="display: flex; gap: 8px; align-items: center;">
-                <button class="icon-btn-action favorite-contact-btn ${contact.is_favorite ? 'favorite-active' : ''}" data-contact-id="${contact.id}" onclick="event.stopPropagation();" title="${contact.is_favorite ? 'Remove from favorites' : 'Add to favorites'}">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="${contact.is_favorite ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2">
-                        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
-                    </svg>
-                </button>
                 <button class="icon-btn-action chat-contact-btn" data-contact-id="${contact.id}" data-contact-name="${contact.name}" onclick="event.stopPropagation();" title="Chat">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
@@ -3696,33 +2489,6 @@ function displayContacts(contacts) {
         });
     });
     
-    container.querySelectorAll('.favorite-contact-btn').forEach(btn => {
-        btn.addEventListener('click', async (e) => {
-            e.stopPropagation();
-            const button = e.currentTarget;
-            const contactId = button.dataset.contactId;
-            
-            try {
-                const updatedContact = await api.toggleContactFavorite(contactId);
-                // Update the button state
-                if (updatedContact.is_favorite) {
-                    button.classList.add('favorite-active');
-                    button.querySelector('svg').setAttribute('fill', 'currentColor');
-                    button.title = 'Remove from favorites';
-                } else {
-                    button.classList.remove('favorite-active');
-                    button.querySelector('svg').setAttribute('fill', 'none');
-                    button.title = 'Add to favorites';
-                }
-                // Reload contacts to reflect the change
-                await loadContacts();
-            } catch (error) {
-                console.error('Error toggling favorite:', error);
-                showToast('Failed to update favorite status', 'error');
-            }
-        });
-    });
-    
     container.querySelectorAll('.delete-contact-btn').forEach(btn => {
         btn.addEventListener('click', async (e) => {
             e.stopPropagation();
@@ -3749,7 +2515,6 @@ function clearAllFilters() {
     const eventFilter = document.getElementById('eventFilter');
     const tagFilter = document.getElementById('tagFilter');
     const dateFilter = document.getElementById('dateFilter');
-    const favoriteFilter = document.getElementById('favoriteFilter');
     const customDateRange = document.getElementById('customDateRange');
     const dateFrom = document.getElementById('dateFrom');
     const dateTo = document.getElementById('dateTo');
@@ -3757,7 +2522,6 @@ function clearAllFilters() {
     if (eventFilter) eventFilter.value = 'all';
     if (tagFilter) tagFilter.value = 'all';
     if (dateFilter) dateFilter.value = 'all';
-    if (favoriteFilter) favoriteFilter.checked = false;
     if (customDateRange) customDateRange.classList.add('hidden');
     if (dateFrom) dateFrom.value = '';
     if (dateTo) dateTo.value = '';
@@ -3776,14 +2540,12 @@ function updateClearFiltersButton() {
     const eventFilter = document.getElementById('eventFilter');
     const tagFilter = document.getElementById('tagFilter');
     const dateFilter = document.getElementById('dateFilter');
-    const favoriteFilter = document.getElementById('favoriteFilter');
     
-    // Show button if any filter is not set to 'all' or favorite is checked
+    // Show button if any filter is not set to 'all'
     const hasFilters = 
         (eventFilter && eventFilter.value !== 'all') ||
         (tagFilter && tagFilter.value !== 'all') ||
-        (dateFilter && dateFilter.value !== 'all') ||
-        (favoriteFilter && favoriteFilter.checked);
+        (dateFilter && dateFilter.value !== 'all');
     
     clearBtn.style.display = hasFilters ? 'block' : 'none';
 }
@@ -3872,7 +2634,7 @@ async function bulkSaveContacts() {
         
         for (const contact of contacts) {
             try {
-                const vcard = await generateContactVCardWithPhoto(contact);
+                const vcard = generateContactVCard(contact);
                 const blob = new Blob([vcard], { type: 'text/vcard' });
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
@@ -3997,86 +2759,29 @@ async function bulkAddTagToContacts() {
         countEl.textContent = selectedIds.length;
         newTagInput.value = '';
         
-        // Populate tags as clickable badges (inline, wrapping across lines)
+        // Populate tags with checkboxes (3-state: unchecked, checked, indeterminate)
         tagsList.innerHTML = '';
         
         if (tags.length > 0) {
-            // Create a flex container for inline tags that wrap
-            const flexContainer = document.createElement('div');
-            flexContainer.className = 'bulk-tags-flex';
-            flexContainer.style.cssText = 'display: flex; flex-wrap: wrap; gap: 6px; align-items: center;';
-            
             for (const tag of tags) {
-                const color = getTagColor(tag.name);
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.id = `bulkTag_${tag.id}`;
+                checkbox.value = tag.id;
+                checkbox.dataset.tagName = tag.name;
                 
-                // Create clickable tag badge
-                const tagBadge = document.createElement('button');
-                tagBadge.type = 'button';
-                tagBadge.className = 'bulk-tag-badge-clickable';
-                tagBadge.dataset.tagId = tag.id;
-                tagBadge.dataset.tagName = tag.name;
-                tagBadge.textContent = tag.name;
-                tagBadge.style.cssText = `
-                    padding: 2px 6px;
-                    border-radius: 8px;
-                    border: 1px solid ${color.border};
-                    background: ${color.bg};
-                    color: ${color.text};
-                    font-size: 10px;
-                    font-weight: 500;
-                    cursor: pointer;
-                    transition: all 0.2s ease;
-                    white-space: nowrap;
-                    position: relative;
-                `;
+                const label = document.createElement('label');
+                label.htmlFor = `bulkTag_${tag.id}`;
+                label.textContent = tag.name;
+                label.style.cssText = 'display: flex; align-items: center; padding: 8px; cursor: pointer; border-radius: 6px;';
+                label.onmouseover = () => label.style.background = '#f3f4f6';
+                label.onmouseout = () => label.style.background = 'transparent';
                 
-                // Track selected state
-                tagBadge.dataset.selected = 'false';
-                
-                // Click handler to toggle selection
-                tagBadge.addEventListener('click', () => {
-                    const isSelected = tagBadge.dataset.selected === 'true';
-                    tagBadge.dataset.selected = isSelected ? 'false' : 'true';
-                    
-                    if (isSelected) {
-                        // Deselect - restore original styling
-                        tagBadge.style.background = color.bg;
-                        tagBadge.style.borderColor = color.border;
-                        tagBadge.style.color = color.text;
-                        tagBadge.style.transform = 'scale(1)';
-                        tagBadge.style.boxShadow = 'none';
-                    } else {
-                        // Select - use darker border and shadow, keep text visible
-                        tagBadge.style.background = color.bg;
-                        tagBadge.style.borderColor = color.text;
-                        tagBadge.style.borderWidth = '2px';
-                        tagBadge.style.color = color.text;
-                        tagBadge.style.transform = 'scale(1.05)';
-                        tagBadge.style.boxShadow = `0 2px 6px ${color.text}40`;
-                    }
-                });
-                
-                // Hover effects
-                tagBadge.addEventListener('mouseenter', () => {
-                    if (tagBadge.dataset.selected !== 'true') {
-                        tagBadge.style.transform = 'scale(1.05)';
-                        tagBadge.style.boxShadow = '0 2px 6px rgba(0,0,0,0.1)';
-                    }
-                });
-                
-                tagBadge.addEventListener('mouseleave', () => {
-                    if (tagBadge.dataset.selected !== 'true') {
-                        tagBadge.style.transform = 'scale(1)';
-                        tagBadge.style.boxShadow = 'none';
-                    }
-                });
-                
-                flexContainer.appendChild(tagBadge);
+                label.insertBefore(checkbox, label.firstChild);
+                tagsList.appendChild(label);
             }
-            
-            tagsList.appendChild(flexContainer);
         } else {
-            tagsList.innerHTML = '<p style="color: #666; font-size: 14px; padding: 12px; text-align: center;">No tags available. Create a new tag below.</p>';
+            tagsList.innerHTML = '<p style="color: #666; font-size: 14px; padding: 12px;">No tags available. Create a new tag below.</p>';
         }
         
         modal.classList.remove('hidden');
@@ -4085,25 +2790,17 @@ async function bulkAddTagToContacts() {
     }
 }
 
-async function addBulkTags() {
+async function applyBulkTags() {
     const selectedIds = getSelectedContactIds();
     const tagsList = document.getElementById('bulkTagsList');
     const newTagInput = document.getElementById('bulkNewTagInput');
     
-    if (!tagsList || !newTagInput) {
-        showToast('Error: Tag management elements not found', 'error');
-        return;
-    }
-    
-    if (selectedIds.length === 0) {
-        showToast('Please select contacts first', 'warning');
-        return;
-    }
+    if (!tagsList || !newTagInput) return;
     
     try {
-        // Get selected tags from clickable badges
-        const selectedBadges = tagsList.querySelectorAll('.bulk-tag-badge-clickable[data-selected="true"]');
-        const selectedTagNames = Array.from(selectedBadges).map(badge => badge.dataset.tagName);
+        // Get selected tags
+        const checkboxes = tagsList.querySelectorAll('input[type="checkbox"]:checked');
+        const selectedTagNames = Array.from(checkboxes).map(cb => cb.dataset.tagName);
         
         // Add new tag if provided
         const newTagName = newTagInput.value.trim();
@@ -4122,18 +2819,8 @@ async function addBulkTags() {
             return;
         }
         
-        // Disable button and show loading
-        const addBtn = document.getElementById('addBulkTagsBtn');
-        const originalText = addBtn?.textContent || 'Add Tags';
-        if (addBtn) {
-            addBtn.disabled = true;
-            addBtn.textContent = 'Adding...';
-        }
-        
-        // Add tags to all selected contacts
+        // Apply tags to all selected contacts
         let successCount = 0;
-        let errorCount = 0;
-        
         for (const contactId of selectedIds) {
             try {
                 const contact = await api.getContact(contactId);
@@ -4146,115 +2833,16 @@ async function addBulkTags() {
                         successCount++;
             } catch (error) {
                 console.error(`Failed to add tags to contact ${contactId}:`, error);
-                errorCount++;
             }
         }
         
-        // Re-enable button
-        if (addBtn) {
-            addBtn.disabled = false;
-            addBtn.textContent = originalText;
-        }
-        
-        if (errorCount > 0) {
-            showToast(`Added tags to ${successCount} of ${selectedIds.length} contacts. ${errorCount} failed.`, 'warning');
-        } else {
-            showToast(`Successfully added tags to ${successCount} contact${successCount !== 1 ? 's' : ''}`, 'success');
-        }
+        showToast(`Added tags to ${successCount} of ${selectedIds.length} contacts`, 'success');
         
         // Close modal and reload contacts
         document.getElementById('bulkTagModal')?.classList.add('hidden');
         await loadContacts();
     } catch (error) {
-        console.error('Error adding bulk tags:', error);
-        showToast('Failed to add tags: ' + (error.message || 'Unknown error'), 'error');
-        
-        // Re-enable button on error
-        const addBtn = document.getElementById('addBulkTagsBtn');
-        if (addBtn) {
-            addBtn.disabled = false;
-            addBtn.textContent = 'Add Tags';
-        }
-    }
-}
-
-async function removeBulkTags() {
-    const selectedIds = getSelectedContactIds();
-    const tagsList = document.getElementById('bulkTagsList');
-    
-    if (!tagsList) {
-        showToast('Error: Tag management elements not found', 'error');
-        return;
-    }
-    
-    if (selectedIds.length === 0) {
-        showToast('Please select contacts first', 'warning');
-        return;
-    }
-    
-    try {
-        // Get selected tags from clickable badges
-        const selectedBadges = tagsList.querySelectorAll('.bulk-tag-badge-clickable[data-selected="true"]');
-        const selectedTagNames = Array.from(selectedBadges).map(badge => badge.dataset.tagName);
-        
-        if (selectedTagNames.length === 0) {
-            showToast('Please select at least one tag to remove', 'warning');
-            return;
-        }
-        
-        // Disable button and show loading
-        const removeBtn = document.getElementById('removeBulkTagsBtn');
-        const originalText = removeBtn?.textContent || 'Remove Tags';
-        if (removeBtn) {
-            removeBtn.disabled = true;
-            removeBtn.textContent = 'Removing...';
-        }
-        
-        // Remove tags from all selected contacts
-        let successCount = 0;
-        let errorCount = 0;
-        
-        for (const contactId of selectedIds) {
-            try {
-                const contact = await api.getContact(contactId);
-                const currentTags = contact.tags?.map(t => t.name || t) || [];
-                
-                // Remove selected tags from existing tags
-                const remainingTags = currentTags.filter(tag => !selectedTagNames.includes(tag));
-                
-                await api.updateContact(contactId, { tags: remainingTags }, null, []);
-                successCount++;
-            } catch (error) {
-                console.error(`Failed to remove tags from contact ${contactId}:`, error);
-                errorCount++;
-            }
-        }
-        
-        // Re-enable button
-        if (removeBtn) {
-            removeBtn.disabled = false;
-            removeBtn.textContent = originalText;
-        }
-        
-        if (errorCount > 0) {
-            showToast(`Removed tags from ${successCount} of ${selectedIds.length} contacts. ${errorCount} failed.`, 'warning');
-        } else {
-            showToast(`Successfully removed tags from ${successCount} contact${successCount !== 1 ? 's' : ''}`, 'success');
-        }
-        
-        // Close modal and reload contacts
-        document.getElementById('bulkTagModal')?.classList.add('hidden');
-        await loadContacts();
-    } catch (error) {
-        console.error('Error removing bulk tags:', error);
-        showToast('Failed to remove tags: ' + (error.message || 'Unknown error'), 'error');
-        
-        // Re-enable button on error
-        const removeBtn = document.getElementById('removeBulkTagsBtn');
-        if (removeBtn) {
-            removeBtn.disabled = false;
-            removeBtn.textContent = 'Remove Tags';
-        }
+        showToast('Failed to update tags: ' + error.message, 'error');
     }
 }
 
@@ -4473,189 +3061,6 @@ function updateSuggestedTags() {
 let editingContactId = null;
 let editingEventId = null;
 
-// Helper function to get country code select HTML
-function getCountryCodeSelectHTML(selectedCode = '+91', index = 0) {
-    const countryCodes = [
-        {value: '+1', flag: '🇺🇸', name: 'US'}, {value: '+44', flag: '🇬🇧', name: 'UK'},
-        {value: '+91', flag: '🇮🇳', name: 'IN'}, {value: '+86', flag: '🇨🇳', name: 'CN'},
-        {value: '+81', flag: '🇯🇵', name: 'JP'}, {value: '+49', flag: '🇩🇪', name: 'DE'},
-        {value: '+33', flag: '🇫🇷', name: 'FR'}, {value: '+39', flag: '🇮🇹', name: 'IT'},
-        {value: '+34', flag: '🇪🇸', name: 'ES'}, {value: '+61', flag: '🇦🇺', name: 'AU'},
-        {value: '+55', flag: '🇧🇷', name: 'BR'}, {value: '+52', flag: '🇲🇽', name: 'MX'},
-        {value: '+971', flag: '🇦🇪', name: 'AE'}, {value: '+966', flag: '🇸🇦', name: 'SA'},
-        {value: '+65', flag: '🇸🇬', name: 'SG'}, {value: '+60', flag: '🇲🇾', name: 'MY'},
-        {value: '+62', flag: '🇮🇩', name: 'ID'}, {value: '+66', flag: '🇹🇭', name: 'TH'},
-        {value: '+84', flag: '🇻🇳', name: 'VN'}, {value: '+82', flag: '🇰🇷', name: 'KR'},
-        {value: '+27', flag: '🇿🇦', name: 'ZA'}, {value: '+20', flag: '🇪🇬', name: 'EG'},
-        {value: '+234', flag: '🇳🇬', name: 'NG'}, {value: '+254', flag: '🇰🇪', name: 'KE'},
-        {value: '+212', flag: '🇲🇦', name: 'MA'}, {value: '+7', flag: '🇷🇺', name: 'RU'},
-        {value: '+90', flag: '🇹🇷', name: 'TR'}, {value: '+92', flag: '🇵🇰', name: 'PK'},
-        {value: '+880', flag: '🇧🇩', name: 'BD'}, {value: '+94', flag: '🇱🇰', name: 'LK'},
-        {value: '+977', flag: '🇳🇵', name: 'NP'}, {value: '+95', flag: '🇲🇲', name: 'MM'},
-        {value: '+855', flag: '🇰🇭', name: 'KH'}, {value: '+856', flag: '🇱🇦', name: 'LA'},
-        {value: '+673', flag: '🇧🇳', name: 'BN'}, {value: '+670', flag: '🇹🇱', name: 'TL'},
-        {value: '+64', flag: '🇳🇿', name: 'NZ'}, {value: '+886', flag: '🇹🇼', name: 'TW'},
-        {value: '+852', flag: '🇭🇰', name: 'HK'}, {value: '+853', flag: '🇲🇴', name: 'MO'}
-    ];
-    
-    let optionsHTML = countryCodes.map(cc => 
-        `<option value="${cc.value}" ${cc.value === selectedCode ? 'selected' : ''}>${cc.flag} ${cc.value}</option>`
-    ).join('');
-    
-    return `<select class="contact-country-code input-field" style="width: 120px; flex-shrink: 0;" data-index="${index}">${optionsHTML}</select>`;
-}
-
-// Add a phone number field
-function addPhoneNumberField(number = '', isWhatsapp = true, index = null) {
-    const container = document.getElementById('phoneNumbersContainer');
-    if (!container) return;
-    
-    const currentCount = container.querySelectorAll('.phone-number-row').length;
-    if (currentCount >= 3) {
-        showToast('Maximum 3 phone numbers allowed', 'error');
-        return;
-    }
-    
-    const idx = index !== null ? index : currentCount;
-    const row = document.createElement('div');
-    row.className = 'phone-number-row';
-    row.style.cssText = 'display: flex; gap: 8px; align-items: center; margin-bottom: 8px;';
-    
-    // Parse number to extract country code if it starts with +
-    let countryCode = '+91';
-    let phoneNumber = number;
-    if (number && number.startsWith('+')) {
-        const codes = ['+1', '+44', '+91', '+86', '+81', '+49', '+33', '+39', '+34', '+61', '+55', '+52', '+971', '+966', '+65', '+60', '+62', '+66', '+84', '+82', '+27', '+20', '+234', '+254', '+212', '+7', '+90', '+92', '+880', '+94', '+977', '+95', '+855', '+856', '+673', '+670', '+64', '+679', '+678', '+685', '+676', '+687', '+689', '+691', '+692', '+850', '+886', '+852', '+853'];
-        for (const code of codes) {
-            if (number.startsWith(code)) {
-                countryCode = code;
-                phoneNumber = number.substring(code.length).trim();
-                break;
-            }
-        }
-    }
-    
-    row.innerHTML = `
-        ${getCountryCodeSelectHTML(countryCode, idx)}
-        <input type="tel" class="contact-phone-number input-field" style="flex: 1;" placeholder="Phone number" data-index="${idx}" value="${phoneNumber}">
-        <label style="display: flex; align-items: center; gap: 4px; white-space: nowrap; font-size: 13px; cursor: pointer;">
-            <input type="checkbox" class="contact-phone-whatsapp" data-index="${idx}" ${isWhatsapp ? 'checked' : ''}>
-            <span>WhatsApp</span>
-        </label>
-        <button type="button" class="remove-phone-btn icon-btn-action" data-index="${idx}" style="flex-shrink: 0;" title="Remove">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <line x1="18" y1="6" x2="6" y2="18"></line>
-                <line x1="6" y1="6" x2="18" y2="18"></line>
-            </svg>
-        </button>
-    `;
-    
-    container.appendChild(row);
-    updateAddPhoneButton();
-    
-    // Add remove button handler
-    row.querySelector('.remove-phone-btn')?.addEventListener('click', () => {
-        row.remove();
-        updateAddPhoneButton();
-    });
-}
-
-// Add an email field
-function addEmailField(address = '', index = null) {
-    const container = document.getElementById('emailAddressesContainer');
-    if (!container) return;
-    
-    const currentCount = container.querySelectorAll('.email-address-row').length;
-    if (currentCount >= 3) {
-        showToast('Maximum 3 email addresses allowed', 'error');
-        return;
-    }
-    
-    const idx = index !== null ? index : currentCount;
-    const row = document.createElement('div');
-    row.className = 'email-address-row';
-    row.style.cssText = 'display: flex; gap: 8px; align-items: center; margin-bottom: 8px;';
-    
-    row.innerHTML = `
-        <input type="email" class="contact-email-address input-field" style="flex: 1;" placeholder="Email address" data-index="${idx}" value="${address}">
-        <button type="button" class="remove-email-btn icon-btn-action" data-index="${idx}" style="flex-shrink: 0;" title="Remove">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <line x1="18" y1="6" x2="6" y2="18"></line>
-                <line x1="6" y1="6" x2="18" y2="18"></line>
-            </svg>
-        </button>
-    `;
-    
-    container.appendChild(row);
-    updateAddEmailButton();
-    
-    // Add remove button handler
-    row.querySelector('.remove-email-btn')?.addEventListener('click', () => {
-        row.remove();
-        updateAddEmailButton();
-    });
-}
-
-// Update add phone button visibility
-function updateAddPhoneButton() {
-    const container = document.getElementById('phoneNumbersContainer');
-    const addBtn = document.getElementById('addPhoneBtn');
-    if (container && addBtn) {
-        const count = container.querySelectorAll('.phone-number-row').length;
-        addBtn.style.display = count < 3 ? 'block' : 'none';
-    }
-}
-
-// Update add email button visibility
-function updateAddEmailButton() {
-    const container = document.getElementById('emailAddressesContainer');
-    const addBtn = document.getElementById('addEmailBtn');
-    if (container && addBtn) {
-        const count = container.querySelectorAll('.email-address-row').length;
-        addBtn.style.display = count < 3 ? 'block' : 'none';
-    }
-}
-
-// Clear phone numbers and emails
-function clearPhoneNumbersAndEmails() {
-    const phoneContainer = document.getElementById('phoneNumbersContainer');
-    const emailContainer = document.getElementById('emailAddressesContainer');
-    if (phoneContainer) phoneContainer.innerHTML = '';
-    if (emailContainer) emailContainer.innerHTML = '';
-    updateAddPhoneButton();
-    updateAddEmailButton();
-}
-
-// Initialize form with empty phone/email fields
-function initializeContactForm() {
-    clearPhoneNumbersAndEmails();
-    // Clear media input and preview
-    clearContactMedia();
-    // Add one empty phone number field and one empty email field
-    addPhoneNumberField('', true, 0);
-    addEmailField('', 0);
-}
-
-// Clear contact media (input files and preview)
-function clearContactMedia() {
-    const mediaInput = document.getElementById('mediaInput');
-    if (mediaInput) {
-        // Clear the file input by creating a new empty DataTransfer
-        const dataTransfer = new DataTransfer();
-        mediaInput.files = dataTransfer.files;
-    }
-    
-    const mediaPreview = document.getElementById('mediaPreview');
-    if (mediaPreview) {
-        mediaPreview.innerHTML = '';
-    }
-    
-    // Also clear any compressed media files stored in window
-    if (window.compressedMediaFiles) {
-        window.compressedMediaFiles = [];
-    }
-}
-
 async function openContactModal(contactData = null) {
     const modal = document.getElementById('contactModal');
     if (!modal) return;
@@ -4668,85 +3073,38 @@ async function openContactModal(contactData = null) {
         modalTitle.textContent = editingContactId ? 'Edit Contact' : 'Add Contact';
     }
     
-    // Initialize form
-    initializeContactForm();
-    
     // Clear or fill form
     if (contactData) {
         // Fill form with contact data
         document.getElementById('contactName').value = contactData.name || '';
+        document.getElementById('contactEmail').value = contactData.email || '';
         document.getElementById('contactRole').value = contactData.role_company || '';
         
-        // Fill phone numbers
-        clearPhoneNumbersAndEmails();
-        const phoneNumbers = contactData.phone_numbers || [];
-        if (phoneNumbers.length > 0) {
-            phoneNumbers.forEach((phone, idx) => {
-                addPhoneNumberField(phone.number || '', phone.is_whatsapp !== false, idx);
-            });
-        } else if (contactData.mobile) {
-            // Fallback to deprecated mobile field
-            addPhoneNumberField(contactData.mobile, true, 0);
-        } else {
-            addPhoneNumberField('', true, 0);
-        }
-        
-        // Fill email addresses
-        const emailAddresses = contactData.email_addresses || [];
-        if (emailAddresses.length > 0) {
-            emailAddresses.forEach((email, idx) => {
-                addEmailField(email.address || email, idx);
-            });
-        } else if (contactData.email) {
-            // Fallback to deprecated email field
-            addEmailField(contactData.email, 0);
-        } else {
-            addEmailField('', 0);
+        // Parse mobile number to extract country code
+        const mobileInput = document.getElementById('contactMobile');
+        const countryCodeSelect = document.getElementById('contactCountryCode');
+        if (mobileInput && countryCodeSelect && contactData.mobile) {
+            const mobile = contactData.mobile.trim();
+            // Check if it starts with a known country code
+            const countryCodes = ['+1', '+44', '+91', '+86', '+81', '+49', '+33', '+39', '+34', '+61', '+55', '+52', '+971', '+966', '+65', '+60', '+62', '+66', '+84', '+82', '+27', '+20', '+234', '+254', '+212', '+7', '+90', '+92', '+880', '+94', '+977', '+95', '+855', '+856', '+673', '+670', '+64', '+679', '+678', '+685', '+676', '+687', '+689', '+691', '+692', '+850', '+886', '+852', '+853'];
+            let foundCode = '+91'; // Default to India
+            let phoneNumber = mobile;
+            for (const code of countryCodes) {
+                if (mobile.startsWith(code)) {
+                    foundCode = code;
+                    phoneNumber = mobile.substring(code.length).trim();
+                    break;
+                }
+            }
+            countryCodeSelect.value = foundCode;
+            mobileInput.value = phoneNumber;
+        } else if (mobileInput && countryCodeSelect) {
+            mobileInput.value = '';
+            countryCodeSelect.value = '+91'; // Default to India
         }
         
         document.getElementById('contactLinkedIn').value = contactData.linkedin_url || '';
-        document.getElementById('contactWebsite').value = contactData.website || '';
-        
-        // Handle meeting context - add pplai.app metadata if from QR/shared profile
-        let meetingContext = contactData.meeting_context || contactData.about_me || '';
-        
-        // Check if this contact is from a QR scan or shared profile
-        if (contactData.fromPplaiProfile && contactData.pplaiProfileUrl) {
-            // Format current date
-            const now = new Date();
-            const dateMet = now.toISOString().split('T')[0]; // YYYY-MM-DD
-            const dateMetReadable = now.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
-            
-            // Build pplai.app metadata
-            const pplaiMetadata = `Met on pplai.app: ${dateMetReadable} (${dateMet})\npplai.app Profile: ${contactData.pplaiProfileUrl}`;
-            
-            // Add to meeting context if not already present
-            if (!meetingContext.includes('Met on pplai.app') && !meetingContext.includes('pplai.app Profile:')) {
-                if (meetingContext) {
-                    meetingContext = `${meetingContext}\n\n${pplaiMetadata}`;
-                } else {
-                    meetingContext = pplaiMetadata;
-                }
-            } else if (!meetingContext.includes('Met on pplai.app')) {
-                // Add date if profile link exists but date doesn't
-                const dateLine = `Met on pplai.app: ${dateMetReadable} (${dateMet})`;
-                if (meetingContext) {
-                    meetingContext = `${meetingContext}\n\n${dateLine}`;
-                } else {
-                    meetingContext = dateLine;
-                }
-            } else if (!meetingContext.includes('pplai.app Profile:')) {
-                // Add profile link if date exists but link doesn't
-                const profileLine = `pplai.app Profile: ${contactData.pplaiProfileUrl}`;
-                if (meetingContext) {
-                    meetingContext = `${meetingContext}\n\n${profileLine}`;
-                } else {
-                    meetingContext = profileLine;
-                }
-            }
-        }
-        
-        document.getElementById('contactContext').value = meetingContext;
+        document.getElementById('contactContext').value = contactData.meeting_context || '';
         
         // Set event
         const eventSelect = document.getElementById('contactEvent');
@@ -4796,39 +3154,17 @@ async function openContactModal(contactData = null) {
         }
         
         // Note: Media attachments are read-only in edit mode for now
-        // Clear media preview (but don't clear input files in edit mode to preserve existing media)
-        const mediaPreviewEl = document.getElementById('mediaPreview');
-        if (mediaPreviewEl) {
-            mediaPreviewEl.innerHTML = '';
-        }
+        document.getElementById('mediaPreview').innerHTML = '';
         } else {
-        // Clear form - use null-safe checks for all fields
-        const nameEl = document.getElementById('contactName');
-        if (nameEl) nameEl.value = '';
-        
-        // Email is now handled by emailAddressesContainer (cleared in initializeContactForm)
-        // No need to clear contactEmail as it doesn't exist anymore
-        
-        const roleEl = document.getElementById('contactRole');
-        if (roleEl) roleEl.value = '';
-        
-        // Mobile is now handled by phoneNumbersContainer (cleared in initializeContactForm)
-        // No need to clear contactMobile as it doesn't exist anymore
-        
-        const linkedinEl = document.getElementById('contactLinkedIn');
-        if (linkedinEl) linkedinEl.value = '';
-        
-        const websiteEl = document.getElementById('contactWebsite');
-        if (websiteEl) websiteEl.value = '';
-        
-        const contextEl = document.getElementById('contactContext');
-        if (contextEl) contextEl.value = '';
-        
-        const tagsEl = document.getElementById('contactTags');
-        if (tagsEl) tagsEl.innerHTML = '';
-        
-        const mediaPreviewEl = document.getElementById('mediaPreview');
-        if (mediaPreviewEl) mediaPreviewEl.innerHTML = '';
+        // Clear form
+        document.getElementById('contactName').value = '';
+        document.getElementById('contactEmail').value = '';
+        document.getElementById('contactRole').value = '';
+        document.getElementById('contactMobile').value = '';
+        document.getElementById('contactLinkedIn').value = '';
+        document.getElementById('contactContext').value = '';
+        document.getElementById('contactTags').innerHTML = '';
+        document.getElementById('mediaPreview').innerHTML = '';
         const eventSelect = document.getElementById('contactEvent');
         if (eventSelect) {
             eventSelect.value = '';
@@ -5004,33 +3340,6 @@ async function checkExistingContact(email, mobile) {
 // Handle AI-powered follow-up actions (email, WhatsApp, SMS)
 async function handleAiFollowup(contactId, contact, type) {
     try {
-        // Check if contact is saved (has contactId)
-        if (!contactId) {
-            // Check if user is logged in
-            const currentUser = getCurrentUser();
-            if (!currentUser) {
-                showToast('🔐 Please login first to use AI follow-up features', 'error');
-                // Show auth screen after a short delay
-                setTimeout(() => {
-                    if (typeof showAuthScreen === 'function') {
-                        showAuthScreen();
-                    }
-                }, 1500);
-                return;
-            }
-            
-            // User is logged in but contact not saved
-            showToast('💾 Please save this contact first to use AI follow-up', 'error');
-            // Show save button if available
-            const saveBtn = document.getElementById('saveContactFromViewBtn');
-            if (saveBtn) {
-                saveBtn.style.display = 'block';
-                // Scroll to save button
-                saveBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }
-            return;
-        }
-        
         showToast('✨ Generating AI follow-up...', 'info');
         
         // Fetch AI-generated follow-ups (also invalidates contact cache)
@@ -5068,446 +3377,79 @@ async function handleAiFollowup(contactId, contact, type) {
         
         const followup = followupData.followups[type];
         
-        console.log('Followup data for', type, ':', {
-            hasFollowup: !!followup,
-            followupType: typeof followup,
-            followupValue: followup,
-            followupLength: followup?.length,
-            followupPreview: followup?.substring?.(0, 50),
-            allTypes: Object.keys(followupData.followups || {}),
-            allFollowups: followupData.followups
-        });
-        
-        // Check if followup exists and is not empty
-        if (!followup || followup === null || followup === undefined || 
-            (typeof followup === 'string' && followup.trim() === '')) {
-            console.error(`No ${type} template available. Available types:`, Object.keys(followupData.followups || {}));
-            console.error('Full followup data:', JSON.stringify(followupData.followups, null, 2));
-            
-            // Try to get a fallback from other types
-            let fallbackContent = null;
-            if (type === 'sms' && followupData.followups.whatsapp) {
-                const whatsappText = followupData.followups.whatsapp;
-                const words = whatsappText.split(' ');
-                fallbackContent = words.slice(0, 25).join(' ') + (words.length > 25 ? '...' : '');
-                console.log('Created SMS fallback from WhatsApp:', fallbackContent);
-            } else if (type === 'sms' && followupData.followups.email) {
-                const emailText = followupData.followups.email.replace(/Subject:\s*.+?\n\n?/i, '').trim();
-                const words = emailText.split(' ');
-                fallbackContent = words.slice(0, 25).join(' ') + (words.length > 25 ? '...' : '');
-                console.log('Created SMS fallback from email:', fallbackContent);
-            }
-            
-            if (fallbackContent) {
-                console.log('Using fallback content for', type);
-                showFollowupEditModal(contact, fallbackContent, type, contactId);
-                return;
-            }
-            
+        if (!followup) {
             showToast(`❌ No ${type} template available`, 'error');
             return;
         }
         
-        // Show modal for editing before sending
-        console.log('About to show modal for', type);
-        try {
-            showFollowupEditModal(contact, followup, type, contactId);
-        } catch (error) {
-            console.error('Error showing followup modal:', error);
-            showToast(`❌ Error showing ${type} editor: ${error.message}`, 'error');
+        // Handle different follow-up types
+        switch(type) {
+            case 'email':
+                handleAiEmail(contact, followup);
+                break;
+            case 'whatsapp':
+                handleAiWhatsApp(contact, followup);
+                break;
+            case 'sms':
+                handleAiSms(contact, followup);
+                break;
         }
+        
+        showToast(`✨ AI ${type} ready!`, 'success');
         
     } catch (error) {
         console.error('Error getting AI follow-up:', error);
-        
-        // Handle 404 error - contact not found
-        if (error.message && (error.message.includes('404') || error.message.includes('Not Found') || error.message.includes('not found'))) {
-            const currentUser = getCurrentUser();
-            if (!currentUser) {
-                showToast('🔐 Please login first to use AI follow-up features', 'error');
-                setTimeout(() => {
-                    if (typeof showAuthScreen === 'function') {
-                        showAuthScreen();
-                    }
-                }, 1500);
-            } else {
-                showToast('💾 Please save this contact first to use AI follow-up', 'error');
-                const saveBtn = document.getElementById('saveContactFromViewBtn');
-                if (saveBtn) {
-                    saveBtn.style.display = 'block';
-                    saveBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                }
-            }
-        } else {
         showToast(`❌ Failed to generate ${type}`, 'error');
-        }
     }
 }
 
-// Show modal for editing followup before sending
-function showFollowupEditModal(contact, originalContent, messageType, contactId) {
-    console.log('showFollowupEditModal called:', { messageType, contactId, hasContent: !!originalContent });
+// Handle AI-generated email
+function handleAiEmail(contact, emailTemplate) {
+    // Extract subject and body from template
+    let subject = 'Follow-up';
+    let body = emailTemplate;
     
-    const modal = document.getElementById('followupEditModal');
-    const titleEl = document.getElementById('followupEditTitle');
-    const messageEl = document.getElementById('followupMessage');
-    const subjectEl = document.getElementById('followupSubject');
-    const subjectGroup = document.getElementById('emailSubjectGroup');
-    const contextInfo = document.getElementById('followupContextInfo');
-    const contextDetails = document.getElementById('followupContextDetails');
-    
-    if (!modal) {
-        console.error('Followup edit modal not found in DOM');
-        showToast('❌ Modal not found. Please refresh the page.', 'error');
-        return;
+    // Parse subject if present
+    const subjectMatch = emailTemplate.match(/Subject:\s*(.+?)(\n|$)/i);
+    if (subjectMatch) {
+        subject = subjectMatch[1].trim();
+        body = emailTemplate.replace(/Subject:\s*(.+?)(\n|$)/i, '').trim();
     }
     
-    if (!titleEl) {
-        console.error('Followup edit title element not found');
-        showToast('❌ Form elements not found. Please refresh the page.', 'error');
-        return;
-    }
-    
-    if (!messageEl) {
-        console.error('Followup message textarea not found');
-        showToast('❌ Form elements not found. Please refresh the page.', 'error');
-        return;
-    }
-    
-    if (!originalContent || originalContent.trim() === '') {
-        console.error('No content provided to show in modal');
-        showToast(`❌ No ${messageType} content available`, 'error');
-        return;
-    }
-    
-    // Get full contact data from allContacts if available
-    const contactData = allContacts?.find(c => c.id === contactId) || contact;
-    
-    // Set title based on message type
-    const typeLabels = {
-        'email': 'Email',
-        'whatsapp': 'WhatsApp',
-        'sms': 'SMS'
-    };
-    titleEl.textContent = `Edit ${typeLabels[messageType] || messageType} Follow-up`;
-    
-    // Show/hide subject field for emails
-    if (messageType === 'email') {
-        subjectGroup.style.display = 'block';
-        
-        // Extract subject if present
-        const subjectMatch = originalContent.match(/Subject:\s*(.+?)(\n|$)/i);
-        if (subjectMatch) {
-            subjectEl.value = subjectMatch[1].trim();
-            messageEl.value = originalContent.replace(/Subject:\s*(.+?)(\n|$)/i, '').trim();
-        } else {
-            subjectEl.value = 'Follow-up';
-            messageEl.value = originalContent;
-        }
-    } else {
-        subjectGroup.style.display = 'none';
-        messageEl.value = originalContent;
-    }
-    
-    // Display contact context information
-    const contextItems = [];
-    
-    if (contactData.is_favorite) {
-        contextItems.push('<div><strong>⭐ Favorite Contact</strong></div>');
-    }
-    
-    if (contactData.tags && contactData.tags.length > 0) {
-        const tagNames = contactData.tags.map(t => typeof t === 'string' ? t : t.name).join(', ');
-        contextItems.push(`<div><strong>Tags:</strong> ${tagNames}</div>`);
-    }
-    
-    if (contactData.event_id) {
-        // Try to get event name from events list
-        const event = allEvents?.find(e => e.id === contactData.event_id);
-        if (event) {
-            contextItems.push(`<div><strong>Event:</strong> ${event.name}</div>`);
-        } else {
-            // Fallback: show event ID if event name not available
-            contextItems.push(`<div><strong>Event:</strong> Associated event</div>`);
-        }
-    }
-    
-    if (contactData.meeting_date) {
-        const meetingDate = new Date(contactData.meeting_date);
-        const dateStr = meetingDate.toLocaleDateString('en-US', { 
-            year: 'numeric', 
-            month: 'short', 
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-        });
-        contextItems.push(`<div><strong>Met:</strong> ${dateStr}</div>`);
-    }
-    
-    if (contactData.meeting_location_name) {
-        contextItems.push(`<div><strong>Location:</strong> ${contactData.meeting_location_name}</div>`);
-    }
-    
-    if (contactData.role_company) {
-        contextItems.push(`<div><strong>Role:</strong> ${contactData.role_company}</div>`);
-    }
-    
-    if (contactData.company) {
-        contextItems.push(`<div><strong>Company:</strong> ${contactData.company}</div>`);
-    }
-    
-    contextItems.push(`<div><strong>Type:</strong> ${typeLabels[messageType] || messageType}</div>`);
-    
-    // Show context info if we have any context items
-    if (contextItems.length > 0) {
-        contextDetails.innerHTML = contextItems.join('');
-        contextDetails.style.display = 'grid';
-        contextInfo.style.display = 'block';
-        // Start collapsed by default
-        contextDetails.style.display = 'none';
-        const chevron = document.getElementById('followupContextChevron');
-        if (chevron) {
-            chevron.style.transform = 'rotate(0deg)';
-        }
-    } else {
-        contextInfo.style.display = 'none';
-    }
-    
-    // Store context for when user sends
-    modal.dataset.contactId = contactId;
-    modal.dataset.messageType = messageType;
-    modal.dataset.originalContent = originalContent;
-    modal.dataset.contactData = JSON.stringify(contactData);
-    
-    // Show modal
-    console.log('Removing hidden class from modal, messageType:', messageType);
-    console.log('Modal before:', {
-        classes: modal.className,
-        display: window.getComputedStyle(modal).display,
-        visibility: window.getComputedStyle(modal).visibility,
-        zIndex: window.getComputedStyle(modal).zIndex
-    });
-    
-    modal.classList.remove('hidden');
-    
-    // Force display and z-index to ensure visibility
-    modal.style.display = 'flex';
-    modal.style.visibility = 'visible';
-    modal.style.opacity = '1';
-    modal.style.zIndex = '9999';
-    
-    // Ensure modal is visible (check if hidden class was actually removed)
-    if (modal.classList.contains('hidden')) {
-        console.error('Modal still has hidden class after removal attempt');
-    }
-    
-    console.log('Modal after:', {
-        classes: modal.className,
-        display: window.getComputedStyle(modal).display,
-        visibility: window.getComputedStyle(modal).visibility,
-        zIndex: window.getComputedStyle(modal).zIndex
-    });
-    
-    // Focus on message field
-    setTimeout(() => {
-        messageEl.focus();
-        messageEl.setSelectionRange(0, 0); // Place cursor at start
-        console.log('Modal should now be visible. Final check:', {
-            classes: modal.className,
-            display: window.getComputedStyle(modal).display
-        });
-    }, 100);
-}
-
-// Toggle function for followup context dropdown
-function toggleFollowupContext() {
-    const contextDetails = document.getElementById('followupContextDetails');
-    const chevron = document.getElementById('followupContextChevron');
-    const header = document.getElementById('followupContextHeader');
-    
-    if (!contextDetails || !chevron) return;
-    
-    const isExpanded = contextDetails.style.display !== 'none' && contextDetails.style.display !== '';
-    
-    if (isExpanded) {
-        // Collapse
-        contextDetails.style.display = 'none';
-        chevron.style.transform = 'rotate(0deg)';
-        if (header) {
-            header.style.backgroundColor = '';
-        }
-    } else {
-        // Expand
-        contextDetails.style.display = 'grid';
-        chevron.style.transform = 'rotate(180deg)';
-        if (header) {
-            header.style.backgroundColor = 'rgba(102, 126, 234, 0.1)';
-        }
-    }
-    
-    // Show modal
-    console.log('Removing hidden class from modal, messageType:', messageType);
-    modal.classList.remove('hidden');
-    
-    // Ensure modal is visible (check if hidden class was actually removed)
-    if (modal.classList.contains('hidden')) {
-        console.error('Modal still has hidden class after removal attempt');
-        modal.style.display = 'block';
-        modal.style.visibility = 'visible';
-        modal.style.opacity = '1';
-    }
-    
-    // Focus on message field
-    setTimeout(() => {
-        messageEl.focus();
-        console.log('Modal should be visible. Modal classes:', modal.className);
-        console.log('Modal display style:', window.getComputedStyle(modal).display);
-    }, 100);
-}
-
-// Handle sending edited followup
-async function sendEditedFollowup() {
-    const modal = document.getElementById('followupEditModal');
-    if (!modal || modal.classList.contains('hidden')) return;
-    
-    const contactId = modal.dataset.contactId;
-    const messageType = modal.dataset.messageType;
-    const originalContent = modal.dataset.originalContent;
-    const contact = JSON.parse(modal.dataset.contactData || '{}');
-    
-    const messageEl = document.getElementById('followupMessage');
-    const subjectEl = document.getElementById('followupSubject');
-    
-    if (!messageEl) return;
-    
-    let editedContent = messageEl.value.trim();
-    
-    if (!editedContent) {
-        showToast('Please enter a message', 'error');
-        return;
-    }
-    
-    // For email, prepend subject if provided
-    if (messageType === 'email' && subjectEl && subjectEl.value.trim()) {
-        editedContent = `Subject: ${subjectEl.value.trim()}\n\n${editedContent}`;
-    }
-    
-    try {
-        // Save edited followup for learning with all available context
-        const currentUser = getCurrentUser();
-        if (currentUser && contactId) {
-            // Get contact tags and other context
-            const contactData = allContacts?.find(c => c.id === contactId) || contact;
-            const contactTags = contactData.tags?.map(t => typeof t === 'string' ? t : t.name) || [];
-            
-            // Format meeting date if available
-            let meetingDate = null;
-            if (contactData.meeting_date) {
-                meetingDate = new Date(contactData.meeting_date).toISOString();
-            }
-            
-            await api.saveEditedFollowup({
-                contact_id: contactId,
-                message_type: messageType,
-                original_content: originalContent,
-                edited_content: editedContent,
-                contact_tags: contactTags,
-                is_favorite_contact: contactData.is_favorite || false,
-                event_id: contactData.event_id || null,
-                contact_role: contactData.role_company || null,
-                contact_company: contactData.company || null,
-                meeting_date: meetingDate,
-                meeting_location_name: contactData.meeting_location_name || null,
-                meeting_latitude: contactData.meeting_latitude || null,
-                meeting_longitude: contactData.meeting_longitude || null,
-            });
-        }
-        
-        // Send the message
-        switch(messageType) {
-            case 'email':
-                sendEmail(contact, editedContent, subjectEl?.value || 'Follow-up');
-                break;
-            case 'whatsapp':
-                sendWhatsApp(contact, editedContent);
-                break;
-            case 'sms':
-                sendSms(contact, editedContent);
-                break;
-        }
-        
-        // Close modal
-        modal.classList.add('hidden');
-        showToast(`✨ ${messageType} sent!`, 'success');
-        
-    } catch (error) {
-        console.error('Error saving edited followup:', error);
-        // Still send the message even if saving fails
-        switch(messageType) {
-            case 'email':
-                sendEmail(contact, editedContent, subjectEl?.value || 'Follow-up');
-                break;
-            case 'whatsapp':
-                sendWhatsApp(contact, editedContent);
-                break;
-            case 'sms':
-                sendSms(contact, editedContent);
-                break;
-        }
-        modal.classList.add('hidden');
-        showToast(`✨ ${messageType} sent!`, 'success');
-    }
-}
-
-// Send email
-function sendEmail(contact, body, subject) {
-    if (!contact.email) {
-        showToast('No email address available', 'error');
-        return;
-    }
+    // Create mailto link
     const mailtoUrl = `mailto:${contact.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    
+    // Open email client
     window.open(mailtoUrl, '_blank');
 }
 
-// Send WhatsApp
-function sendWhatsApp(contact, message) {
-    if (!contact.mobile) {
-        showToast('No phone number available', 'error');
-        return;
-    }
+// Handle AI-generated WhatsApp message
+function handleAiWhatsApp(contact, message) {
+    // Format phone number (remove spaces, dashes, etc.)
     const phone = contact.mobile.replace(/[^\d+]/g, '');
+    
+    // Create WhatsApp URL
     const whatsappUrl = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+    
+    // Open WhatsApp
     window.open(whatsappUrl, '_blank');
 }
 
-// Send SMS
-function sendSms(contact, message) {
-    if (!contact.mobile) {
-        showToast('No phone number available', 'error');
-        return;
-    }
+// Handle AI-generated SMS
+function handleAiSms(contact, message) {
+    // Format phone number
     const phone = contact.mobile.replace(/[^\d+]/g, '');
+    
+    // Create SMS URL (works on mobile devices)
     const smsUrl = `sms:${phone}?body=${encodeURIComponent(message)}`;
+    
+    // Open SMS app
     window.open(smsUrl, '_blank');
 }
 
 async function saveContactFromView() {
-    if (!currentViewingContact) {
+    if (!currentViewingContactId || !currentViewingContact) {
         alert('No contact to save');
-        return;
-    }
-    
-    // Check if user is logged in
-    const currentUser = getCurrentUser();
-    if (!currentUser) {
-        // Store contact data to resume after login
-        sessionStorage.setItem('pendingContactSave', JSON.stringify(currentViewingContact));
-        showToast('🔐 Please login first to save contacts', 'error');
-        setTimeout(() => {
-            if (typeof showAuthScreen === 'function') {
-                showAuthScreen();
-            }
-        }, 1500);
         return;
     }
     
@@ -5520,46 +3462,16 @@ async function saveContactFromView() {
 
 async function saveContact() {
     const name = document.getElementById('contactName')?.value;
+    const email = document.getElementById('contactEmail')?.value;
     const role = document.getElementById('contactRole')?.value;
     const company = document.getElementById('contactCompany')?.value;
     const website = document.getElementById('contactWebsite')?.value;
+    const mobileInput = document.getElementById('contactMobile')?.value;
+    const countryCode = document.getElementById('contactCountryCode')?.value || '+91';
+    // Combine country code with mobile number
+    const mobile = mobileInput ? (mobileInput.startsWith('+') ? mobileInput : `${countryCode}${mobileInput}`) : null;
     const linkedin = document.getElementById('contactLinkedIn')?.value;
     const context = document.getElementById('contactContext')?.value;
-    
-    // Collect phone numbers from form
-    const phoneNumberRows = document.querySelectorAll('.phone-number-row');
-    const phoneNumbers = [];
-    phoneNumberRows.forEach(row => {
-        const countryCodeSelect = row.querySelector('.contact-country-code');
-        const phoneInput = row.querySelector('.contact-phone-number');
-        const whatsappCheckbox = row.querySelector('.contact-phone-whatsapp');
-        
-        if (phoneInput && phoneInput.value.trim()) {
-            const countryCode = countryCodeSelect?.value || '+91';
-            const phoneNumber = phoneInput.value.trim();
-            const fullNumber = phoneNumber.startsWith('+') ? phoneNumber : `${countryCode}${phoneNumber}`;
-            phoneNumbers.push({
-                number: fullNumber,
-                is_whatsapp: whatsappCheckbox ? whatsappCheckbox.checked : true
-            });
-        }
-    });
-    
-    // Collect email addresses from form
-    const emailRows = document.querySelectorAll('.email-address-row');
-    const emailAddresses = [];
-    emailRows.forEach(row => {
-        const emailInput = row.querySelector('.contact-email-address');
-        if (emailInput && emailInput.value.trim()) {
-            emailAddresses.push({
-                address: emailInput.value.trim()
-            });
-        }
-    });
-    
-    // For backward compatibility and duplicate checking, keep first phone/email
-    const mobile = phoneNumbers.length > 0 ? phoneNumbers[0].number : null;
-    const email = emailAddresses.length > 0 ? emailAddresses[0].address : null;
     const eventSelect = document.getElementById('contactEvent');
     const selectedEventId = eventSelect?.value || null;
     const photoInput = document.getElementById('contactPhotoInput');
@@ -5681,13 +3593,11 @@ async function saveContact() {
         
         const contactData = {
             name,
-            email: email || null,  // Deprecated field for backward compatibility
-            email_addresses: JSON.stringify(emailAddresses),
+            email: email || null,
             role_company: role || null,
             company: company || null,
             website: website || null,
-            mobile: mobile || null,  // Deprecated field for backward compatibility
-            phone_numbers: JSON.stringify(phoneNumbers),
+            mobile: mobile || null,
             linkedin_url: linkedin || null,
             meeting_context: finalContext || null,
             meeting_date: meetingDate,
@@ -5700,8 +3610,6 @@ async function saveContact() {
 
         const photoFile = photoInput?.files[0] || null;
         const mediaFiles = Array.from(mediaInput?.files || []);
-        
-        console.log('Saving contact with media files:', mediaFiles.length, mediaFiles.map(f => ({ name: f.name, size: f.size, type: f.type })));
 
         let savedContact;
         if (editingContactId) {
@@ -5907,32 +3815,15 @@ function displayContactProfile(data, isOwnProfile = false) {
     }
     
     // Show AI follow-up buttons only for contacts (not own profile)
-    const emailActionsItem = document.getElementById('contactViewEmailActionsItem');
     const aiEmailBtn = document.getElementById('aiEmailBtn');
     const aiWhatsAppBtn = document.getElementById('aiWhatsAppBtn');
     const aiSmsBtn = document.getElementById('aiSmsBtn');
     
-    if (emailActionsItem && aiEmailBtn && aiWhatsAppBtn && aiSmsBtn) {
-        // Check for email and phone in both old and new formats
-        const hasEmail = data.email || (data.email_addresses && data.email_addresses.length > 0);
-        const hasPhone = data.mobile || (data.phone_numbers && data.phone_numbers.length > 0);
-        
-        // Show container if contact has email or phone (and not own profile)
-        const showAiButtons = !isOwnProfile && (hasEmail || hasPhone);
-        
-        if (showAiButtons) {
-            emailActionsItem.style.display = 'block';
-            // Show AI Email only if contact has email
-            aiEmailBtn.style.display = hasEmail ? 'inline-flex' : 'none';
-            // Show AI WhatsApp and SMS if contact has phone
-            aiWhatsAppBtn.style.display = hasPhone ? 'inline-flex' : 'none';
-            aiSmsBtn.style.display = hasPhone ? 'inline-flex' : 'none';
-        } else {
-            emailActionsItem.style.display = 'none';
-            aiEmailBtn.style.display = 'none';
-            aiWhatsAppBtn.style.display = 'none';
-            aiSmsBtn.style.display = 'none';
-        }
+    if (aiEmailBtn && aiWhatsAppBtn && aiSmsBtn) {
+        const showAiButtons = !isOwnProfile && data.email; // Only show if contact has email
+        aiEmailBtn.style.display = showAiButtons ? 'block' : 'none';
+        aiWhatsAppBtn.style.display = showAiButtons && data.mobile ? 'block' : 'none';
+        aiSmsBtn.style.display = showAiButtons && data.mobile ? 'block' : 'none';
     }
     
     // Photo
@@ -5960,192 +3851,33 @@ function displayContactProfile(data, isOwnProfile = false) {
         roleEl.style.display = data.role_company ? 'block' : 'none';
     }
     
-    // Email Addresses (multiple)
-    const emailsItem = document.getElementById('contactViewEmailsItem');
-    const emailAddresses = data.email_addresses || [];
-    const hasEmails = emailAddresses.length > 0 || data.email;
-    
-    if (emailsItem) {
-        const emailsContainer = document.getElementById('contactViewEmailsList');
-        if (!emailsContainer) {
-            console.error('contactViewEmailsList container not found');
-        }
-        if (emailsContainer) {
-            emailsContainer.innerHTML = '';
-            
-            if (emailAddresses.length > 0) {
-                emailAddresses.forEach((email) => {
-                    const emailAddr = email.address || email;
-                    if (emailAddr) {
-                        const emailRow = document.createElement('div');
-                        emailRow.style.cssText = 'display: flex; align-items: center; gap: 8px; justify-content: space-between;';
-                        emailRow.innerHTML = `
-                            <span class="detail-value">${emailAddr}</span>
-                            ${!isOwnProfile ? `
-                                <button class="email-action-btn contact-action-btn-small" data-email="${emailAddr}" title="Email">
-                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
-                                        <polyline points="22,6 12,13 2,6"></polyline>
-                                    </svg>
-                                </button>
-                            ` : ''}
-                        `;
-                        emailsContainer.appendChild(emailRow);
-                        
-                        const emailBtn = emailRow.querySelector('.email-action-btn');
-                        if (emailBtn) {
-                            emailBtn.addEventListener('click', () => {
-                                window.location.href = `mailto:${emailAddr}`;
-                            });
-                        }
-                    }
-                });
-            } else if (data.email) {
-                // Fallback to deprecated email field
-                const emailRow = document.createElement('div');
-                emailRow.style.cssText = 'display: flex; align-items: center; gap: 8px; justify-content: space-between;';
-                emailRow.innerHTML = `
-                    <span class="detail-value">${data.email}</span>
-                    ${!isOwnProfile ? `
-                        <button class="email-action-btn contact-action-btn-small" data-email="${data.email}" title="Email">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
-                                <polyline points="22,6 12,13 2,6"></polyline>
-                            </svg>
-                        </button>
-                    ` : ''}
-                `;
-                emailsContainer.appendChild(emailRow);
-                
-                const emailBtn = emailRow.querySelector('.email-action-btn');
-                if (emailBtn) {
-                    emailBtn.addEventListener('click', () => {
-                        window.location.href = `mailto:${data.email}`;
-                    });
-                }
-            }
-            
-            emailsItem.style.display = hasEmails ? 'flex' : 'none';
+    // Email
+    const emailItem = document.getElementById('contactViewEmailItem');
+    const emailEl = document.getElementById('contactViewEmail');
+    if (emailItem && emailEl) {
+        if (data.email) {
+            emailEl.textContent = data.email;
+            emailItem.style.display = 'flex';
+        } else {
+            emailItem.style.display = 'none';
         }
     }
     
-    // Phone Numbers (multiple)
-    const phonesItem = document.getElementById('contactViewPhonesItem');
-    const phoneNumbers = data.phone_numbers || [];
-    const hasPhones = phoneNumbers.length > 0 || data.mobile;
-    
-    if (phonesItem) {
-        const phonesContainer = document.getElementById('contactViewPhonesList');
-        if (phonesContainer) {
-            phonesContainer.innerHTML = '';
-            
-            if (phoneNumbers.length > 0) {
-                phoneNumbers.forEach((phone) => {
-                    const phoneNumber = phone.number || phone;
-                    if (phoneNumber) {
-                        const phoneRow = document.createElement('div');
-                        phoneRow.style.cssText = 'display: flex; align-items: center; gap: 8px; justify-content: space-between;';
-                        
-                        const isWhatsapp = phone.is_whatsapp !== false;
-                        
-                        phoneRow.innerHTML = `
-                            <span class="detail-value">${phoneNumber}</span>
-                            ${!isOwnProfile ? `
-                                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                                    <button class="call-action-btn contact-action-btn-small" data-phone="${phoneNumber}" title="Call">
-                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
-                                        </svg>
-                                    </button>
-                                    <button class="message-action-btn contact-action-btn-small" data-phone="${phoneNumber}" title="Message">
-                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-                                        </svg>
-                                    </button>
-                                    ${isWhatsapp ? `
-                                        <button class="whatsapp-action-btn contact-action-btn-small" data-phone="${phoneNumber}" title="WhatsApp">
-                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                                                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
-                                        </svg>
-                                    </button>
-                                    ` : ''}
-                                </div>
-                            ` : ''}
-                        `;
-                        phonesContainer.appendChild(phoneRow);
-                        
-                        const callBtn = phoneRow.querySelector('.call-action-btn');
-                        const messageBtn = phoneRow.querySelector('.message-action-btn');
-                        const whatsappBtn = phoneRow.querySelector('.whatsapp-action-btn');
-                        
-                        if (callBtn) {
-                            callBtn.addEventListener('click', () => {
-                                window.location.href = `tel:${phoneNumber}`;
-                            });
-                        }
-                        if (messageBtn) {
-                            messageBtn.addEventListener('click', () => {
-                                window.location.href = `sms:${phoneNumber}`;
-                            });
-                        }
-                        if (whatsappBtn) {
-                            whatsappBtn.style.color = '#25D366';
-                            whatsappBtn.addEventListener('click', () => {
-                                const cleanPhone = phoneNumber.replace(/[^\d+]/g, '');
-                                window.open(`https://wa.me/${cleanPhone}`, '_blank');
-                            });
-                        }
-                    }
-                });
-            } else if (data.mobile) {
-                // Fallback to deprecated mobile field (assume WhatsApp by default for backward compatibility)
-                const phoneRow = document.createElement('div');
-                phoneRow.style.cssText = 'display: flex; align-items: center; gap: 8px; justify-content: space-between;';
-                phoneRow.innerHTML = `
-                    <span class="detail-value">${data.mobile}</span>
-                    ${!isOwnProfile ? `
-                        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                            <button class="call-action-btn contact-action-btn-small" data-phone="${data.mobile}" title="Call">
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
-                                </svg>
-                            </button>
-                            <button class="message-action-btn contact-action-btn-small" data-phone="${data.mobile}" title="Message">
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-                                </svg>
-                            </button>
-                            <button class="whatsapp-action-btn contact-action-btn-small" data-phone="${data.mobile}" title="WhatsApp">
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
-                                </svg>
-                            </button>
-                        </div>
-                    ` : ''}
-                `;
-                phonesContainer.appendChild(phoneRow);
-                
-                const callBtn = phoneRow.querySelector('.call-action-btn');
-                const messageBtn = phoneRow.querySelector('.message-action-btn');
-                const whatsappBtn = phoneRow.querySelector('.whatsapp-action-btn');
-                
-                if (callBtn) callBtn.addEventListener('click', () => window.location.href = `tel:${data.mobile}`);
-                if (messageBtn) messageBtn.addEventListener('click', () => window.location.href = `sms:${data.mobile}`);
-                if (whatsappBtn) {
-                    whatsappBtn.style.color = '#25D366';
-                    const cleanPhone = data.mobile.replace(/[^\d+]/g, '');
-                    whatsappBtn.addEventListener('click', () => window.open(`https://wa.me/${cleanPhone}`, '_blank'));
-                }
-            }
-            
-            phonesItem.style.display = hasPhones ? 'flex' : 'none';
+    // Mobile
+    const mobileItem = document.getElementById('contactViewMobileItem');
+    const mobileEl = document.getElementById('contactViewMobile');
+    if (mobileItem && mobileEl) {
+        if (data.mobile) {
+            mobileEl.textContent = data.mobile;
+            mobileItem.style.display = 'flex';
+        } else {
+            mobileItem.style.display = 'none';
         }
     }
     
     // LinkedIn
     const linkedInItem = document.getElementById('contactViewLinkedInItem');
     const linkedInEl = document.getElementById('contactViewLinkedIn');
-    const linkedInTextEl = document.getElementById('contactViewLinkedInText');
     if (linkedInItem && linkedInEl) {
         if (data.linkedin_url) {
             // Ensure URL has protocol
@@ -6154,33 +3886,10 @@ function displayContactProfile(data, isOwnProfile = false) {
                 linkedInUrl = 'https://' + linkedInUrl;
             }
             linkedInEl.href = linkedInUrl;
-            if (linkedInTextEl) {
-                linkedInTextEl.textContent = data.linkedin_url; // Show original text
-            }
+            linkedInEl.textContent = data.linkedin_url; // Show original text
             linkedInItem.style.display = 'flex';
         } else {
             linkedInItem.style.display = 'none';
-        }
-    }
-    
-    // Website
-    const websiteItem = document.getElementById('contactViewWebsiteItem');
-    const websiteEl = document.getElementById('contactViewWebsite');
-    const websiteTextEl = document.getElementById('contactViewWebsiteText');
-    if (websiteItem && websiteEl) {
-        if (data.website) {
-            // Ensure URL has protocol
-            let websiteUrl = data.website;
-            if (!websiteUrl.startsWith('http://') && !websiteUrl.startsWith('https://')) {
-                websiteUrl = 'https://' + websiteUrl;
-            }
-            websiteEl.href = websiteUrl;
-            if (websiteTextEl) {
-                websiteTextEl.textContent = data.website; // Show original text
-            }
-            websiteItem.style.display = 'flex';
-        } else {
-            websiteItem.style.display = 'none';
         }
     }
     
@@ -6545,30 +4254,6 @@ let recordingTimer = null;
 let recordingStartTime = null;
 
 async function openChatView(contactId, contactName) {
-    // Check if contactId exists (contact is saved)
-    if (!contactId) {
-        // Check if user is logged in
-        const currentUser = getCurrentUser();
-        if (!currentUser) {
-            showToast('🔐 Please login first to use chat features', 'error');
-            setTimeout(() => {
-                if (typeof showAuthScreen === 'function') {
-                    showAuthScreen();
-                }
-            }, 1500);
-            return;
-        }
-        
-        // User is logged in but contact not saved
-        showToast('💾 Please save this contact first to use chat features', 'error');
-        const saveBtn = document.getElementById('saveContactFromViewBtn');
-        if (saveBtn) {
-            saveBtn.style.display = 'block';
-            saveBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
-        return;
-    }
-    
     chatViewContactId = contactId;
     
     // Close any modals
@@ -6589,30 +4274,7 @@ async function openChatView(contactId, contactName) {
         loadChatViewMessages(chatViewContact);
     } catch (error) {
         console.error('Error loading contact for chat:', error);
-        
-        // Handle 404 error - contact not found
-        if (error.message && (error.message.includes('404') || error.message.includes('Not Found') || error.message.includes('not found'))) {
-            const currentUser = getCurrentUser();
-            if (!currentUser) {
-                showToast('🔐 Please login first to use chat features', 'error');
-                setTimeout(() => {
-                    if (typeof showAuthScreen === 'function') {
-                        showAuthScreen();
-                    }
-                }, 1500);
-            } else {
-                showToast('💾 Please save this contact first to use chat features', 'error');
-                const saveBtn = document.getElementById('saveContactFromViewBtn');
-                if (saveBtn) {
-                    saveBtn.style.display = 'block';
-                    saveBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                }
-            }
-            // Switch back to contacts view
-            switchView('contacts');
-        } else {
         alert('Failed to load contact: ' + error.message);
-        }
     }
 }
 
@@ -6852,8 +4514,6 @@ function stopVoiceRecording() {
 // QR Scanner
 let qrScannerStream = null;
 let qrScannerInterval = null;
-let businessCardScannerStream = null;
-let eventPassScannerStream = null;
 
 function openQRScanner() {
     const modal = document.getElementById('qrScannerModal');
@@ -7016,29 +4676,10 @@ async function renderStandalonePublicProfile(userId) {
             if (aboutEl) aboutEl.textContent = profile.about_me || 'No bio available';
             
             // Contact actions (using correct IDs from HTML)
-            // Call action - no restrictions
             setPublicProfileAction('publicProfileCall', profile.mobile, () => window.location.href = `tel:${profile.mobile}`);
-            
-            // Email action - requires login and saved contact
-            const emailAction = document.getElementById('publicProfileEmail');
-            if (emailAction && profile.email) {
-                emailAction.style.display = 'flex';
-                emailAction.onclick = createChatActionHandler(() => {
-                    window.location.href = `mailto:${profile.email}`;
-                }, 'email');
-            }
-            
-            // LinkedIn - no restrictions (external link)
+            setPublicProfileAction('publicProfileEmail', profile.email, () => window.location.href = `mailto:${profile.email}`);
             setPublicProfileAction('publicProfileLinkedIn', profile.linkedin_url, () => window.open(ensureHttps(profile.linkedin_url), '_blank'));
-            
-            // WhatsApp action - requires login and saved contact
-            const whatsappAction = document.getElementById('publicProfileWhatsapp');
-            if (whatsappAction && (profile.whatsapp || profile.mobile)) {
-                whatsappAction.style.display = 'flex';
-                whatsappAction.onclick = createChatActionHandler(() => {
-                    window.open(`https://wa.me/${(profile.whatsapp || profile.mobile).replace(/\D/g, '')}`, '_blank');
-                }, 'whatsapp');
-            }
+            setPublicProfileAction('publicProfileWhatsapp', profile.whatsapp || profile.mobile, () => window.open(`https://wa.me/${(profile.whatsapp || profile.mobile).replace(/\D/g, '')}`, '_blank'));
             
             // Meta info (using correct IDs from HTML)
             const emailValueEl = document.getElementById('publicProfileEmailValue');
@@ -7049,93 +4690,21 @@ async function renderStandalonePublicProfile(userId) {
             if (mobileValueEl) mobileValueEl.textContent = profile.mobile || 'Not shared';
             if (linkedinValueEl) linkedinValueEl.textContent = profile.linkedin_url || 'Not shared';
             
-            // Open in app button - requires login, then stores the profile ID and redirects to home
+            // Open in app button - stores the profile ID and redirects to home
             const openInAppBtn = document.getElementById('publicProfileOpenAppBtn');
             if (openInAppBtn) {
                 openInAppBtn.onclick = () => {
-                    const currentUser = getCurrentUser();
-                    if (!currentUser) {
-                        // Store profile ID for after login
                     sessionStorage.setItem('pendingProfileView', userId);
-                        showToast('🔐 Please login to open in app', 'info');
-                        // Redirect to home where login screen will be shown
-                        setTimeout(() => {
                     window.location.href = '/';
-                        }, 1500);
-                    } else {
-                        // Already logged in, proceed
-                        sessionStorage.setItem('pendingProfileView', userId);
-                        window.location.href = '/';
-                    }
                 };
             }
             
-            // Save to phone contacts button - works without login (saves directly to phone)
+            // Save to contacts button (requires login)
             const saveBtn = document.getElementById('publicProfileSaveBtn');
             if (saveBtn) {
-                saveBtn.onclick = async () => {
-                    try {
-                        // Convert profile to contact format for vCard generation
-                        const contactData = {
-                            name: profile.name || '',
-                            email: profile.email || null,
-                            email_addresses: profile.email ? [{ address: profile.email }] : [],
-                            mobile: profile.mobile || null,
-                            whatsapp: profile.whatsapp || null,
-                            phone_numbers: [],
-                            role_company: profile.role_company || null,
-                            company: null,
-                            website: null,
-                            linkedin_url: profile.linkedin_url || null,
-                            contact_photo_url: profile.profile_photo_url || null,
-                            meeting_context: profile.about_me || null,
-                            tags: [],
-                            event: null
-                        };
-                        
-                        // Add phone numbers
-                        if (profile.mobile) {
-                            contactData.phone_numbers.push({
-                                number: profile.mobile,
-                                is_whatsapp: false
-                            });
-                        }
-                        if (profile.whatsapp && profile.whatsapp !== profile.mobile) {
-                            contactData.phone_numbers.push({
-                                number: profile.whatsapp,
-                                is_whatsapp: true
-                            });
-                        }
-                        
-                        // Generate vCard with embedded photo
-                        const vcard = await generateContactVCardWithPhoto(contactData);
-                        const blob = new Blob([vcard], { type: 'text/vcard' });
-                        const url = URL.createObjectURL(blob);
-                        
-                        // Try Web Share API first (works on mobile)
-                        if (navigator.share && navigator.canShare) {
-                            const file = new File([blob], `${contactData.name.replace(/\s+/g, '_')}.vcf`, { type: 'text/vcard' });
-                            if (navigator.canShare({ files: [file] })) {
-                                navigator.share({
-                                    title: `Save ${contactData.name}`,
-                                    text: `Contact card for ${contactData.name}`,
-                                    files: [file]
-                                }).then(() => {
-                                    URL.revokeObjectURL(url);
-                                }).catch(() => {
-                                    // Fallback to download
-                                    downloadVCard(url, contactData.name);
-                                });
-                                return;
-                            }
-                        }
-                        
-                        // Fallback: Download vCard
-                        downloadVCard(url, contactData.name);
-                    } catch (error) {
-                        console.error('Error saving contact to phone:', error);
-                        alert('Failed to save contact to phone: ' + (error.message || 'Unknown error'));
-                    }
+                saveBtn.onclick = () => {
+                    sessionStorage.setItem('pendingProfileView', userId);
+                    window.location.href = '/';
                 };
             }
             
@@ -7240,7 +4809,6 @@ async function loadPublicProfile(userId) {
         }
         
         // Store the profile data for saving
-        const profileUrl = `${window.location.origin}/profile/${userId}`;
         currentViewingContact = {
             name: profile.name,
             email: profile.email,
@@ -7249,10 +4817,7 @@ async function loadPublicProfile(userId) {
             whatsapp: profile.whatsapp,
             linkedin_url: profile.linkedin_url,
             about_me: profile.about_me,
-            contact_photo_url: profile.profile_photo_url,
-            // Mark as from QR/shared profile and include profile URL
-            fromPplaiProfile: true,
-            pplaiProfileUrl: profileUrl
+            contact_photo_url: profile.profile_photo_url
         };
         
         showToast('Profile loaded successfully', 'success');
@@ -7459,354 +5024,215 @@ async function createContactFromVCard(vcardContact) {
 }
 
 function openBusinessCardScanner() {
-    const modal = document.getElementById('businessCardScannerModal');
-    const video = document.getElementById('businessCardVideo');
+    // Create file input for business card photo
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.capture = 'environment'; // Use back camera on mobile
     
-    if (!modal || !video) {
-        alert('Business Card Scanner elements not found');
-        return;
-    }
-    
-    modal.classList.remove('hidden');
-    
-    // Request camera access
-    navigator.mediaDevices.getUserMedia({ 
-        video: { 
-            facingMode: 'environment', // Use back camera on mobile
-            width: { ideal: 1280 },
-            height: { ideal: 720 }
-        } 
-    })
-    .then(stream => {
-        businessCardScannerStream = stream;
-        video.srcObject = stream;
-        video.play();
-    })
-    .catch(error => {
-        console.error('Error accessing camera:', error);
-        alert('Unable to access camera. Please allow camera permissions or use the upload option.');
-    });
-}
-
-function closeBusinessCardScanner() {
-    const modal = document.getElementById('businessCardScannerModal');
-    const video = document.getElementById('businessCardVideo');
-    
-    // Stop camera stream
-    if (businessCardScannerStream) {
-        businessCardScannerStream.getTracks().forEach(track => track.stop());
-        businessCardScannerStream = null;
-    }
-    
-    if (video) {
-        video.srcObject = null;
-    }
-    
-    if (modal) {
-        modal.classList.add('hidden');
-    }
-}
-
-function captureBusinessCard() {
-    const video = document.getElementById('businessCardVideo');
-    const canvas = document.getElementById('businessCardCanvas');
-    
-    if (!video || !canvas || video.readyState !== video.HAVE_ENOUGH_DATA) {
-        alert('Camera not ready. Please wait a moment.');
-        return;
-    }
-    
-    const ctx = canvas.getContext('2d');
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-    
-    canvas.toBlob((blob) => {
-        if (blob) {
-            const file = new File([blob], `business-card-${Date.now()}.jpg`, { type: 'image/jpeg' });
-            closeBusinessCardScanner();
-            processBusinessCardFile(file);
-        }
-    }, 'image/jpeg', 0.9);
-}
-
-async function processBusinessCardFile(file) {
-    // Show loading modal
-    const loadingModal = document.createElement('div');
-    loadingModal.className = 'modal';
-    loadingModal.innerHTML = `
-        <div class="modal-content" style="max-width: 300px;">
-            <div class="modal-body" style="text-align: center; padding: 40px 20px;">
-                <div class="loading-spinner" style="margin: 0 auto 20px;"></div>
-                <p>Scanning business card...</p>
-                <p style="font-size: 12px; color: #666; margin-top: 10px;">This may take a few seconds</p>
+    input.onchange = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        
+        // Show loading modal
+        const loadingModal = document.createElement('div');
+        loadingModal.className = 'modal';
+        loadingModal.innerHTML = `
+            <div class="modal-content" style="max-width: 300px;">
+                <div class="modal-body" style="text-align: center; padding: 40px 20px;">
+                    <div class="loading-spinner" style="margin: 0 auto 20px;"></div>
+                    <p>Scanning business card...</p>
+                    <p style="font-size: 12px; color: #666; margin-top: 10px;">This may take a few seconds</p>
+                </div>
             </div>
-        </div>
-    `;
-    document.body.appendChild(loadingModal);
-    
-    const updateProgress = (message) => {
-        const statusEl = loadingModal.querySelector('p');
-        if (statusEl) statusEl.textContent = message;
-    };
+        `;
+        document.body.appendChild(loadingModal);
         
-    const removeLoadingModal = () => {
-        if (loadingModal.parentNode) {
+        const updateProgress = (message) => {
+            const statusEl = loadingModal.querySelector('p');
+            if (statusEl) statusEl.textContent = message;
+        };
+            
+        const removeLoadingModal = () => {
+            if (loadingModal.parentNode) {
             document.body.removeChild(loadingModal);
+            }
+        };
+
+        let contactInfo = null;
+        let portraitFile = null;
+        let cardFileForMedia = null;
+
+        try {
+            updateProgress('Preparing image...');
+            
+            // Always preprocess - converts HEIC to JPEG which is universally supported
+            const preprocessResult = await preprocessCardImage(file);
+            const processedFile = preprocessResult?.file || file;
+            cardFileForMedia = preprocessResult?.file || file;
+
+            let cloudErrorDetail = null;
+
+            if (navigator.onLine) {
+                // Only try files that are valid (not null/undefined and have size)
+                const backendFileCandidates = [];
+                if (processedFile && processedFile.size > 0) {
+                    backendFileCandidates.push(processedFile);
+                }
+                if (file && file.size > 0 && processedFile !== file) {
+                    backendFileCandidates.push(file);
+                }
+                if (backendFileCandidates.length === 0) {
+                    backendFileCandidates.push(file); // Last resort
+                }
+
+                for (const candidate of backendFileCandidates) {
+                    try {
+                        updateProgress('Scanning card (cloud)...');
+                        const result = await api.analyzeBusinessCard(candidate);
+                        if (result) {
+                            contactInfo = result.fields || null;
+                            if (result.portrait_image) {
+                                portraitFile = base64ToFile(result.portrait_image, `portrait-${Date.now()}.png`, 'image/png');
+                            }
+                            // Always use the original file for media, not the processed/cropped version
+                            cardFileForMedia = file;
+                        }
+                        break;
+                    } catch (cloudError) {
+                        console.warn('Cloud OCR attempt failed:', cloudError);
+                        cloudErrorDetail = cloudError?.message || cloudError;
+                    }
+                }
+            }
+
+            if (!contactInfo) {
+                updateProgress('Scanning card (offline mode)...');
+                const localSource = processedFile || file;
+                const { data: { text } } = await Tesseract.recognize(localSource, 'eng', {
+                    logger: m => {
+                        if (m.status === 'recognizing text') {
+                            const progress = Math.round(m.progress * 100);
+                            updateProgress(`Scanning locally... ${progress}%`);
+                        }
+                    }
+                });
+                contactInfo = parseBusinessCardText(text);
+                cardFileForMedia = localSource;
+            }
+
+            removeLoadingModal();
+
+            if (!contactInfo) {
+                const extraMessage = cloudErrorDetail
+                    ? `\n\nCloud OCR error: ${cloudErrorDetail}`
+                    : '';
+                alert(`We could not extract information from this card. Please enter details manually.${extraMessage}`);
+                return;
+            }
+
+            cardFileForMedia = cardFileForMedia || processedFile || file;
+            await populateContactForm(contactInfo, { portraitFile, cardFile: cardFileForMedia });
+        } catch (error) {
+            console.error('OCR Error:', error);
+            removeLoadingModal();
+            alert('Failed to scan business card. Please try again or enter manually.\n\n' + (error.message || error));
         }
     };
-
-    let contactInfo = null;
-    let portraitFile = null;
-    let cardFileForMedia = null;
-
-    try {
-        updateProgress('Preparing image...');
-        
-        // Always preprocess - converts HEIC to JPEG which is universally supported
-        const preprocessResult = await preprocessCardImage(file);
-        const processedFile = preprocessResult?.file || file;
-        cardFileForMedia = preprocessResult?.file || file;
-
-        let cloudErrorDetail = null;
-
-        if (navigator.onLine) {
-            // Only try files that are valid (not null/undefined and have size)
-            const backendFileCandidates = [];
-            if (processedFile && processedFile.size > 0) {
-                backendFileCandidates.push(processedFile);
-            }
-            if (file && file.size > 0 && processedFile !== file) {
-                backendFileCandidates.push(file);
-            }
-            if (backendFileCandidates.length === 0) {
-                backendFileCandidates.push(file); // Last resort
-            }
-
-            for (const candidate of backendFileCandidates) {
-                try {
-                    updateProgress('Scanning card (cloud)...');
-                    console.log('Attempting cloud OCR with file:', candidate.name, candidate.size, 'bytes');
-                    const result = await api.analyzeBusinessCard(candidate);
-                    if (result) {
-                        console.log('Cloud OCR succeeded. Extracted fields:', Object.keys(result.fields || {}));
-                        contactInfo = result.fields || null;
-                        if (result.portrait_image) {
-                            portraitFile = base64ToFile(result.portrait_image, `portrait-${Date.now()}.png`, 'image/png');
-                            console.log('Portrait extracted from card');
-                        }
-                        // Always use the original file for media, not the processed/cropped version
-                        cardFileForMedia = file;
-                        cloudErrorDetail = null; // Clear error on success
-                    break;
-                    }
-                } catch (cloudError) {
-                    const errorMessage = cloudError?.message || String(cloudError);
-                    console.warn('Cloud OCR attempt failed:', errorMessage);
-                    cloudErrorDetail = errorMessage;
-                    
-                    // If it's a service unavailable error or credentials error, don't try other candidates
-                    if (errorMessage.includes('503') || 
-                        errorMessage.includes('not available') || 
-                        errorMessage.includes('Service Unavailable') ||
-                        errorMessage.includes('credentials were not found') ||
-                        errorMessage.includes('default credentials') ||
-                        errorMessage.includes('authentication')) {
-                        console.warn('OCR service is unavailable or not configured, will use local Tesseract.js fallback');
-                        break;
-                    }
-                }
-            }
-        }
-
-        if (!contactInfo) {
-            updateProgress('Scanning card (offline mode)...');
-            console.log('Using local Tesseract OCR fallback');
-            const localSource = processedFile || file;
-            const { data: { text } } = await Tesseract.recognize(localSource, 'eng', {
-                logger: m => {
-                    if (m.status === 'recognizing text') {
-                        const progress = Math.round(m.progress * 100);
-                        updateProgress(`Scanning locally... ${progress}%`);
-                    }
-                }
-            });
-            console.log('Local OCR extracted text length:', text?.length || 0);
-            contactInfo = parseBusinessCardText(text);
-            if (contactInfo && Object.keys(contactInfo).length > 0) {
-                console.log('Local OCR extracted fields:', Object.keys(contactInfo));
-            } else {
-                console.warn('Local OCR did not extract any contact fields');
-            }
-            cardFileForMedia = localSource;
-        }
-
-        removeLoadingModal();
-
-        if (!contactInfo) {
-            // If cloud OCR failed but we tried local OCR, show a more helpful message
-            const extraMessage = cloudErrorDetail && !cloudErrorDetail.includes('credentials')
-                ? `\n\nCloud OCR error: ${cloudErrorDetail}`
-                : cloudErrorDetail && cloudErrorDetail.includes('credentials')
-                ? `\n\nNote: Cloud OCR is not configured locally. Used local Tesseract.js OCR instead.`
-                : '';
-            alert(`We could not extract information from this card. Please enter details manually.${extraMessage}`);
-            return;
-        }
-
-        cardFileForMedia = cardFileForMedia || processedFile || file;
-        
-        // Ensure we have a valid file object
-        if (!cardFileForMedia || (!(cardFileForMedia instanceof File) && !(cardFileForMedia instanceof Blob))) {
-            console.warn('cardFileForMedia is not a valid File/Blob, using original file:', cardFileForMedia);
-            cardFileForMedia = file;
-        }
-        
-        console.log('Calling populateContactForm with cardFile:', cardFileForMedia?.name, cardFileForMedia?.size, 'bytes');
-        await populateContactForm(contactInfo, { portraitFile, cardFile: cardFileForMedia });
-    } catch (error) {
-        console.error('OCR Error:', error);
-        removeLoadingModal();
-        alert('Failed to scan business card. Please try again or enter manually.\n\n' + (error.message || error));
-    }
+    
+    input.click();
 }
 
 function openEventPassScanner() {
-    const modal = document.getElementById('eventPassScannerModal');
-    const video = document.getElementById('eventPassVideo');
+    // Create file input for event pass/ID card photo
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.capture = 'environment'; // Use back camera on mobile
     
-    if (!modal || !video) {
-        alert('Event Pass Scanner elements not found');
-        return;
-    }
-    
-    modal.classList.remove('hidden');
-    
-    // Request camera access
-    navigator.mediaDevices.getUserMedia({ 
-        video: { 
-            facingMode: 'environment', // Use back camera on mobile
-            width: { ideal: 1280 },
-            height: { ideal: 720 }
-        } 
-    })
-    .then(stream => {
-        eventPassScannerStream = stream;
-        video.srcObject = stream;
-        video.play();
-    })
-    .catch(error => {
-        console.error('Error accessing camera:', error);
-        alert('Unable to access camera. Please allow camera permissions or use the upload option.');
-    });
-}
-
-function closeEventPassScanner() {
-    const modal = document.getElementById('eventPassScannerModal');
-    const video = document.getElementById('eventPassVideo');
-    
-    // Stop camera stream
-    if (eventPassScannerStream) {
-        eventPassScannerStream.getTracks().forEach(track => track.stop());
-        eventPassScannerStream = null;
-    }
-    
-    if (video) {
-        video.srcObject = null;
-    }
-    
-    if (modal) {
-        modal.classList.add('hidden');
-    }
-}
-
-function captureEventPass() {
-    const video = document.getElementById('eventPassVideo');
-    const canvas = document.getElementById('eventPassCanvas');
-    
-    if (!video || !canvas || video.readyState !== video.HAVE_ENOUGH_DATA) {
-        alert('Camera not ready. Please wait a moment.');
-        return;
-    }
-    
-    const ctx = canvas.getContext('2d');
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-    
-    canvas.toBlob((blob) => {
-        if (blob) {
-            const file = new File([blob], `event-pass-${Date.now()}.jpg`, { type: 'image/jpeg' });
-            closeEventPassScanner();
-            processEventPassFile(file);
-        }
-    }, 'image/jpeg', 0.9);
-}
-
-async function processEventPassFile(file) {
-    // Show loading modal
-    const loadingModal = document.createElement('div');
-    loadingModal.className = 'modal';
-    loadingModal.innerHTML = `
-        <div class="modal-content" style="max-width: 300px;">
-            <div class="modal-body" style="text-align: center; padding: 40px 20px;">
-                <div class="loading-spinner" style="margin: 0 auto 20px;"></div>
-                <p>Scanning event pass/ID card...</p>
-                <p style="font-size: 12px; color: #666; margin-top: 10px;">This may take a few seconds</p>
-            </div>
-        </div>
-    `;
-    document.body.appendChild(loadingModal);
-    
-    try {
-        // Check if it's HEIC - Tesseract can't handle HEIC
-        const isHeic = file.type && file.type.toLowerCase().includes('heic') || 
-                      file.name && file.name.toLowerCase().match(/\.(heic|heif)$/);
+    input.onchange = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
         
-        if (isHeic) {
+        // Show loading modal
+        const loadingModal = document.createElement('div');
+        loadingModal.className = 'modal';
+        loadingModal.innerHTML = `
+            <div class="modal-content" style="max-width: 300px;">
+                <div class="modal-body" style="text-align: center; padding: 40px 20px;">
+                    <div class="loading-spinner" style="margin: 0 auto 20px;"></div>
+                    <p>Scanning event pass/ID card...</p>
+                    <p style="font-size: 12px; color: #666; margin-top: 10px;">This may take a few seconds</p>
+                </div>
+function resetUnifiedBusinessCardView() {
+    // Hide preview and processing views
+    document.getElementById("unifiedBusinessCardPreviewView")?.classList.add("hidden");
+    document.getElementById("unifiedBusinessCardProcessingView")?.classList.add("hidden");
+    
+    // Show camera view (default)
+    document.getElementById("unifiedBusinessCardCameraView")?.classList.remove("hidden");
+    
+    // Start camera automatically
+    setTimeout(() => {
+        startUnifiedBusinessCardCamera();
+    }, 100);
+}
+
+function resetUnifiedVisitingCardView() {
+    // Hide preview and processing views
+    document.getElementById("unifiedVisitingCardPreviewView")?.classList.add("hidden");
+    document.getElementById("unifiedVisitingCardProcessingView")?.classList.add("hidden");
+    
+    // Show camera view (default)
+    document.getElementById("unifiedVisitingCardCameraView")?.classList.remove("hidden");
+    
+    // Start camera automatically
+    setTimeout(() => {
+        startUnifiedVisitingCardCamera();
+    }, 100);
+}            }
+            
+            loadingModal.querySelector('p').textContent = 'Preparing image...';
+            const preprocessResult = await preprocessCardImage(file);
+            const processedFile = preprocessResult?.file || file;
+
+            const { data: { text } } = await Tesseract.recognize(processedFile, 'eng', {
+                logger: m => {
+                    if (m.status === 'recognizing text') {
+                        const progress = Math.round(m.progress * 100);
+                        loadingModal.querySelector('p').textContent = `Scanning... ${progress}%`;
+                    }
+                }
+            });
+            
+            const contactInfo = parseEventPassText(text);
+            
             document.body.removeChild(loadingModal);
-            alert('HEIC images are not supported for event pass scanning.\n\nPlease:\n1. Take a new photo in JPG/PNG format, or\n2. Convert the HEIC to JPG first, or\n3. Use the Business Card scanner instead (it supports HEIC)');
-            return;
-        }
-        
-        loadingModal.querySelector('p').textContent = 'Preparing image...';
-        const preprocessResult = await preprocessCardImage(file);
-        const processedFile = preprocessResult?.file || file;
+            
+            if (!contactInfo) {
+                alert('We could not extract information from this pass. Please enter details manually.');
+                return;
+            }
 
-        const { data: { text } } = await Tesseract.recognize(processedFile, 'eng', {
-            logger: m => {
-                if (m.status === 'recognizing text') {
-                    const progress = Math.round(m.progress * 100);
-                    loadingModal.querySelector('p').textContent = `Scanning... ${progress}%`;
+            await populateContactForm(contactInfo, { cardFile: processedFile });
+
+            if (contactInfo.eventName) {
+                const context = document.getElementById('contactContext');
+                if (context) {
+                    context.value = context.value
+                        ? `${context.value}\nMet at: ${contactInfo.eventName}`
+                        : `Met at: ${contactInfo.eventName}`;
                 }
             }
-        });
-        
-        const contactInfo = parseEventPassText(text);
-        
-        document.body.removeChild(loadingModal);
-        
-        if (!contactInfo) {
-            alert('We could not extract information from this pass. Please enter details manually.');
-            return;
+            
+        } catch (error) {
+            console.error('OCR Error:', error);
+            document.body.removeChild(loadingModal);
+            alert('Failed to scan event pass/ID card. Please try again or enter manually.');
         }
-
-        await populateContactForm(contactInfo, { cardFile: processedFile });
-
-        if (contactInfo.eventName) {
-            const context = document.getElementById('contactContext');
-            if (context) {
-                context.value = context.value
-                    ? `${context.value}\nMet at: ${contactInfo.eventName}`
-                    : `Met at: ${contactInfo.eventName}`;
-            }
-        }
-        
-    } catch (error) {
-        console.error('OCR Error:', error);
-        document.body.removeChild(loadingModal);
-        alert('Failed to scan event pass/ID card. Please try again or enter manually.');
-    }
+    };
+    
+    input.click();
 }
 
 const JOB_TITLE_KEYWORDS = [
@@ -8214,14 +5640,6 @@ async function createNewTag() {
 }
 
 async function loadTagsForManagement() {
-    // Check authentication
-    const currentUser = getCurrentUser();
-    const token = getAuthToken();
-    if (!currentUser || !token) {
-        showAuthScreen();
-        return;
-    }
-    
     try {
         const tags = await api.getTagsForManagement();
         displayTagsForManagement(tags);
@@ -8344,46 +5762,25 @@ function createTagManagementItem(tag, isSystem) {
     return `
         <div class="tag-item ${hiddenClass}" data-tag-id="${tag.id}" data-tag-name="${tag.name}" data-is-hidden="${tag.is_hidden}">
             <div class="tag-item-content">
-                <span class="tag-name" id="tag-name-${tag.id}" style="background-color: ${color.bg}; color: ${color.text}; border: 1px solid ${color.border}; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: 500; display: inline-block; max-width: 200px; overflow: hidden; text-overflow: ellipsis;">${tag.name}</span>
+                <span class="tag-name" id="tag-name-${tag.id}" style="background-color: ${color.bg}; color: ${color.text}; border: 1px solid ${color.border}; padding: 6px 12px; border-radius: 8px; font-size: 13px; font-weight: 500; display: inline-block; max-width: 200px; overflow: hidden; text-overflow: ellipsis;">${tag.name}</span>
                 <div style="display: flex; gap: 6px; flex-wrap: wrap;">
                     ${tag.is_hidden ? '<span class="tag-badge tag-badge-hidden">Hidden</span>' : ''}
                     ${isSystem ? '<span class="tag-badge tag-badge-system">System</span>' : ''}
                 </div>
             </div>
             <div class="tag-item-actions">
-                <button class="btn-small btn-primary tag-view-contacts-btn" data-tag-id="${tag.id}" data-tag-name="${tag.name}" title="View contacts with this tag" style="display: flex; align-items: center; gap: 6px;">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                        <circle cx="12" cy="12" r="3"></circle>
+                <button class="btn-small btn-primary tag-view-contacts-btn" data-tag-id="${tag.id}" data-tag-name="${tag.name}" title="View contacts with this tag">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: inline-block; vertical-align: middle; margin-right: 4px;">
+                        <path d="M5 12h14M12 5l7 7-7 7"></path>
                     </svg>
-                    <span>View</span>
+                    View
                 </button>
                 ${!isSystem ? `
-                    <button class="btn-small btn-secondary tag-edit-btn" data-tag-id="${tag.id}" data-tag-name="${tag.name}" title="Edit" style="display: flex; align-items: center; justify-content: center;">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                        </svg>
+                    <button class="btn-small btn-secondary tag-edit-btn" data-tag-id="${tag.id}" data-tag-name="${tag.name}" title="Edit">✏️</button>
+                    <button class="btn-small btn-secondary tag-hide-btn" data-tag-id="${tag.id}" data-tag-name="${tag.name}" data-is-hidden="${tag.is_hidden}" title="${tag.is_hidden ? 'Show' : 'Hide'}">
+                        ${tag.is_hidden ? '👁️' : '🙈'}
                     </button>
-                    <button class="btn-small btn-secondary tag-hide-btn" data-tag-id="${tag.id}" data-tag-name="${tag.name}" data-is-hidden="${tag.is_hidden}" title="${tag.is_hidden ? 'Show' : 'Hide'}" style="display: flex; align-items: center; justify-content: center;">
-                        ${tag.is_hidden ? `
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
-                                <line x1="1" y1="1" x2="23" y2="23"></line>
-                            </svg>
-                        ` : `
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                                <circle cx="12" cy="12" r="3"></circle>
-                            </svg>
-                        `}
-                    </button>
-                    <button class="btn-small btn-danger tag-delete-btn" data-tag-id="${tag.id}" data-tag-name="${tag.name}" title="Delete" style="display: flex; align-items: center; justify-content: center;">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <polyline points="3 6 5 6 21 6"></polyline>
-                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                        </svg>
-                    </button>
+                    <button class="btn-small btn-danger tag-delete-btn" data-tag-id="${tag.id}" data-tag-name="${tag.name}" title="Delete">🗑️</button>
                 ` : '<span class="tag-badge" style="opacity: 0.5; font-size: 10px;">Read-only</span>'}
             </div>
         </div>
@@ -8681,12 +6078,6 @@ async function compressImages(files) {
 
 // Utility functions
 function closeModal() {
-    // Clear contact media when closing modal (if contact modal is open)
-    const contactModal = document.getElementById('contactModal');
-    if (contactModal && !contactModal.classList.contains('hidden')) {
-        clearContactMedia();
-    }
-    
     document.querySelectorAll('.modal').forEach(modal => modal.classList.add('hidden'));
 }
 
@@ -8929,14 +6320,6 @@ let allUsers = [];
 let editingUserId = null;
 
 async function loadAllUsers() {
-    // Check authentication
-    const currentUser = getCurrentUser();
-    const token = getAuthToken();
-    if (!currentUser || !token) {
-        showAuthScreen();
-        return;
-    }
-    
     const usersList = document.getElementById('usersList');
     if (!usersList) return;
 
@@ -9305,15 +6688,6 @@ function startUnifiedVisitingCardCamera() {
     });
 }
 
-// Update reset functions to start camera automatically
-if (typeof resetUnifiedBusinessCardView !== 'undefined') {
-    const originalResetBusiness = resetUnifiedBusinessCardView;
-    resetUnifiedBusinessCardView = function() {
-        originalResetBusiness();
-        document.getElementById('unifiedBusinessCardCameraView')?.classList.remove('hidden');
-        setTimeout(() => startUnifiedBusinessCardCamera(), 100);
-    };
-}
 
 if (typeof resetUnifiedVisitingCardView !== 'undefined') {
     const originalResetVisiting = resetUnifiedVisitingCardView;
@@ -9386,4 +6760,3 @@ function handleUnifiedVisitingCardFile(file) {
         window.unifiedVisitingCardFile = file;
     }
 }
-

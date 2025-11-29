@@ -71,7 +71,7 @@ jobs:
     
     - name: Deploy to Cloud Run
       run: |
-        # Use production API URL - always use custom domain in production
+        # Use production API URL
         API_BASE_URL="${{ secrets.API_BASE_URL }}"
         if [ -z "$API_BASE_URL" ]; then
           API_BASE_URL="https://api.pplai.app/api"
@@ -79,21 +79,6 @@ jobs:
         else
           echo "✅ Using API_BASE_URL from secret: $API_BASE_URL"
         fi
-        
-        # Ensure API_BASE_URL ends with /api
-        if [[ ! "$API_BASE_URL" =~ /api$ ]]; then
-          API_BASE_URL="${API_BASE_URL%/}/api"
-          echo "✅ Adjusted API_BASE_URL to: $API_BASE_URL"
-        fi
-        
-        # Force custom domain in production (override Cloud Run URL if present)
-        if [[ "$API_BASE_URL" =~ us-central1\.run\.app ]]; then
-          echo "⚠️  Warning: API_BASE_URL contains Cloud Run URL, overriding with custom domain"
-          API_BASE_URL="https://api.pplai.app/api"
-          echo "✅ Overridden API_BASE_URL to: $API_BASE_URL"
-        fi
-        
-        echo "🔧 Final API_BASE_URL: $API_BASE_URL"
         
         GOOGLE_CLIENT_ID="${{ secrets.GOOGLE_CLIENT_ID }}"
         if [ -z "$GOOGLE_CLIENT_ID" ]; then

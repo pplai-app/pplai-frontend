@@ -10,7 +10,6 @@ COPY api.js /usr/share/nginx/html/
 COPY styles.css /usr/share/nginx/html/
 COPY manifest.json /usr/share/nginx/html/
 COPY offline-queue.js /usr/share/nginx/html/
-COPY sw.js /usr/share/nginx/html/
 
 # Copy nginx configuration template
 # nginx:alpine's default entrypoint automatically processes .template files

@@ -5,7 +5,7 @@ let API_BASE_URL = window.API_BASE_URL || 'http://localhost:8000/api';
 
 // Force HTTPS if we're on HTTPS (fix at initialization time)
 // This MUST happen before any API calls are made
-(function () {
+(function() {
     if (!API_BASE_URL || API_BASE_URL.includes('${API_BASE_URL}')) {
         API_BASE_URL = 'http://localhost:8000/api';
     }
@@ -31,13 +31,13 @@ let API_BASE_URL = window.API_BASE_URL || 'http://localhost:8000/api';
 function normalizeApiUrl(endpoint) {
     const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
     let cleanBaseUrl = API_BASE_URL.endsWith('/') ? API_BASE_URL.slice(0, -1) : API_BASE_URL;
-
+    
     // Force HTTPS if we're on HTTPS (mixed content prevention) - double check
     if (typeof window !== 'undefined' && window.location.protocol === 'https:' && cleanBaseUrl.startsWith('http://')) {
         cleanBaseUrl = cleanBaseUrl.replace('http://', 'https://');
         console.warn('Mixed content detected: Converting HTTP API URL to HTTPS:', cleanBaseUrl);
     }
-
+    
     return `${cleanBaseUrl}${cleanEndpoint}`;
 }
 
@@ -101,16 +101,16 @@ function getCachedResponse(endpoint) {
         const cacheKey = getCacheKey(endpoint);
         const cachedStr = localStorage.getItem(cacheKey);
         if (!cachedStr) return null;
-
+        
         const cached = JSON.parse(cachedStr);
         const age = Date.now() - cached.timestamp;
-
+        
         // Check if cache is expired
         if (age > CACHE_DURATION) {
             localStorage.removeItem(cacheKey);
             return null;
         }
-
+        
         // Check if user changed (cache belongs to different user)
         const currentUserId = getUserIdForCache();
         if (cached.userId !== currentUserId) {
@@ -118,7 +118,7 @@ function getCachedResponse(endpoint) {
             clearAllCache();
             return null;
         }
-
+        
         return cached.data;
     } catch (error) {
         console.warn('Error reading cache:', error);
@@ -215,25 +215,25 @@ const cacheInvalidation = {
         }
         console.log('Profile cache invalidated');
     },
-
+    
     // Invalidate contacts cache (all contact-related endpoints)
     invalidateContacts() {
         clearCachePattern('/contacts');
         console.log('Contacts cache invalidated');
     },
-
+    
     // Invalidate events cache
     invalidateEvents() {
         clearCachePattern('/events');
         console.log('Events cache invalidated');
     },
-
+    
     // Invalidate tags cache
     invalidateTags() {
         clearCachePattern('/tags');
         console.log('Tags cache invalidated');
     },
-
+    
     // Invalidate all cache
     invalidateAll() {
         clearAllCache();
@@ -245,13 +245,13 @@ const cacheInvalidation = {
 async function apiRequest(endpoint, options = {}) {
     const token = getAuthToken();
     const method = options.method || 'GET';
-
+    
     // Don't set Content-Type for FormData, let browser set it with boundary
     const isFormData = options.body instanceof FormData;
     const headers = isFormData ? {} : {
         'Content-Type': 'application/json',
     };
-
+    
     // Merge any additional headers
     if (options.headers) {
         Object.assign(headers, options.headers);
@@ -301,7 +301,7 @@ async function apiRequest(endpoint, options = {}) {
     }
 
     let response;
-
+    
     try {
         const fullUrl = normalizeApiUrl(endpoint);
         console.log(`Making ${method} request to: ${fullUrl}`);
@@ -312,7 +312,7 @@ async function apiRequest(endpoint, options = {}) {
         });
         clearTimeout(timeoutId);
         console.log(`Response status: ${response.status} ${response.statusText}`);
-
+        
         // Handle redirects (307, 308)
         if (response.status === 307 || response.status === 308) {
             const redirectUrl = response.headers.get('Location');
@@ -328,21 +328,21 @@ async function apiRequest(endpoint, options = {}) {
         }
     } catch (fetchError) {
         clearTimeout(timeoutId);
-
+        
         // Handle timeout
         if (fetchError.name === 'AbortError') {
             console.error('Request timeout:', endpoint);
             throw new Error(`Request timeout. The server took too long to respond.\n\nPossible causes:\n1. Database connection is hanging\n2. Backend server is stuck\n3. Network issues\n\nTry:\n1. Check backend terminal/logs for errors\n2. Verify database is running: ./check_setup.sh\n3. Restart the backend server`);
         }
-
+        
         // Check if it's a CORS or network error
         if (fetchError.message.includes('Failed to fetch') || fetchError.message.includes('NetworkError')) {
             console.error('Network/CORS error:', fetchError);
             console.error('Request URL:', `${API_BASE_URL}${endpoint}`);
-            console.error('Is server running? Check: http://localhost:8002/api/health');
-            throw new Error(`Cannot connect to server. Please check:\n1. Backend server is running (http://localhost:8002/api/health)\n2. No CORS errors in browser console\n3. Network connection is active\n4. Database is running and accessible`);
+            console.error('Is server running? Check: http://localhost:8000/api/health');
+            throw new Error(`Cannot connect to server. Please check:\n1. Backend server is running (http://localhost:8000/api/health)\n2. No CORS errors in browser console\n3. Network connection is active\n4. Database is running and accessible`);
         }
-
+        
         // Try to return cached data if offline
         if (!navigator.onLine && shouldCache(endpoint, method)) {
             const cached = getCachedResponse(endpoint);
@@ -351,7 +351,7 @@ async function apiRequest(endpoint, options = {}) {
                 return cached;
             }
         }
-
+        
         console.error('Fetch error:', fetchError);
         throw new Error(`Network error: ${fetchError.message}. Please check if the backend server is running.`);
     }
@@ -391,12 +391,12 @@ async function apiRequest(endpoint, options = {}) {
         console.error('Failed to parse JSON response:', e);
         throw new Error('Invalid response from server');
     }
-
+    
     // Cache successful GET responses
     if (response.ok && shouldCache(endpoint, method)) {
         setCachedResponse(endpoint, data);
     }
-
+    
     return data;
 }
 
@@ -439,15 +439,12 @@ const api = {
     async updateProfile(profileData, photoFile) {
         const formData = new FormData();
         if (photoFile) formData.append('photo', photoFile);
-        // Always send required fields
-        if (profileData.name !== undefined) formData.append('name', profileData.name);
-        if (profileData.email !== undefined) formData.append('email', profileData.email);
-        // Send optional fields even if empty (so backend can clear them)
-        if (profileData.role_company !== undefined) formData.append('role_company', profileData.role_company || '');
-        if (profileData.mobile !== undefined) formData.append('mobile', profileData.mobile || '');
-        if (profileData.whatsapp !== undefined) formData.append('whatsapp', profileData.whatsapp || '');
-        if (profileData.linkedin_url !== undefined) formData.append('linkedin_url', profileData.linkedin_url || '');
-        if (profileData.about_me !== undefined) formData.append('about_me', profileData.about_me || '');
+        if (profileData.name) formData.append('name', profileData.name);
+        if (profileData.role_company !== undefined) formData.append('role_company', profileData.role_company);
+        if (profileData.mobile !== undefined) formData.append('mobile', profileData.mobile);
+        if (profileData.whatsapp !== undefined) formData.append('whatsapp', profileData.whatsapp);
+        if (profileData.linkedin_url !== undefined) formData.append('linkedin_url', profileData.linkedin_url);
+        if (profileData.about_me !== undefined) formData.append('about_me', profileData.about_me);
 
         const token = getAuthToken();
         const response = await fetch(normalizeApiUrl('/profile'), {
@@ -465,7 +462,7 @@ const api = {
 
         const data = await response.json();
         setCurrentUser(data);
-
+        
         // Invalidate profile cache (both current user and public profile)
         cacheInvalidation.invalidateProfile();
         // Also invalidate public profile cache for this user
@@ -475,7 +472,7 @@ const api = {
             clearQRCache(data.id, 'url');
             clearQRCache(data.id, 'vcard');
         }
-
+        
         return data;
     },
 
@@ -540,56 +537,6 @@ const api = {
         return result;
     },
 
-    async getEventMedia(eventId, options = {}) {
-        const params = new URLSearchParams();
-        if (options.untaggedOnly) {
-            params.append('untagged_only', 'true');
-        }
-        const query = params.toString() ? `?${params.toString()}` : '';
-        return apiRequest(`/events/${eventId}/media${query}`);
-    },
-
-    async uploadEventMedia(eventId, files) {
-        if (!files || files.length === 0) {
-            throw new Error('Please select at least one media file.');
-        }
-
-        const formData = new FormData();
-        files.forEach(file => formData.append('files', file));
-
-        const token = getAuthToken();
-        const response = await fetch(normalizeApiUrl(`/events/${eventId}/media`), {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${token}`,
-            },
-            body: formData,
-        });
-
-        if (!response.ok) {
-            const error = await response.json().catch(() => ({ error: 'Request failed' }));
-            throw new Error(error.error || error.detail || 'Request failed');
-        }
-
-        return response.json();
-    },
-
-    async linkEventMediaToContact(eventId, contactId, mediaIds) {
-        if (!contactId || !mediaIds || mediaIds.length === 0) {
-            throw new Error('A contact and at least one media item are required.');
-        }
-
-        const result = await apiRequest(`/events/${eventId}/media/link`, {
-            method: 'POST',
-            body: JSON.stringify({
-                contact_id: contactId,
-                media_ids: mediaIds,
-            }),
-        });
-        cacheInvalidation.invalidateContacts();
-        return result;
-    },
-
     // Luma Integration
     async fetchLumaEventFromUrl(lumaUrl) {
         return apiRequest('/luma/fetch-from-url', {
@@ -618,7 +565,7 @@ const api = {
         if (filters.date_from) params.append('date_from', filters.date_from);
         if (filters.date_to) params.append('date_to', filters.date_to);
         if (filters.is_favorite !== undefined) params.append('is_favorite', filters.is_favorite);
-
+        
         const queryString = params.toString();
         const endpoint = queryString ? `/contacts?${queryString}` : '/contacts';
         return apiRequest(endpoint);
@@ -671,9 +618,6 @@ const api = {
         if (contactData.tags && contactData.tags.length > 0) {
             formData.append('tags', JSON.stringify(contactData.tags));
         }
-        if (contactData.media_ids && contactData.media_ids.length > 0) {
-            formData.append('media_ids', JSON.stringify(contactData.media_ids));
-        }
         if (photoFile) formData.append('photo', photoFile);
         if (mediaFiles) {
             mediaFiles.forEach(file => formData.append('media', file));
@@ -716,9 +660,6 @@ const api = {
         if (contactData.event_id !== undefined) formData.append('event_id', contactData.event_id);
         if (contactData.tags) {
             formData.append('tags', JSON.stringify(contactData.tags));
-        }
-        if (contactData.media_ids && contactData.media_ids.length > 0) {
-            formData.append('media_ids', JSON.stringify(contactData.media_ids));
         }
         if (contactData.meeting_latitude !== null && contactData.meeting_latitude !== undefined) {
             formData.append('meeting_latitude', contactData.meeting_latitude.toString());
@@ -860,6 +801,14 @@ const api = {
         // Follow-ups are part of contacts, invalidate contacts cache
         cacheInvalidation.invalidateContacts();
         return result;
+    },
+
+    // Save edited followup for style learning
+    async saveEditedFollowup(followupData) {
+        return apiRequest('/llm/save-edited-followup', {
+            method: 'POST',
+            body: JSON.stringify(followupData),
+        });
     },
 
     // Export
